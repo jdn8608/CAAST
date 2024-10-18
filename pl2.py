@@ -1,0 +1,25 @@
+
+from tqdm.notebook import tqdm
+
+import random
+import pickle
+import glob
+import os
+
+
+
+'''
+TO DO:
+	-INGEST ARGS
+	-CREATE GET_DATA SCRIPT
+	-CREATE SATELITTE FILE READER FOR GET_DATA
+		-JUST MAIA NADIR FOR NOW
+	-VISUALIZATION SCRIPT
+	-ITERATE ON PASS IN FUNCTIONALITY
+	-ADD MULTI-ANGLE CAPABILITY
+	-DOCUMENT DOCUMENT DOCUMENT
+		-REQUIRMENTS.TXT
+'''
+
+if __name__ == "__main__":
+	quit()	
