@@ -1,0 +1,42 @@
+import file_readers 
+import json
+
+def create_instrument_dict_single_view():
+	reader_dict = {
+		'MAIA' 	: file_readers.MAIA_sv.read,
+		'MODIS'	: file_readers.MODIS.read,
+		'MISR' 	: file_readers.MISR_sv.read,
+		}
+	return reader_dict
+
+def create_instrument_dict_mutli_view():
+	reader_dict = {
+		'MAIA' 	: file_readers.MAIA_ma.read,
+		'MISR' 	: file_readers.MISR_ma.read,
+		}
+	return reader_dict
+
+def error_not_found(instrument_name):
+	error_out = f'file reader not found for instrument name: "{instrument_name}"\nPlease see the README for how to add file readers.'
+	raise Exception(error_out)
+
+def get_data(parent_dir, instrument_name, multiangle=False, filepath_metadata=None):
+	metadata = None
+	if filepath_metadata:
+		with open(filepath_metadata, 'r') as file:
+			metadata = json.load(file)	
+
+	# load the filereader dictionary needed 
+	if not multiangle:
+		reader_dict = create_instrument_dict_single_view()
+	else:
+		reader_dict = create_instrument_dict_multi_view()
+
+	file_reader = reader_dict.get(instrument_name, None)
+	if file_reader:
+		np_data = file_reader(parent_dir, metadata=metadata)	
+	else:
+		error_not_found(instrument_name)
+
+	return np_data 
+		

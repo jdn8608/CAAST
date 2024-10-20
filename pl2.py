@@ -7,7 +7,7 @@ import glob
 import os
 import argparse
 
-
+from get_numpy_data import get_data
 
 '''
 TO DO:
@@ -26,19 +26,32 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser(
 		prog="RS-PL",
 		description="Remote Sensing - Pixel Label (RS-PL) tool:\n This tool was developed to have an easy, quick, and accesible tool to label imagery from various remote sensing platforms.",
-		epilog='Tool is currently under developement. For more information, got to GITHUB_LINK')
+		epilog='Tool is currently under developement. For more information, goto GITHUB_LINK')
 
+	# required arguments
 	parser.add_argument('dir', 
 		help="root directory to retrieve files from")
-	parser.add_argument('files', 
-		help="files to read in. If --multiangle is off, only first file will be read",
-		nargs='+')
+	parser.add_argument('instrument_name', 
+		help="instrument that we will be reading in data for. This will determine how to read in data, (i.e., determine the file reader). See the README.")
+	#parser.add_argument('files', 
+	#	help="files to read in. If --multiangle is off, only first file will be read",
+	#	nargs='+')
+
+	# optional arguments
 	parser.add_argument('-ma', '--multiangle', 
 		help="turn on multi-angle use", 
 		action='store_true')
+	parser.add_argument('-m', '--metadata_filepath', 
+		help="Path to a .json file for additional information to use by the instrument file reader, if it is needed.")
 	parser.add_argument('-v', '--verbose',
 		action='store_true')
+
+	# compile args
 	args = parser.parse_args()
-	print(args.dir)
-	print(args.files)
+	# retrieve data
+	get_data(args.dir, args.instrument_name,
+		multiangle=args.multiangle,
+		filepath_metadata=args.metadata_filepath
+		)
+
 	quit()
