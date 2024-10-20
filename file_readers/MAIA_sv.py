@@ -37,11 +37,7 @@ def read(parent_dir, metadata=None):
 	if load_cloud_mask:
 		data[:,:,-1] = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
 		 		
-	print(data.shape)
-
+	# TODO: ADD APRIORI LOADING
 	
-
-	
-	
-	return None
+	return data
 

@@ -34,9 +34,7 @@ def get_data(parent_dir, instrument_name, multiangle=False, filepath_metadata=No
 
 	file_reader = reader_dict.get(instrument_name, None)
 	if file_reader:
-		np_data = file_reader(parent_dir, metadata=metadata)	
+		return file_reader(parent_dir, metadata=metadata)	
 	else:
 		error_not_found(instrument_name)
 
-	return np_data 
-		
