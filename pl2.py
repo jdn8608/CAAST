@@ -42,7 +42,7 @@ if __name__ == "__main__":
 	parser.add_argument('-ma', '--multiangle', 
 		help="turn on multi-angle use", 
 		action='store_true')
-	parser.add_argument('-m', '--metadata_filepath', 
+	parser.add_argument('-rc', '--reader_config', 
 		help="Path to a .json file for additional information to use by the instrument file reader, if it is needed.")
 	parser.add_argument('-v', '--verbose',
 		action='store_true')
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 	# retrieve data
 	data, band_names, load_labels = get_data(args.dir, args.instrument_name,
 		multiangle=args.multiangle,
-		filepath_metadata=args.metadata_filepath
+		reader_config_file=args.reader_config
 		)
 	
 	if not args.multiangle:

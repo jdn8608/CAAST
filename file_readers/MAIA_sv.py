@@ -4,22 +4,21 @@ import numpy as np
 from tqdm import tqdm
 
 
-def read(parent_dir, metadata=None):
-	print(metadata)
-	search = metadata['filename_search_string']
-	view = metadata['view']
+def read(parent_dir, config=None):
+	search = config['filename_search_string']
+	view = config['view']
 
 	search_result_files = [ r for r in glob.glob(f'{parent_dir}/{search}') if view in r]
 	if len(search_result_files) != 1:
-		raise Exception(f"A single file was not found. \n please refine the search key found in the metadata file.\n The results of the search was:\n {search_result_files}")
+		raise Exception(f"A single file was not found. \n please refine the search key found in the config file.\n The results of the search was:\n {search_result_files}")
 
 	
 	hdf_file = h5.File(search_result_files[0], 'r')
-	if metadata["bands"] == 'ALL':
+	if config["bands"] == 'ALL':
 		bands = np.array(list(hdf_file['Reflectance'].keys()))
 	else:	
-		bands = np.empty((len(metadata["bands"])), dtype='S7') 
-		for i, band_num in enumerate(metadata["bands"]):
+		bands = np.empty((len(config["bands"])), dtype='S7') 
+		for i, band_num in enumerate(config["bands"]):
 			if band_num > 9:
 				bands[i] = f'band_{band_num}'
 			else:
@@ -27,7 +26,7 @@ def read(parent_dir, metadata=None):
 		
 	num_of_data_channels = bands.shape[0]
 	load_cloud_mask = False
-	if metadata['load_labels'] == 'cloud mask':
+	if config['load_labels'] == 'cloud mask':
 		num_of_data_channels += 1
 		load_cloud_mask = True
 

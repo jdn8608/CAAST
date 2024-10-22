@@ -20,11 +20,11 @@ def error_not_found(instrument_name):
 	error_out = f'file reader not found for instrument name: "{instrument_name}"\nPlease see the README for how to add file readers.'
 	raise Exception(error_out)
 
-def get_data(parent_dir, instrument_name, multiangle=False, filepath_metadata=None):
+def get_data(parent_dir, instrument_name, multiangle=False, reader_config_file=None):
 	metadata = None
-	if filepath_metadata:
-		with open(filepath_metadata, 'r') as file:
-			metadata = json.load(file)	
+	if reader_config_file:
+		with open(reader_config_file, 'r') as file:
+			config = json.load(file)	
 
 	# load the filereader dictionary needed 
 	if not multiangle:
@@ -34,7 +34,7 @@ def get_data(parent_dir, instrument_name, multiangle=False, filepath_metadata=No
 
 	file_reader = reader_dict.get(instrument_name, None)
 	if file_reader:
-		return file_reader(parent_dir, metadata=metadata)	
+		return file_reader(parent_dir, config=config)	
 	else:
 		error_not_found(instrument_name)
 
