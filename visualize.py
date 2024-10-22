@@ -3,7 +3,12 @@ import numpy as np
 import napari 
 
 
-def single_view_multi_band(data, band_names, prior_labels=False):
+def single_view_multi_band(data, band_names, prior_labels=False, vis_config_file='./util_files/default_vizconfig.json'):
+	with open(vis_config_file, 'r') as file:
+		config = json.load(file)
+	
+	
+	
 	viewer = napari.Viewer()
 	viewer.add_image(data, name=band_names, channel_axis=2, contrast_limits=(0,1), colormap='gray')
 

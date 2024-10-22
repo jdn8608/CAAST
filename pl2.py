@@ -44,6 +44,9 @@ if __name__ == "__main__":
 		action='store_true')
 	parser.add_argument('-rc', '--reader_config', 
 		help="Path to a .json file for additional information to use by the instrument file reader, if it is needed.")
+	parser.add_argument('-vc', '--vis_config', 
+		help="Path to a .json file for additional information and options to use by the visualization script/software.",
+		default='./util_files/default_vizconfig.json')
 	parser.add_argument('-v', '--verbose',
 		action='store_true')
 
@@ -54,9 +57,9 @@ if __name__ == "__main__":
 		multiangle=args.multiangle,
 		reader_config_file=args.reader_config
 		)
-	
+	print(args.vis_config)	
 	if not args.multiangle:
-		single_view_multi_band(data, band_names=band_names, prior_labels=load_labels)
+		single_view_multi_band(data, band_names=band_names, prior_labels=load_labels, vis_config_file=args.vis_config)
 	else:
 		print('TBD')
 
