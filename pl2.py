@@ -8,6 +8,7 @@ import os
 import argparse
 
 from get_numpy_data import get_data
+from visualize import single_view_multi_band
 
 '''
 TO DO:
@@ -49,9 +50,14 @@ if __name__ == "__main__":
 	# compile args
 	args = parser.parse_args()
 	# retrieve data
-	get_data(args.dir, args.instrument_name,
+	data, band_names, load_labels = get_data(args.dir, args.instrument_name,
 		multiangle=args.multiangle,
 		filepath_metadata=args.metadata_filepath
 		)
+	
+	if not args.multiangle:
+		single_view_multi_band(data, band_names=band_names, prior_labels=load_labels)
+	else:
+		print('TBD')
 
 	quit()
