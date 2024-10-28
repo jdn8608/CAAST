@@ -39,5 +39,5 @@ def read(parent_dir, config=None):
 		 		
 	# TODO: ADD APRIORI LOADING
 	
-	return data, bands, load_cloud_mask
+	return data, bands, load_cloud_mask, search_result_files[0]
 
