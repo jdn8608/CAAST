@@ -3,14 +3,11 @@ import numpy as np
 import napari 
 import tqdm 
 
-from napari.utils.colormaps import Colormap
-from matplotlib.colors import ListedColormap
-from matplotlib.colors import LinearSegmentedColormap
-
-
 from widgets.colormaps import get_all_colormaps
+from widgets.SubmitButton_default import create_button as default_button
+from widgets.SubmitButton_qual import create_button as qual_button
 
-def single_view_multi_band(data, band_names, prior_labels=False, vis_config_file='./util_files/default_vizconfig.json'):
+def single_view_multi_band(data, band_names, output_filepath, prior_labels=False, dataset_name=None, vis_config_file='./util_files/default_vizconfig.json'):
 	with open(vis_config_file, "r") as file:
 		config = json.load(file)
 
@@ -26,6 +23,18 @@ def single_view_multi_band(data, band_names, prior_labels=False, vis_config_file
 	else:
 		viewer.add_image(data, name=band_names, channel_axis=2, contrast_limits=(0,1), colormap=band_colormaps)
 		labels_layer = viewer.add_labels(1+np.zeros(data[:,:,0].shape, dtype=int), name='Editing', colormap=label_colormap)
+
+	# button info
+	output_filepath = "test_new.npy"
+	dataset_name = "Manual Labels"
+	
+	button_location = config["button_location"]
+	if config["qual_labels"]==0:
+		default_button(viewer, labels_layer, output_filepath, dataset_name, button_location)	
+	else:
+		qual_labels = config['qual_labels']
+		print(qual_labels)
+		qual_button(viewer, labels_layer, output_filepath, qual_labels, dataset_name, button_location)	
 
 	napari.run()
 	viewer.close()
