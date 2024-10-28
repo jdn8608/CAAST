@@ -35,7 +35,7 @@ def read(parent_dir, config=None):
 		data[:,:,i] = np.array(hdf_file['Reflectance'][band])
 	if load_cloud_mask:
 		data[:,:,-1] = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
-		bands = np.concatenate((bands, ['cm']))
+		bands = np.concatenate((bands, ['MAIA Cloud Mask']))
 		 		
 	# TODO: ADD APRIORI LOADING
 	
