@@ -38,6 +38,7 @@ def save_labels(data, qual_dict, output_filepath, dataset_name):
 
 
 def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None, load_qual=False, 
+def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None, 
 			qual_labels=None, area="top"):
 
 
@@ -46,7 +47,6 @@ def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None, loa
 	save_button_layout = QVBoxLayout()
 
 
-	if load_qual:
 		qual_dict = dict((q,QComboBox()) for q in qual_labels)
 
 
@@ -75,6 +75,7 @@ def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None, loa
 				row += 1
 
 
+	if qual_labels:
 		save_button_layout.addLayout(grid_layout)
 	else:
 		qual_dict={}

@@ -36,12 +36,11 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 
 	button_location = config["button_location"]
 	qual_labels = config['qual_labels']
-	load_qual = not qual_labels==0
+
 	create_buttons(viewer=viewer,
 			labels_layer=labels_layer, 
 			output_filepath=output_filepath, 
 			dataset_name=dataset_name, 
-			load_qual=True,
 			qual_labels=qual_labels,
 			area=button_location)	
 
