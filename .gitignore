@@ -1,0 +1,11 @@
+# Ignore Python cache directories and files
+__pycache__/
+*.pyc
+
+# Ignore Vim swap files
+*.swp
+*.py.swp
+
+# Ignore macOS-specific files
+.DS_Store
+
