@@ -16,7 +16,7 @@ def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None,
 		if isinstance(scene_labels, list): 
 			scene_labels_dict, grid_layout = create_scene_dropdowns(scene_labels)
 		else:
-			scene_labels_dict, grid_layout = create_scene_dropdowns(scene_labels.keys(), priors=scene_labels)
+			scene_labels_dict, grid_layout = create_scene_dropdowns(list(scene_labels.keys()), priors=list(scene_labels.values()))
 		save_button_layout.addLayout(grid_layout)
 		save_button_text += ' & Flags'
 	else:
@@ -44,10 +44,10 @@ def create_scene_dropdowns(scene_labels, priors=None):
 	col = 0
 
 	# Add label and dropdown for each scene-level label
-	for label_text, combo_box in scene_labels_dict.items():
+	for i, (label_text, combo_box) in enumerate(scene_labels_dict.items()):
 		combo_box.addItems(["Unclear", "Yes", "No"])
 		if priors:
-			combo_box.setCurrentText(priors[label_text])  # Set "Unclear" as default
+			combo_box.setCurrentText(priors[i])  # Set "Unclear" as default
 		else:
 			combo_box.setCurrentText("Unclear")  # Set "Unclear" as default
 		combo_box.setFixedWidth(200)
