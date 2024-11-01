@@ -13,7 +13,10 @@ def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None,
 
 
 	if scene_labels:
-		scene_labels_dict, grid_layout = create_scene_dropdowns(scene_labels)
+		if isinstance(scene_labels, list): 
+			scene_labels_dict, grid_layout = create_scene_dropdowns(scene_labels)
+		else:
+			scene_labels_dict, grid_layout = create_scene_dropdowns(scene_labels.keys(), priors=scene_labels)
 		save_button_layout.addLayout(grid_layout)
 		save_button_text += ' & Flags'
 	else:
@@ -28,7 +31,7 @@ def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None,
         # Add the button widget to Napari's dock
 	viewer.window.add_dock_widget(save_button_widget, area=area)
 
-def create_scene_dropdowns(scene_labels):
+def create_scene_dropdowns(scene_labels, priors=None):
 	scene_labels_dict = dict((q,QComboBox()) for q in scene_labels)
 
 	grid_layout = QGridLayout()
@@ -43,7 +46,10 @@ def create_scene_dropdowns(scene_labels):
 	# Add label and dropdown for each scene-level label
 	for label_text, combo_box in scene_labels_dict.items():
 		combo_box.addItems(["Unclear", "Yes", "No"])
-		combo_box.setCurrentText("Unclear")  # Set "Unclear" as default
+		if priors:
+			combo_box.setCurrentText(priors[label_text])  # Set "Unclear" as default
+		else:
+			combo_box.setCurrentText("Unclear")  # Set "Unclear" as default
 		combo_box.setFixedWidth(200)
 
 		label_widget = QLabel(label_text.replace("_", " ").capitalize())

@@ -27,20 +27,23 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 		viewer.add_image(data, name=band_names, channel_axis=2, contrast_limits=(0,1), colormap=band_colormaps)
 	if prior_manual_labels:
 		man_labels, man_scene_attrs = read_labels(output_filepath, dataset_name, scene_attrs=scene_labels)
+		print(man_scene_attrs)
 		man_labels_layer = viewer.add_labels(man_labels.astype(int), name="Prior Manual Labels", colormap=label_colormap )
 		man_labels_layer.editable = False
 
 	if load_labels is None:
 		labels_layer = viewer.add_labels(1+np.zeros(data[:,:,0].shape, dtype=int), name='Editing', colormap=label_colormap)
-	elif prior_mask and load_labels == "mask":
+	elif prior_mask and load_labels.upper() == "MASK":
 		labels_layer = viewer.add_labels(data[:,:,-1].astype(int), name='Editing', colormap=label_colormap)
-	elif prior_manual_labels and load_labels == "manual":
+	elif prior_manual_labels and load_labels.upper() == "MANUAL":
 		labels_layer = viewer.add_labels(man_labels.astype(int), name='Editing', colormap=label_colormap)
+		if scene_labels:
+			scene_labels = man_scene_attrs
 	else:
 		raise Warning("load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer")
 		labels_layer = viewer.add_labels(np.zeros(data[:,:,0].shape, dtype=int), name='Editing', colormap=label_colormap)
 
-
+	print(scene_labels)
 	create_buttons(viewer=viewer,
 			labels_layer=labels_layer, 
 			output_filepath=output_filepath, 
