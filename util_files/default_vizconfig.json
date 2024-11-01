@@ -3,6 +3,6 @@
 	"mask_colormap"		:	"custom_nan_mask",
 	"band_colormaps"	:	"gray",
 	"label_colormap"	:	"custom_labeling1",
-	"qual_labels"		:	["cirrus","cumulus","sub-pixel_cumulus","stratus","cumulonimbus","dark cloud","snow", "glint"],
+	"scene_labels"		:	["cirrus","cumulus","sub-pixel_cumulus","stratus","cumulonimbus","dark cloud","snow", "glint"],
 	"button_location"	:	"top"	
 }

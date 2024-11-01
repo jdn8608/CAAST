@@ -13,22 +13,22 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 		config = json.load(file)
 
 	button_location = config["button_location"]
-	qual_labels = config['qual_labels']
+	scene_labels = config['scene_labels']
 
 	band_colormaps, label_colormap, mask_colormap = get_all_colormaps(config)
 
 	viewer = napari.Viewer()
 	
-	if prior_manual_labels:
-		man_labels, man_qual_attrs = read_labels(output_filepath, dataset_name, qual_attrs=qual_labels)
-		man_labels_layer = viewer.add_labels(man_labels.astype(int), name="Prior Manual Labels", colormap=label_colormap )
-		man_labels_layer.editable = False
 	if prior_mask:
 		viewer.add_image(data[:,:,:-1], name=band_names[:-1], channel_axis=2,contrast_limits=(0,1), colormap=band_colormaps)
 		orig_labels_layer = viewer.add_labels(data[:,:,-1].astype(int), name=band_names[-1], colormap=mask_colormap )
 		orig_labels_layer.editable = False
 	else:
 		viewer.add_image(data, name=band_names, channel_axis=2, contrast_limits=(0,1), colormap=band_colormaps)
+	if prior_manual_labels:
+		man_labels, man_scene_attrs = read_labels(output_filepath, dataset_name, scene_attrs=scene_labels)
+		man_labels_layer = viewer.add_labels(man_labels.astype(int), name="Prior Manual Labels", colormap=label_colormap )
+		man_labels_layer.editable = False
 
 	if load_labels is None:
 		labels_layer = viewer.add_labels(1+np.zeros(data[:,:,0].shape, dtype=int), name='Editing', colormap=label_colormap)
@@ -45,7 +45,7 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 			labels_layer=labels_layer, 
 			output_filepath=output_filepath, 
 			dataset_name=dataset_name, 
-			qual_labels=qual_labels,
+			scene_labels=scene_labels,
 			area=button_location)	
 
 	napari.run()
