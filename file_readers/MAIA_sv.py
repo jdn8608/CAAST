@@ -31,6 +31,13 @@ def read(parent_dir, config=None):
 	for i, band in enumerate(bands):
 		data[:,:,i] = np.array(hdf_file['Reflectance'][band])
 
+
+	
+	bands = np.concatenate((bands, ['No Retrieval']))
+	NA_MASK = (data==-999.0) | (data==-998.0)
+	data[NA_MASK] = 0
+	data[:,:,-1] = NA_MASK[:,:,0]
+
 	if config['load_labels'] == 'cloud mask':
 		cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
 		bands = np.concatenate((bands, ['MAIA Cloud Mask']))
