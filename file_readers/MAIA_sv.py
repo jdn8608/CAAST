@@ -26,18 +26,19 @@ def read(parent_dir, config=None):
 		
 	num_of_data_channels = bands.shape[0]
 	load_cloud_mask = False
-	if config['load_labels'] == 'cloud mask':
-		num_of_data_channels += 1
-		load_cloud_mask = True
 
-	data = np.zeros((480,360,num_of_data_channels))
+	data = np.zeros((480,360,num_of_data_channels+1))
 	for i, band in enumerate(bands):
 		data[:,:,i] = np.array(hdf_file['Reflectance'][band])
-	if load_cloud_mask:
-		data[:,:,-1] = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
+
+	if config['load_labels'] == 'cloud mask':
+		cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
 		bands = np.concatenate((bands, ['MAIA Cloud Mask']))
+	else:
+		cloud_mask = None
 		 		
+	# TODO: SIMPLIFY CLOUD MASK LOGIC BY RETURNING MASK AS SEPERATE OBJECT
 	# TODO: ADD APRIORI LOADING
 	
-	return data, bands, load_cloud_mask, search_result_files[0]
+	return data, bands, cloud_mask, search_result_files[0]
 
