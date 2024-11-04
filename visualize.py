@@ -44,6 +44,7 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 		raise Warning("load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer")
 		labels_layer = viewer.add_labels(np.zeros(data[:,:,0].shape, dtype=int), name='Editing', colormap=label_colormap)
 
+	create_sliders(option=1, viewer=viewer)
 	print(scene_labels)
 	create_buttons(viewer=viewer,
 			labels_layer=labels_layer, 
