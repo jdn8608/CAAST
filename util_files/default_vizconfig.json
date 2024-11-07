@@ -1,10 +1,20 @@
 {
-	"min_max_slider"	:	0,
+	"band_colormaps"	:	["gray","gray","gray","gray","gray","gray","red"],
 	"mask_colormap"		:	"custom_nan_mask",
-	"band_colormaps"	:	"gray",
+	"mask_string_text"	:	{
+						"0": "clouds", 
+						"1": "clear-sky" 
+					},
 	"label_colormap"	:	"custom_labeling1",
-	"scene_labels"		:	["cirrus","cumulus","sub-pixel_cumulus","stratus","cumulonimbus","dark cloud","snow", "glint"],
-	"button_location"	:	"top",
+	"label_string_text"	:	{
+						"0": "clouds", 
+						"1": "clear-sky",
+						"2": "haze",
+						"3": "smoke"
+					},
+	"scene_labels"		:	["cirrus","cumulus","sub-pixel_cumulus","smoke","aerosols","dark cloud","snow", "glint"],
+	"button_location"	:	"bottom",
 	"slider_location"	:	"right",
-	"slider_option"		:	1	
+	"legend_location"	:	"bottom",
+	"min_max_slider_option"	:	1	
 }

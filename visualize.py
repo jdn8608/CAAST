@@ -7,18 +7,22 @@ from widgets.colormaps import get_all_colormaps
 from widgets.SubmitButtons import create_buttons
 from widgets.read_write_outputs import read_labels
 from widgets.create_sliders import create_sliders
+from widgets.LegendWidget import create_legend
 
 def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, prior_manual_labels=False, 
 		load_labels=None, dataset_name=None, vis_config_file='./util_files/default_vizconfig.json'):
+
+	viewer = napari.Viewer()
+
 	with open(vis_config_file, "r") as file:
 		config = json.load(file)
 
+	band_colormaps, label_colormap, mask_colormap = get_all_colormaps(config)
+	label_colormap_text = {int(key): value for key,value in config["label_string_text"].items()}
+	create_legend(viewer, label_colormap, label_colormap_text, area=config["legend_location"]) 
+	
 	scene_labels = config['scene_labels']
 
-	band_colormaps, label_colormap, mask_colormap = get_all_colormaps(config)
-
-	viewer = napari.Viewer()
-	
 	name_end = None
 	if not prior_mask is None:
 		name_end = -1
@@ -44,7 +48,8 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 		raise Warning("load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer")
 		labels_layer = viewer.add_labels(np.zeros(data[:,:,0].shape, dtype=int), name='Editing', colormap=label_colormap)
 
-	create_sliders(option=int(config["slider_option"]), 
+	
+	create_sliders(option=int(config["min_max_slider_option"]), 
 		viewer=viewer, 
 		layers=im_layers, 
 		band_names=band_names[:name_end], 
