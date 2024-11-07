@@ -13,7 +13,6 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 	with open(vis_config_file, "r") as file:
 		config = json.load(file)
 
-	button_location = config["button_location"]
 	scene_labels = config['scene_labels']
 
 	band_colormaps, label_colormap, mask_colormap = get_all_colormaps(config)
@@ -45,13 +44,19 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 		raise Warning("load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer")
 		labels_layer = viewer.add_labels(np.zeros(data[:,:,0].shape, dtype=int), name='Editing', colormap=label_colormap)
 
-	create_sliders(option=2, viewer=viewer, layers=im_layers, band_names=band_names[:name_end])
+	create_sliders(option=int(config["slider_option"]), 
+		viewer=viewer, 
+		layers=im_layers, 
+		band_names=band_names[:name_end], 
+		area=config["slider_location"])
+
+
 	create_buttons(viewer=viewer,
 			labels_layer=labels_layer, 
 			output_filepath=output_filepath, 
 			dataset_name=dataset_name, 
 			scene_labels=scene_labels,
-			area=button_location)	
+			area=config["button_location"])	
 
 	napari.run()
 	viewer.close()

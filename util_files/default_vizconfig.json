@@ -4,5 +4,7 @@
 	"band_colormaps"	:	"gray",
 	"label_colormap"	:	"custom_labeling1",
 	"scene_labels"		:	["cirrus","cumulus","sub-pixel_cumulus","stratus","cumulonimbus","dark cloud","snow", "glint"],
-	"button_location"	:	"top"	
+	"button_location"	:	"top",
+	"slider_location"	:	"right",
+	"slider_option"		:	1	
 }
