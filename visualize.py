@@ -20,15 +20,16 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 
 	viewer = napari.Viewer()
 	
+	name_end = None
 	if not prior_mask is None:
-		viewer.add_image(data[:,:,:], name=band_names[:-1], channel_axis=2,contrast_limits=(0,1), colormap=band_colormaps)
-		orig_labels_layer = viewer.add_labels(prior_mask.astype(int), name=band_names[-1], colormap=mask_colormap )
+		name_end = -1
+		orig_labels_layer = viewer.add_labels(prior_mask.astype(int), name=band_names[name_end], colormap=mask_colormap )
 		orig_labels_layer.editable = False
-	else:
-		viewer.add_image(data, name=band_names, channel_axis=2, contrast_limits=(0,1), colormap=band_colormaps)
+
+	im_layers = viewer.add_image(data[:,:,:], name=band_names[:name_end], channel_axis=2,contrast_limits=(0,1), colormap=band_colormaps)
+
 	if prior_manual_labels:
 		man_labels, man_scene_attrs = read_labels(output_filepath, dataset_name, scene_attrs=scene_labels)
-		print(man_scene_attrs)
 		man_labels_layer = viewer.add_labels(man_labels.astype(int), name="Prior Manual Labels", colormap=label_colormap )
 		man_labels_layer.editable = False
 
@@ -44,8 +45,7 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 		raise Warning("load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer")
 		labels_layer = viewer.add_labels(np.zeros(data[:,:,0].shape, dtype=int), name='Editing', colormap=label_colormap)
 
-	create_sliders(option=1, viewer=viewer)
-	print(scene_labels)
+	create_sliders(option=2, viewer=viewer, layers=im_layers, band_names=band_names[:name_end])
 	create_buttons(viewer=viewer,
 			labels_layer=labels_layer, 
 			output_filepath=output_filepath, 
