@@ -42,7 +42,7 @@ def read(parent_dir, search, view,
 	data[NA_MASK] = 0
 	data[:,:,-1] = np.any(NA_MASK, axis=2) 
 
-	if get_cloud_mask == 'cloud mask':
+	if get_cloud_mask.upper() == 'CLOUD MASK':
 		cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
 		bands = np.concatenate((bands, ['MAIA Cloud Mask']))
 		cloud_mask[cloud_mask==3] = -1
