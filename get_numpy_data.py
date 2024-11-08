@@ -9,7 +9,7 @@ def create_instrument_dict_single_view():
 		}
 	return reader_dict
 
-def create_instrument_dict_mutli_view():
+def create_instrument_dict_multi_view():
 	reader_dict = {
 		'MAIA' 	: file_readers.MAIA_multiview.read,
 		'MISR' 	: file_readers.MISR_multiview.read,
@@ -34,7 +34,11 @@ def get_data(parent_dir, instrument_name, multiangle=False, reader_config_file=N
 
 	file_reader = reader_dict.get(instrument_name, None)
 	if file_reader:
-		return file_reader(parent_dir, config=config)	
+		return file_reader(parent_dir, 
+					search=config["filename_search_string"],
+					view=config["view"],
+					bands_to_get=config["bands"],
+					get_cloud_mask=config["load_labels"])	
 	else:
 		error_not_found(instrument_name)
 

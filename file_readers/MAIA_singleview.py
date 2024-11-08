@@ -4,9 +4,11 @@ import numpy as np
 from tqdm import tqdm
 
 
-def read(parent_dir, config=None):
-	search = config['filename_search_string']
-	view = config['view']
+def read(parent_dir, search, view, 
+		bands_to_get='ALL', 
+		get_cloud_mask=False, 
+		config=None):
+
 
 	search_result_files = [ r for r in glob.glob(f'{parent_dir}/{search}') if view in r]
 	if len(search_result_files) != 1:
@@ -14,11 +16,11 @@ def read(parent_dir, config=None):
 
 	
 	hdf_file = h5.File(search_result_files[0], 'r')
-	if config["bands"] == 'ALL':
+	if bands_to_get == 'ALL':
 		bands = np.array(list(hdf_file['Reflectance'].keys()))
 	else:	
-		bands = np.empty((len(config["bands"])), dtype='S7') 
-		for i, band_num in enumerate(config["bands"]):
+		bands = np.empty((len(bands_to_get)), dtype='S7') 
+		for i, band_num in enumerate(bands_to_get):
 			if band_num > 9:
 				bands[i] = f'band_{band_num}'
 			else:
@@ -38,7 +40,7 @@ def read(parent_dir, config=None):
 	data[NA_MASK] = 0
 	data[:,:,-1] = np.any(NA_MASK, axis=2) 
 
-	if config['load_labels'] == 'cloud mask':
+	if get_cloud_mask == 'cloud mask':
 		cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
 		bands = np.concatenate((bands, ['MAIA Cloud Mask']))
 		cloud_mask[cloud_mask==3] = -1
