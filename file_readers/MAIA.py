@@ -82,6 +82,6 @@ def get_multiangle(parent_dir, search, view,
 	pre = '_'.join(os.path.basename(path).split('_')[0:3])
 	str_views = '_' + '+'.join(view) + '_'
 	post = '_'.join(os.path.basename(path).split('_')[4:])
-	output_filename_example = pre+str_views+post)
+	output_filename_example = pre+str_views+post
 
 	return multiangle_data, bands, cloud_masks, output_filename_example

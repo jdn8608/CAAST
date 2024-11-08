@@ -16,19 +16,16 @@ TO DO:
 		-REQUIRMENTS.TXT
 '''
 
-def get_output_settings(json_file, input_filename, ma=False):	
+def get_output_settings(json_file, input_filename):	
 	with open(json_file, 'r') as file:
 		output_file_configs = json.load(file)
-	if ma:
-		# TBD for Multi-angle functionality
-		return None, None
+
+	if output_file_configs["override_filename"]:
+		return output_file_configs["override_filename"], output_file_configs["dataset_name"]
+	elif output_file_configs["override_filepath"]:
+		return output_file_configs["override_filepath"]+input_filename.split('.')[0].split(os.sep)[-1]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
 	else:
-		if output_file_configs["override_filename"]:
-			return output_file_configs["override_filename"], output_file_configs["dataset_name"]
-		elif output_file_configs["override_filepath"]:
-			return output_file_configs["override_filepath"]+input_filename.split('.')[0].split(os.sep)[-1]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
-		else:
-			return input_filename.split('.')[0]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
+		return input_filename.split('.')[0]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
 		
 
 if __name__ == "__main__":
@@ -75,7 +72,10 @@ if __name__ == "__main__":
 		reader_config_file=args.reader_config
 		)
 
-	output_filename, dataset_name = get_output_settings(args.output_settings_file, input_filename, ma=args.multiangle)
+	output_filename, dataset_name = get_output_settings(args.output_settings_file, input_filename)
+
+	if args.multiangle:
+		quit()
 
 	if not args.multiangle:
 		# settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
