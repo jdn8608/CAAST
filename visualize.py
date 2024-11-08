@@ -2,6 +2,7 @@ import json
 import os
 import numpy as np
 import napari 
+from qtpy.QtCore import Qt
 
 from widgets.colormaps import get_all_colormaps
 from widgets.SubmitButtons import create_buttons
@@ -12,7 +13,9 @@ from widgets.LegendWidget import create_legend
 def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, prior_manual_labels=False, 
 		load_labels=None, dataset_name=None, vis_config_file='./util_files/default_vizconfig.json'):
 
-	viewer = napari.Viewer()
+	viewer = napari.Viewer(show=False)
+	viewer.window._qt_window.showFullScreen()
+	viewer.show()
 
 	with open(vis_config_file, "r") as file:
 		config = json.load(file)
@@ -64,7 +67,6 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 			area=config["button_location"])	
 
 	napari.run()
-	viewer.close()
 
 	print("\n\nClose\n\nfgjf")
 
