@@ -19,6 +19,7 @@ def read(parent_dir, search, view,
 	
 	hdf_file = h5.File(search_result_files[0], 'r')
 	if bands_to_get == 'ALL':
+	if bands_to_get.upper() == 'ALL':
 		bands = np.array(list(hdf_file['Reflectance'].keys()))
 	else:	
 		bands = np.empty((len(bands_to_get)), dtype='S7') 
