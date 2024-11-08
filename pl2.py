@@ -32,6 +32,8 @@ def get_output_settings(json_file, input_filename, ma=False):
 		
 
 if __name__ == "__main__":
+
+	# set-up arge parser
 	parser = argparse.ArgumentParser(
 		prog="RS-PL",
 		description="Remote Sensing - Pixel Label (RS-PL) tool:\n This tool was developed to have an easy, quick, and accesible tool to label imagery from various remote sensing platforms.",
@@ -66,6 +68,7 @@ if __name__ == "__main__":
 
 	# compile args
 	args = parser.parse_args()
+
 	# retrieve data
 	data, band_names, prior_mask, input_filename = get_data(args.dir, args.instrument_name,
 		multiangle=args.multiangle,

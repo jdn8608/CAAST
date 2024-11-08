@@ -1,10 +1,13 @@
 import glob
+import os
 import h5py as h5 
 import numpy as np
 from tqdm import tqdm
 
 X_DIM = 360
 Y_DIM = 480
+# will need to fix once we have the other channels for MAIA
+MAX_CHANNELS = 6
 
 def read(parent_dir, search, view, 
 		bands_to_get='ALL', 
@@ -50,10 +53,35 @@ def read(parent_dir, search, view,
 	else:
 		cloud_mask = None
 		 		
-	# TODO: SIMPLIFY CLOUD MASK LOGIC BY RETURNING MASK AS SEPERATE OBJECT
+
 	# TODO: ADD APRIORI LOADING
 	
 	return data, bands, cloud_mask, search_result_files[0]
 
-def get_multiangle():
-	return None
+def get_multiangle(parent_dir, search, view, 
+		bands_to_get='ALL', 
+		get_cloud_mask=False, 
+		config=None):
+
+	if bands_to_get[0].upper() == 'ALL':
+		num_of_data_channels=MAX_CHANNELS
+	else:
+		num_of_data_channels=len(bands_to_get)
+
+	multiangle_data = np.zeros((Y_DIM,X_DIM,num_of_data_channels+1,len(view)))
+	cloud_masks = np.zeros((Y_DIM,X_DIM,len(view)))
+
+	for i, v in enumerate(view):
+		multiangle_data[:,:,:,i], bands, cloud_masks[:,:,i], path = read(parent_dir,	
+			search=search,
+			view=[v],
+			bands_to_get=bands_to_get,
+			get_cloud_mask=get_cloud_mask)
+
+
+	pre = '_'.join(os.path.basename(path).split('_')[0:3])
+	str_views = '_' + '+'.join(view) + '_'
+	post = '_'.join(os.path.basename(path).split('_')[4:])
+	output_filename_example = pre+str_views+post)
+
+	return multiangle_data, bands, cloud_masks, output_filename_example
