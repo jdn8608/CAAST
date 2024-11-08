@@ -52,3 +52,5 @@ def read(parent_dir, search, view,
 	
 	return data, bands, cloud_mask, search_result_files[0]
 
+def get_multiangle():
+	return None
