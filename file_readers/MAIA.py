@@ -3,6 +3,8 @@ import h5py as h5
 import numpy as np
 from tqdm import tqdm
 
+X_DIM = 360
+Y_DIM = 480
 
 def read(parent_dir, search, view, 
 		bands_to_get='ALL', 
@@ -30,6 +32,7 @@ def read(parent_dir, search, view,
 	load_cloud_mask = False
 
 	data = np.zeros((480,360,num_of_data_channels+1))
+	data = np.zeros((Y_DIM,X_DIM,num_of_data_channels+1))
 	for i, band in enumerate(bands):
 		data[:,:,i] = np.array(hdf_file['Reflectance'][band])
 
