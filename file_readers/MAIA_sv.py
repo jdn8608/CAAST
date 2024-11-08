@@ -36,11 +36,12 @@ def read(parent_dir, config=None):
 	bands = np.concatenate((bands, ['No Retrieval']))
 	NA_MASK = (data==-999.0) | (data==-998.0)
 	data[NA_MASK] = 0
-	data[:,:,-1] = NA_MASK[:,:,0]
+	data[:,:,-1] = np.any(NA_MASK, axis=2) 
 
 	if config['load_labels'] == 'cloud mask':
 		cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
 		bands = np.concatenate((bands, ['MAIA Cloud Mask']))
+		cloud_mask[cloud_mask==3] = -1
 	else:
 		cloud_mask = None
 		 		
