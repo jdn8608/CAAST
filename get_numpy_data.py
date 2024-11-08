@@ -11,8 +11,8 @@ def create_instrument_dict_single_view():
 
 def create_instrument_dict_multi_view():
 	reader_dict = {
-		'MAIA' 	: file_readers.MAIA.get_mutliangle,
-		'MISR' 	: file_readers.MISR.get_mutliangle,
+		'MAIA' 	: file_readers.MAIA.get_multiangle,
+		'MISR' 	: file_readers.MISR.get_multiangle,
 		}
 	return reader_dict
 
