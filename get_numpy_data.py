@@ -3,16 +3,16 @@ import json
 
 def create_instrument_dict_single_view():
 	reader_dict = {
-		'MAIA' 	: file_readers.MAIA_sv.read,
+		'MAIA' 	: file_readers.MAIA_singleview.read,
 		'MODIS'	: file_readers.MODIS.read,
-		'MISR' 	: file_readers.MISR_sv.read,
+		'MISR' 	: file_readers.MISR_singleview.read,
 		}
 	return reader_dict
 
 def create_instrument_dict_mutli_view():
 	reader_dict = {
-		'MAIA' 	: file_readers.MAIA_ma.read,
-		'MISR' 	: file_readers.MISR_ma.read,
+		'MAIA' 	: file_readers.MAIA_multiview.read,
+		'MISR' 	: file_readers.MISR_multiview.read,
 		}
 	return reader_dict
 
