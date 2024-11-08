@@ -36,7 +36,7 @@ def get_data(parent_dir, instrument_name, multiangle=False, reader_config_file=N
 	if file_reader:
 		return file_reader(parent_dir, 
 					search=config["filename_search_string"],
-					view=config["view"][0],
+					view=config["view"],
 					bands_to_get=config["bands"],
 					get_cloud_mask=config["load_labels"])	
 	else:

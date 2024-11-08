@@ -11,6 +11,7 @@ def read(parent_dir, search, view,
 		get_cloud_mask=False, 
 		config=None):
 
+	view = view[0]
 
 	search_result_files = [ r for r in glob.glob(f'{parent_dir}/{search}') if view in r]
 	if len(search_result_files) != 1:
