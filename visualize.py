@@ -32,7 +32,7 @@ def single_view_multi_band(data, band_names, output_filepath, prior_mask=False, 
 		orig_labels_layer = viewer.add_labels(prior_mask.astype(int), name=band_names[name_end], colormap=mask_colormap )
 		orig_labels_layer.editable = False
 
-	im_layers = viewer.add_image(data[:,:,:], name=band_names[:name_end], channel_axis=2,contrast_limits=(0,1), colormap=band_colormaps)
+	im_layers = viewer.add_image(data[:,:,:], name=band_names[:name_end], channel_axis=2, colormap=band_colormaps)
 
 	if prior_manual_labels:
 		man_labels, man_scene_attrs = read_labels(output_filepath, dataset_name, scene_attrs=scene_labels)
