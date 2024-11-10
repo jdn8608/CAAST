@@ -1,6 +1,5 @@
-
-from widgets.DynamicMinMaxSlider import SelectionMinMaxSlider
-from widgets.MinMaxSlider import LayerMinMaxSlider
+from widgets.SelectionMinMaxSlider import SelectionMinMaxSlider
+from widgets.LayerMinMaxSlider import LayerMinMaxSlider
 
 def create_sliders(option, viewer, layers=None, band_names=None, area='right'):
 	
