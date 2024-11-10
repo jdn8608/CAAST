@@ -1,4 +1,5 @@
 import file_readers 
+import numpy as np
 import json
 
 def create_instrument_dict_single_view():
@@ -34,11 +35,19 @@ def get_data(parent_dir, instrument_name, multiangle=False, reader_config_file=N
 
 	file_reader = reader_dict.get(instrument_name, None)
 	if file_reader:
-		return file_reader(parent_dir, 
-					search=config["filename_search_string"],
-					view=config["view"],
-					bands_to_get=config["bands"],
-					get_cloud_mask=config["load_labels"])	
+		data, band_names, prior_mask, input_filename = 	file_reader(parent_dir, 
+						search=config["filename_search_string"],
+						view=config["view"],
+						bands_to_get=config["bands"],
+						get_cloud_mask=config["load_labels"])	
+		if multiangle:
+			return data, band_names, prior_mask, input_filename
+		# check if a mask is returned 
+		if prior_mask is None:	
+			return data[..., np.newaxis], band_names, prior_mask, input_filename
+		
+		print("made it")
+		return data[..., np.newaxis], band_names, prior_mask[..., np.newaxis], input_filename
 	else:
 		error_not_found(instrument_name)
 
