@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from get_numpy_data import get_data
-from visualize import single_view_multi_band
+from visualize import create_napari_visualization
 
 '''
 TO DO:
@@ -74,22 +74,17 @@ if __name__ == "__main__":
 
 	output_filename, dataset_name = get_output_settings(args.output_settings_file, input_filename)
 
-	if args.multiangle:
-		quit()
 
-	if not args.multiangle:
-		# settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
-		prior_manual_labels = args.check_manual_labels and Path(output_filename).is_file()
-			
-		single_view_multi_band(data=data, 
-			band_names=band_names, 
-			output_filepath=output_filename,
-			prior_mask=prior_mask, 
-			prior_manual_labels=prior_manual_labels,
-			load_labels=args.load_labels,
-			dataset_name=dataset_name,
-			vis_config_file=args.vis_config)
-	else:
-		print('TBD')
+	# settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
+	prior_manual_labels = args.check_manual_labels and Path(output_filename).is_file()
+		
+	create_napari_visualization(data=data, 
+		band_names=band_names, 
+		output_filepath=output_filename,
+		prior_mask=prior_mask, 
+		prior_manual_labels=prior_manual_labels,
+		load_labels=args.load_labels,
+		dataset_name=dataset_name,
+		is_multiangle=args.multiangle,
+		vis_config_file=args.vis_config)
 
-	quit()
