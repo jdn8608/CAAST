@@ -42,8 +42,8 @@ def read(parent_dir, search, view,
 
 	
 	bands = np.concatenate((bands, ['No Retrieval']))
-	NA_MASK = (data==-999.0) | (data==-998.0)
-	data[NA_MASK] = 0
+	NA_MASK = (data==-999.0) | (data==-998.0) | (np.isnan(data))
+	data[NA_MASK] = -1 
 	data[:,:,-1] = np.any(NA_MASK, axis=2) 
 
 	if get_cloud_mask.upper() == 'CLOUD MASK':
