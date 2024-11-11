@@ -1,5 +1,6 @@
 from widgets.SelectionMinMaxSlider import SelectionMinMaxSlider
 from widgets.LayerMinMaxSlider import LayerMinMaxSlider
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QSlider, QLabel, QScrollArea, QFrame
 
 def create_sliders(option, viewer, layers=None, band_names=None, area='right'):
 	
@@ -11,11 +12,21 @@ def create_sliders(option, viewer, layers=None, band_names=None, area='right'):
 		return slider_widget
 	elif option == 2:
 		sliders = []
+		layout = QVBoxLayout()
 		for i, layer in enumerate(layers):
 			if band_names[i] != "No Retrieval":
 				slider_widget = LayerMinMaxSlider(layer)
-				viewer.window.add_dock_widget(slider_widget, name=band_names[i], area=area)
+				layout.addWidget(slider_widget)
 				sliders.append(slider_widget)
+
+		container = QWidget()
+		container.setLayout(layout)
+		
+		scroll_area_widget = QScrollArea()
+		scroll_area_widget.setWidgetResizable(True)
+		scroll_area_widget.setWidget(container)
+
+		viewer.window.add_dock_widget(scroll_area_widget, name="Min/Max Sliders", area=area)
 		return sliders
 
 
