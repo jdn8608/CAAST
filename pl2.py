@@ -67,7 +67,7 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	# retrieve data
-	data, band_names, prior_mask, input_filename = get_data(args.dir, args.instrument_name,
+	data, band_names, prior_mask, input_filename, views, angles = get_data(args.dir, args.instrument_name,
 		multiangle=args.multiangle,
 		reader_config_file=args.reader_config
 		)
@@ -86,5 +86,7 @@ if __name__ == "__main__":
 		load_labels=args.load_labels,
 		dataset_name=dataset_name,
 		is_multiangle=args.multiangle,
-		vis_config_file=args.vis_config)
+		vis_config_file=args.vis_config,
+		views=views,
+		angles=angles)
 

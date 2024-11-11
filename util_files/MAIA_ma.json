@@ -1,6 +1,7 @@
 {
 	"filename_search_string" :	"*AV_1000*nofit_0p*",
 	"view" : ["DA","CA","BA","AA","AN","AF","BF","CF","DF"],
+	"angle" : ["-70.0","-60.0","-45.6","-26.1"," 0","+26.1","+45.6","+60.0","+70.0"],
 	"bands" : ["ALL"],
 	"aprioi" : "None",
 	"load_labels": "cloud mask"

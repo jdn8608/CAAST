@@ -40,14 +40,17 @@ def get_data(parent_dir, instrument_name, multiangle=False, reader_config_file=N
 						view=config["view"],
 						bands_to_get=config["bands"],
 						get_cloud_mask=config["load_labels"])	
+		views = config["view"]
+		angles = config["angle"]
+
 		if multiangle:
-			return data, band_names, prior_mask, input_filename
+			return data, band_names, prior_mask, input_filename, views, angles
 		# check if a mask is returned 
 		if prior_mask is None:	
-			return data[..., np.newaxis], band_names, prior_mask, input_filename
+			return data[..., np.newaxis], band_names, prior_mask, input_filename, views, angles
 		
 		print("made it")
-		return data[..., np.newaxis], band_names, prior_mask[..., np.newaxis], input_filename
+		return data[..., np.newaxis], band_names, prior_mask[..., np.newaxis], input_filename, views, angles
 	else:
 		error_not_found(instrument_name)
 

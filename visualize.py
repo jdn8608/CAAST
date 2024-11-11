@@ -12,10 +12,11 @@ from widgets.LegendWidget import create_legend
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 
 def create_napari_visualization(data, band_names, output_filepath, prior_mask=False, prior_manual_labels=False, 
-		load_labels=None, dataset_name=None, is_multiangle=False, vis_config_file='./util_files/default_vizconfig.json'):
+		load_labels=None, dataset_name=None, is_multiangle=False, vis_config_file='./util_files/default_vizconfig.json', 
+		views='AN', angles='0.0'):
 
 	viewer = napari.Viewer(show=False)
-	viewer.window._qt_window.showFullScreen()
+	#viewer.window._qt_window.showFullScreen()
 	viewer.show()
 
 	with open(vis_config_file, "r") as file:
@@ -74,7 +75,9 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 					min_max_slider=min_max_slider,
 					im_data=data,
 					label_layers=label_layers,
-					label_data=label_data	
+					label_data=label_data,
+					view_text=views,
+					angles=angles	
 					)
 		viewer.window.add_dock_widget(POV_nav, name="Point of View Navigator", area='top')
 
