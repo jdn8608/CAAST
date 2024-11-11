@@ -16,5 +16,5 @@
 	"button_location"	:	"bottom",
 	"slider_location"	:	"right",
 	"legend_location"	:	"bottom",
-	"min_max_slider_option"	:	1	
+	"min_max_slider_option"	:	2
 }
