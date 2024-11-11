@@ -65,8 +65,14 @@ class SelectionMinMaxSlider(QWidget):
             # Update slider and text boxes to reflect current contrast limits
             self.min_textbox.setText(f"{contrast_min:.2f}")
             self.max_textbox.setText(f"{contrast_max:.2f}")
-            scaled_min = int((contrast_min - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
-            scaled_max = int((contrast_max - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
+
+            try:
+                scaled_min = int((contrast_min - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
+                scaled_max = int((contrast_max - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
+            except:
+                scaled_min = 0.
+                scaled_max = 1.
+
             self.range_slider.setValue((scaled_min, scaled_max))
 
     def clear_slider(self):

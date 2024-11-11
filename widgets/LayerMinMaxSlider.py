@@ -9,8 +9,9 @@ class LayerMinMaxSlider(QWidget):
         super().__init__()
         self.layer = layer  # Specific layer for this slider
         self.slider_scale = slider_scale
-        self.data_min, self.data_max = layer.data.min(), layer.data.max()
+        self.data_min, self.data_max = np.nanmin(layer.data), np.nanmax(layer.data)
         self.layer_name_label = QLabel(f"Layer: {self.layer.name}")
+        self.name = self.layer.name 
 
         # Set up layout
         layout = QVBoxLayout()
@@ -45,8 +46,13 @@ class LayerMinMaxSlider(QWidget):
         contrast_min, contrast_max = self.layer.contrast_limits
         self.min_textbox.setText(f"{contrast_min:.2f}")
         self.max_textbox.setText(f"{contrast_max:.2f}")
-        scaled_min = int((contrast_min - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
-        scaled_max = int((contrast_max - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
+	
+        try:
+                scaled_min = int((contrast_min - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
+                scaled_max = int((contrast_max - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
+        except:
+                scaled_min = 0.
+                scaled_max = 1. 
         self.range_slider.setValue((scaled_min, scaled_max))
 
     def update_contrast_limits(self, data_min, data_max, contrast_min, contrast_max):
