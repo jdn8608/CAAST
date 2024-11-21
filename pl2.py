@@ -16,17 +16,21 @@ TO DO:
 		-REQUIRMENTS.TXT
 '''
 
-def get_output_settings(json_file, input_filename):	
+def get_output_settings(json_file, input_filepath):	
 	with open(json_file, 'r') as file:
-		output_file_configs = json.load(file)
-
-	if output_file_configs["override_filename"]:
-		return output_file_configs["override_filename"], output_file_configs["dataset_name"]
-	elif output_file_configs["override_filepath"]:
-		print('here')
-		return output_file_configs["override_filepath"]+input_filename.split('.')[0].split(os.sep)[-1]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
+		config = json.load(file)
+	if config["override_filename"]:
+		filename = config["output_file_configs"]
 	else:
-		return input_filename.split('.')[0]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
+		filename = os.path.splitext(input_filepath)[0]
+
+	if config["override_filepath"]:
+		filepath = config["override_filepath"]
+	else:
+		filepath = os.path.dirname(input_filepath)
+
+	return os.path.join(filepath, filename+config["append_name"]+config["file_type"]), config["dataset_name"]
+
 		
 
 if __name__ == "__main__":
