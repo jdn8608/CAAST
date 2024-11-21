@@ -23,6 +23,7 @@ def get_output_settings(json_file, input_filename):
 	if output_file_configs["override_filename"]:
 		return output_file_configs["override_filename"], output_file_configs["dataset_name"]
 	elif output_file_configs["override_filepath"]:
+		print('here')
 		return output_file_configs["override_filepath"]+input_filename.split('.')[0].split(os.sep)[-1]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
 	else:
 		return input_filename.split('.')[0]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
@@ -67,12 +68,13 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	# retrieve data
-	data, band_names, prior_mask, input_filename, views, angles = get_data(args.dir, args.instrument_name,
+	(data, band_names, prior_mask, input_filename), views, angles = get_data(args.dir, args.instrument_name,
 		multiangle=args.multiangle,
 		reader_config_file=args.reader_config
 		)
 
 	output_filename, dataset_name = get_output_settings(args.output_settings_file, input_filename)
+	print(output_filename)
 
 
 	# settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in

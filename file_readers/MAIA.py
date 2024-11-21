@@ -9,12 +9,10 @@ Y_DIM = 480
 # will need to fix once we have the other channels for MAIA
 MAX_CHANNELS = 6
 
-def read(parent_dir, search, view, 
+def read_single_view(parent_dir, search, view, 
 		bands_to_get='ALL', 
 		get_cloud_mask=False, 
 		config=None):
-
-	view = view[0]
 
 	search_result_files = [ r for r in glob.glob(f'{parent_dir}/{search}') if view in r]
 	if len(search_result_files) != 1:
@@ -33,17 +31,14 @@ def read(parent_dir, search, view,
 				bands[i] = f'band_0{band_num}' 
 		
 	num_of_data_channels = bands.shape[0]
-	load_cloud_mask = False
-
 	data = np.zeros((Y_DIM,X_DIM,num_of_data_channels+1))
 	for i, band in enumerate(bands):
 		data[:,:,i] = np.array(hdf_file['Reflectance'][band])
 
-
-	
+	# add NAN mask to data cube
 	bands = np.concatenate((bands, ['No Retrieval']))
 	NA_MASK = (data==-999.0) | (data==-998.0) | (np.isnan(data))
-	data[NA_MASK] = -1 
+	data[NA_MASK] = 0 
 	data[:,:,-1] = np.any(NA_MASK, axis=2) 
 
 	if get_cloud_mask.upper() == 'CLOUD MASK':
@@ -53,12 +48,11 @@ def read(parent_dir, search, view,
 	else:
 		cloud_mask = None
 		 		
-
 	# TODO: ADD APRIORI LOADING
-	
-	return data, bands, cloud_mask, search_result_files[0]
+		
+	return data, bands, cloud_mask, search_result_files[0].replace(view,'<view>')
 
-def get_multiangle(parent_dir, search, view, 
+def read(parent_dir, search, view, 
 		bands_to_get='ALL', 
 		get_cloud_mask=False, 
 		config=None):
@@ -72,16 +66,10 @@ def get_multiangle(parent_dir, search, view,
 	cloud_masks = np.zeros((Y_DIM,X_DIM,len(view)))
 
 	for i, v in enumerate(view):
-		multiangle_data[:,:,:,i], bands, cloud_masks[:,:,i], path = read(parent_dir,	
+		multiangle_data[:,:,:,i], bands, cloud_masks[:,:,i], path = read_single_view(parent_dir,	
 			search=search,
-			view=[v],
+			view=v,
 			bands_to_get=bands_to_get,
 			get_cloud_mask=get_cloud_mask)
 
-
-	pre = '_'.join(os.path.basename(path).split('_')[0:3])
-	str_views = '_' + '+'.join(view) + '_'
-	post = '_'.join(os.path.basename(path).split('_')[4:])
-	output_filename_example = pre+str_views+post
-
-	return multiangle_data, bands, cloud_masks, output_filename_example
+	return multiangle_data, bands, cloud_masks, path
