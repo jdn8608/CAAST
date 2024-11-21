@@ -13,7 +13,7 @@ def error_not_found(instrument_name):
 	error_out = f'file reader not found for instrument name: "{instrument_name}"\nPlease see the README for how to add file readers.'
 	raise Exception(error_out)
 
-def get_data(parent_dir, instrument_name, multiangle=False, reader_config_file=None):
+def get_data(parent_dir, instrument_name, reader_config_file=None):
 	metadata = None
 	if reader_config_file:
 		with open(reader_config_file, 'r') as file:
@@ -24,10 +24,10 @@ def get_data(parent_dir, instrument_name, multiangle=False, reader_config_file=N
 	file_reader = reader_dict.get(instrument_name, None)
 	if file_reader:
 		return file_reader(parent_dir, 
-						search=config["filename_search_string"],
-						view=config["view"],
-						bands_to_get=config["bands"],
-						get_cloud_mask=config["load_labels"]), config["view"], config["angle"]
+				search=config["filename_search_string"],
+				view=config["view"],
+				bands_to_get=config["bands"],
+				get_cloud_mask=config["load_labels"]), config["view"], config["angle"]
 	else:
 		error_not_found(instrument_name)
 

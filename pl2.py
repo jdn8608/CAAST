@@ -47,9 +47,6 @@ if __name__ == "__main__":
 	parser.add_argument('-o','--output_settings_file',
 		help="file containing the output settings to save the labels created by the user. See the README for more details.",
 		default='./util_files/output_settings_default.json')
-	parser.add_argument('-ma', '--multiangle', 
-		help="turn on multi-angle use", 
-		action='store_true')
 	parser.add_argument('-r', '--reader_config', 
 		help="Path to a .json file for additional information to use by the instrument file reader, if it is needed.")
 	parser.add_argument('-v', '--vis_config', 
@@ -69,13 +66,10 @@ if __name__ == "__main__":
 
 	# retrieve data
 	(data, band_names, prior_mask, input_filename), views, angles = get_data(args.dir, args.instrument_name,
-		multiangle=args.multiangle,
 		reader_config_file=args.reader_config
 		)
 
 	output_filename, dataset_name = get_output_settings(args.output_settings_file, input_filename)
-	print(output_filename)
-
 
 	# settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
 	prior_manual_labels = args.check_manual_labels and Path(output_filename).is_file()
@@ -87,7 +81,6 @@ if __name__ == "__main__":
 		prior_manual_labels=prior_manual_labels,
 		load_labels=args.load_labels,
 		dataset_name=dataset_name,
-		is_multiangle=args.multiangle,
 		vis_config_file=args.vis_config,
 		views=views,
 		angles=angles)

@@ -12,7 +12,7 @@ from widgets.LegendWidget import create_legend
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 
 def create_napari_visualization(data, band_names, output_filepath, prior_mask=False, prior_manual_labels=False, 
-		load_labels=None, dataset_name=None, is_multiangle=False, vis_config_file='./util_files/default_vizconfig.json', 
+		load_labels=None, dataset_name=None, vis_config_file='./util_files/default_vizconfig.json', 
 		views='AN', angles='0.0'):
 
 	viewer = napari.Viewer(show=False)
@@ -31,6 +31,8 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 	name_end = None
 	label_layers = []
 	label_data = []
+
+	# load prior mask (cloud mask) into a (non-edit) layer
 	if not prior_mask is None:
 		name_end = -1
 		orig_labels_layer = viewer.add_labels(prior_mask[:,:,0].astype(int), name=band_names[name_end], colormap=mask_colormap )
@@ -40,6 +42,7 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 
 	im_layers = viewer.add_image(data[:,:,:,0], name=band_names[:name_end], channel_axis=2, colormap=band_colormaps)
 
+	# load the prior manual labels into a (non-edit) layer
 	if prior_manual_labels:
 		man_labels, man_scene_attrs = read_labels(output_filepath, dataset_name, scene_attrs=scene_labels)
 		man_labels_layer = viewer.add_labels(man_labels.astype(int), name="Prior Manual Labels", colormap=label_colormap )
@@ -47,6 +50,7 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 		label_layers.append(man_labels_layer)
 		label_data.append(man_labels.astype(int))
 
+	# load editing layer
 	if load_labels is None:
 		edit_data = 1+np.zeros(data[:,:,0,:].shape, dtype=int)
 	elif not prior_mask is None and load_labels.upper() == "MASK":
@@ -62,14 +66,14 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 	edit_layer = viewer.add_labels(edit_data[:,:,0], name='Editing', colormap=label_colormap)
 	label_layers.append(edit_layer)
 	label_data.append(edit_data)
-	
+
 	min_max_slider = create_sliders(option=int(config["min_max_slider_option"]), 
 		viewer=viewer, 
 		layers=im_layers, 
 		band_names=band_names[:name_end], 
 		area=config["slider_location"])
 
-	if is_multiangle:
+	if data.shape[-1] > 1:
 		POV_nav = PointOfViewNavigator(viewer,
 					im_layers=im_layers,
 					min_max_slider=min_max_slider,
