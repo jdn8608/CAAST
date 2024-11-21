@@ -38,8 +38,6 @@ def nc_read_write(write, output_filepath, dataset_name, data=None, scene_attrs=N
 	if write:
 		da = xr.DataArray(
 			data,
-			dims=("y", "x"),
-			name=dataset_name
 		)
 		if scene_attrs:
 			ds = xr.Dataset({dataset_name: da}, attrs=scene_attrs)
