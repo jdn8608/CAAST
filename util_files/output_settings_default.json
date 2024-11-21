@@ -1,7 +1,7 @@
 {
 	"override_filename":	0,
-	"override_filepath":	"/Volumes/jdnied2/c/ML/MAIA/labels/",	
+	"override_dirpath":	"/Volumes/jdnied2/c/ML/MAIA/labels/",	
 	"append_name":		"_labels",
-	"file_type":		".nc",
+	"file_type":		".hdf",
 	"dataset_name":		"Manual Labels"
 }

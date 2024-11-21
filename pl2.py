@@ -24,12 +24,12 @@ def get_output_settings(json_file, input_filepath):
 	else:
 		filename = os.path.splitext(input_filepath)[0]
 
-	if config["override_filepath"]:
-		filepath = config["override_filepath"]
+	if config["override_dirpath"]:
+		dirpath = config["override_dirpath"]
 	else:
-		filepath = os.path.dirname(input_filepath)
+		dirpath = os.path.dirname(input_filepath)
 
-	return os.path.join(filepath, filename+config["append_name"]+config["file_type"]), config["dataset_name"]
+	return os.path.join(dirpath, filename+config["append_name"]+config["file_type"]), config["dataset_name"]
 
 		
 
