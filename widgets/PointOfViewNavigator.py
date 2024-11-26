@@ -16,6 +16,7 @@ class PointOfViewNavigator(QWidget):
         self.num_views = im_data.shape[3]  # Number of points of view
         self.view_text = view_text 
         self.angles = angles
+        self.data = self.label_data[-1]  # editing labels is always listed in last entry	
 
         # Setup layout
         layout = QVBoxLayout()
