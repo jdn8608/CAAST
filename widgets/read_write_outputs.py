@@ -85,8 +85,6 @@ def scene_labels_write(filepath, scene_attributes):
 def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
 		if scene_attrs:
 			scene_attributes = scene_labels_read(format_scene_label_file(output_filepath))
-		print(scene_attributes)
-		print("LOLOLOLOLOLOLOLOLOL")
 		#TODO : chcek that scene labels file exists
 		filetype = output_filepath.split('.')[-1]
 		if filetype == 'npy':
