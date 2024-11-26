@@ -22,13 +22,13 @@ def get_output_settings(json_file, input_filepath):
 	if config["override_filename"]:
 		filename = config["output_file_configs"]
 	else:
-		filename = os.path.splitext(input_filepath)[0]
+		filename = os.path.splitext(os.path.basename(input_filepath))[0]
 
 	if config["override_dirpath"]:
 		dirpath = config["override_dirpath"]
 	else:
 		dirpath = os.path.dirname(input_filepath)
-
+	
 	return os.path.join(dirpath, filename+config["append_name"]+config["file_type"]), config["dataset_name"]
 
 		
@@ -76,7 +76,7 @@ if __name__ == "__main__":
 	output_filename, dataset_name = get_output_settings(args.output_settings_file, input_filename)
 
 	# settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
-	prior_manual_labels = args.check_manual_labels and Path(output_filename).is_file()
+	prior_manual_labels = args.check_manual_labels
 		
 	create_napari_visualization(data=data, 
 		band_names=band_names, 
