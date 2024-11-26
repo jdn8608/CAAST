@@ -76,15 +76,24 @@ def scene_labels_read(filepath):
 	return scene_attributes
 
 def scene_labels_write(filepath, scene_attributes):	
+	
 	with open(filepath,"w") as txt_file:
 		for key, value in zip(scene_attributes.keys(), scene_attributes.values()):
 			txt_file.write(f"{key} : {value}\n")	
 		
 	return
 
+def check_file_exists(filepath):
+	if os.path.exists(filepath):
+		return
+	else:
+		raise Exception(f"File: '{filepath}' does not exists")
+
 def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
 		if scene_attrs:
-			scene_attributes = scene_labels_read(format_scene_label_file(output_filepath))
+			scene_label_filepath = format_scene_label_file(output_filepath) 
+			check_file_exists(scene_label_filepath)
+			scene_attributes = scene_labels_read(scene_label_filepath)
 		#TODO : chcek that scene labels file exists
 		filetype = output_filepath.split('.')[-1]
 		if filetype == 'npy':
@@ -99,6 +108,8 @@ def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
 		X,Y = reader(format_output_filepath_views(output_filepath, views[0]), dataset_name).shape 
 		labels = np.zeros((X,Y,len(views)))
 		for v, view in enumerate(tqdm(views, "Loading Prior Label File(s)")):
-			labels[:,:,v] = reader(format_output_filepath_views(output_filepath, view), dataset_name)
+			label_view_filepath = format_output_filepath_views(output_filepath, view)
+			check_file_exists(label_view_filepath)
+			labels[:,:,v] = reader(label_view_filepath, dataset_name)
 
 		return labels, scene_attributes
