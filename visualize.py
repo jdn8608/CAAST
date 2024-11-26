@@ -44,8 +44,8 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 
 	# load the prior manual labels into a (non-edit) layer
 	if prior_manual_labels:
-		man_labels, man_scene_attrs = read_labels(output_filepath, dataset_name, scene_attrs=scene_labels)
-		man_labels_layer = viewer.add_labels(man_labels.astype(int), name="Prior Manual Labels", colormap=label_colormap )
+		man_labels, man_scene_attrs = read_labels(output_filepath, dataset_name, views, scene_attrs=scene_labels)
+		man_labels_layer = viewer.add_labels(man_labels[:,:,0].astype(int), name="Prior Manual Labels", colormap=label_colormap )
 		man_labels_layer.editable = False
 		label_layers.append(man_labels_layer)
 		label_data.append(man_labels.astype(int))
@@ -87,8 +87,9 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 
 	# TODO: will need to add multi-angle saving -> see pl2.py load labels for logic
 	create_buttons(viewer=viewer,
-			labels_layer=edit_layer, 
+			labels_layer=POV_nav if data.shape[-1] > 1 else edit_layer, 
 			output_filepath=output_filepath, 
+			instrument_views=views,
 			dataset_name=dataset_name, 
 			scene_labels=scene_labels,
 			area=config["button_location"])	

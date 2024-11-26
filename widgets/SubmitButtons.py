@@ -1,7 +1,7 @@
 from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel
 from widgets.read_write_outputs import save_labels
 
-def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None, 
+def create_buttons(viewer, labels_layer, output_filepath, instrument_views, dataset_name=None, 
 			scene_labels=None, area="top"):
 
 
@@ -24,7 +24,7 @@ def create_buttons(viewer, labels_layer, output_filepath, dataset_name=None,
 	
 	# Create the Save & Submit Button
 	save_button = QPushButton(save_button_text)
-	save_button.clicked.connect(lambda: save_labels(labels_layer.data, scene_labels_dict, output_filepath, dataset_name))
+	save_button.clicked.connect(lambda: save_labels(labels_layer.data, output_filepath, dataset_name, instrument_views, scene_labels_dict,))
 	save_button_layout.addWidget(save_button)
 	save_button_widget.setLayout(save_button_layout)
 
