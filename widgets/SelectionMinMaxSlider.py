@@ -3,6 +3,8 @@ import numpy as np
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QLabel, QLineEdit
 from superqt import QRangeSlider  # Import QRangeSlider from superqt
 
+# TODO: add a min max override
+
 class SelectionMinMaxSlider(QWidget):
     """Slider widget for controlling min and max contrast limits of the selected layer."""
     def __init__(self, viewer, slider_scale=1000):

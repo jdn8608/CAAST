@@ -70,6 +70,7 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 	min_max_slider = create_sliders(option=int(config["min_max_slider_option"]), 
 		viewer=viewer, 
 		layers=im_layers, 
+		data=data,
 		band_names=band_names[:name_end], 
 		area=config["slider_location"])
 

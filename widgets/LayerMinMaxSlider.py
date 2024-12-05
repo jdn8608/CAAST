@@ -5,11 +5,12 @@ from superqt import QRangeSlider  # Import QRangeSlider from superqt
 
 class LayerMinMaxSlider(QWidget):
     """Individual min/max slider for each layer."""
-    def __init__(self, layer, slider_scale=1000):
+    def __init__(self, layer, slider_scale=1000, override_max=None, override_min=None):
         super().__init__()
         self.layer = layer  # Specific layer for this slider
         self.slider_scale = slider_scale
-        self.data_min, self.data_max = np.nanmin(layer.data), np.nanmax(layer.data)
+        self.data_max = override_max if override_max else np.nanmax(layer.data)
+        self.data_min = override_min if override_min else np.nanmin(layer.data)
         self.layer_name_label = QLabel(f"Layer: {self.layer.name}")
         self.name = self.layer.name 
 
