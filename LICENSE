@@ -620,6 +620,14 @@ copy of the Program in return for a fee.
 
                      END OF TERMS AND CONDITIONS
 
+		           ADDITIONAL NOTES
+
+  This application incorporates code from Napari, which is licensed under
+ the BSD-3-Clause License. The full license text is available in the 
+`licenses/Napari-BSD-3-Clause.txt` file.
+
+		       END OF ADDITIONAL NOTES
+
             How to Apply These Terms to Your New Programs
 
   If you develop a new program, and you want it to be of the greatest
