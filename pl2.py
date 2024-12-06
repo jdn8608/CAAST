@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from get_numpy_data import get_data
-from visualize import single_view_multi_band
+from visualize import create_napari_visualization
 
 '''
 TO DO:
@@ -16,22 +16,26 @@ TO DO:
 		-REQUIRMENTS.TXT
 '''
 
-def get_output_settings(json_file, input_filename, ma=False):	
+def get_output_settings(json_file, input_filepath):	
 	with open(json_file, 'r') as file:
-		output_file_configs = json.load(file)
-	if ma:
-		# TBD for Multi-angle functionality
-		return None, None
+		config = json.load(file)
+	if config["override_filename"]:
+		filename = config["output_file_configs"]
 	else:
-		if output_file_configs["override_filename"]:
-			return output_file_configs["override_filename"], output_file_configs["dataset_name"]
-		elif output_file_configs["override_filepath"]:
-			return output_file_configs["override_filepath"]+input_filename.split('.')[0].split(os.sep)[-1]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
-		else:
-			return input_filename.split('.')[0]+output_file_configs["append_name"]+output_file_configs["file_type"], output_file_configs["dataset_name"]
+		filename = os.path.splitext(os.path.basename(input_filepath))[0]
+
+	if config["override_dirpath"]:
+		dirpath = config["override_dirpath"]
+	else:
+		dirpath = os.path.dirname(input_filepath)
+	
+	return os.path.join(dirpath, filename+config["append_name"]+config["file_type"]), config["dataset_name"]
+
 		
 
 if __name__ == "__main__":
+
+	# set-up arge parser
 	parser = argparse.ArgumentParser(
 		prog="RS-PL",
 		description="Remote Sensing - Pixel Label (RS-PL) tool:\n This tool was developed to have an easy, quick, and accesible tool to label imagery from various remote sensing platforms.",
@@ -47,9 +51,6 @@ if __name__ == "__main__":
 	parser.add_argument('-o','--output_settings_file',
 		help="file containing the output settings to save the labels created by the user. See the README for more details.",
 		default='./util_files/output_settings_default.json')
-	parser.add_argument('-ma', '--multiangle', 
-		help="turn on multi-angle use", 
-		action='store_true')
 	parser.add_argument('-r', '--reader_config', 
 		help="Path to a .json file for additional information to use by the instrument file reader, if it is needed.")
 	parser.add_argument('-v', '--vis_config', 
@@ -66,27 +67,25 @@ if __name__ == "__main__":
 
 	# compile args
 	args = parser.parse_args()
+
 	# retrieve data
-	data, band_names, prior_mask, input_filename = get_data(args.dir, args.instrument_name,
-		multiangle=args.multiangle,
+	(data, band_names, prior_mask, input_filename), views, angles = get_data(args.dir, args.instrument_name,
 		reader_config_file=args.reader_config
 		)
 
-	output_filename, dataset_name = get_output_settings(args.output_settings_file, input_filename, ma=args.multiangle)
+	output_filename, dataset_name = get_output_settings(args.output_settings_file, input_filename)
 
-	if not args.multiangle:
-		# settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
-		prior_manual_labels = args.check_manual_labels and Path(output_filename).is_file()
-			
-		single_view_multi_band(data=data, 
-			band_names=band_names, 
-			output_filepath=output_filename,
-			prior_mask=prior_mask, 
-			prior_manual_labels=prior_manual_labels,
-			load_labels=args.load_labels,
-			dataset_name=dataset_name,
-			vis_config_file=args.vis_config)
-	else:
-		print('TBD')
+	# settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
+	prior_manual_labels = args.check_manual_labels
+		
+	create_napari_visualization(data=data, 
+		band_names=band_names, 
+		output_filepath=output_filename,
+		prior_mask=prior_mask, 
+		prior_manual_labels=prior_manual_labels,
+		load_labels=args.load_labels,
+		dataset_name=dataset_name,
+		vis_config_file=args.vis_config,
+		views=views,
+		angles=angles)
 
-	quit()
