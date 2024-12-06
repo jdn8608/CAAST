@@ -11,7 +11,6 @@ def save_labels(labels, output_filepath, dataset_name, views, scene_labels_dict)
 		filetype = output_filepath.split('.')[-1]
 		if scene_labels_dict:
 			scene_attributes = {label: combo_box.currentText() for label, combo_box in scene_labels_dict.items()}
-			print(scene_attributes)
 			scene_labels_write(format_scene_label_file(output_filepath), scene_attributes)
 
 		if filetype == 'npy':
@@ -87,7 +86,8 @@ def check_file_exists(filepath):
 	if os.path.exists(filepath):
 		return
 	else:
-		raise Exception(f"File: '{filepath}' does not exists")
+		raise Exception(f"File: '{filepath}' does not exists \n. If you are loading prior manual labels, please check that these label files exist first. If not, you must try a different label load setting.")
+		quit()
 
 def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
 		if scene_attrs:
@@ -105,6 +105,7 @@ def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
 		else:
 			raise Exception(f"filetype '{filetype}' id not currently supported for reading files.\n please use a different filetype for output, or add functionality for this filetype")
 
+		check_file_exists(format_output_filepath_views(output_filepath, views[0]))
 		X,Y = reader(format_output_filepath_views(output_filepath, views[0]), dataset_name).shape 
 		labels = np.zeros((X,Y,len(views)))
 		for v, view in enumerate(tqdm(views, "Loading Prior Label File(s)")):
