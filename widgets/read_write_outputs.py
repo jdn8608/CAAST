@@ -4,6 +4,7 @@ import xarray as xr
 import datetime
 from tqdm import tqdm
 import os
+import errno
 
 def save_labels(labels, output_filepath, dataset_name, views, scene_labels_dict):
 		print(f"{datetime.datetime.now()}: labels saved to {output_filepath}")
@@ -86,15 +87,14 @@ def check_file_exists(filepath):
 	if os.path.exists(filepath):
 		return
 	else:
-		raise Exception(f"File: '{filepath}' does not exists \n. If you are loading prior manual labels, please check that these label files exist first. If not, you must try a different label load setting.")
-		quit()
+		raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), filepath) 
 
 def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
 		if scene_attrs:
 			scene_label_filepath = format_scene_label_file(output_filepath) 
 			check_file_exists(scene_label_filepath)
 			scene_attributes = scene_labels_read(scene_label_filepath)
-		#TODO : chcek that scene labels file exists
+
 		filetype = output_filepath.split('.')[-1]
 		if filetype == 'npy':
 			reader = npy_read
