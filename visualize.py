@@ -107,5 +107,3 @@ def create_napari_visualization(data, band_names, output_filepath, prior_mask=Fa
 
 	napari.run()
 
-	print("\n\nClose\n\nfgjf")
-

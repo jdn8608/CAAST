@@ -15,7 +15,6 @@ def create_sliders(option, viewer, layers, data, band_names, area='right'):
 		sliders = []
 		layout = QVBoxLayout()
 		for i, layer in enumerate(layers):
-			print(i, ' ', type(layer), ' ', np.nanmax(data[:,:,i,:]))
 			if band_names[i] != "No Retrieval":
 				slider_widget = LayerMinMaxSlider(layer, 
 							override_max=np.nanmax(data[:,:,i,:]),
