@@ -10,9 +10,6 @@ def create_sliders(option, viewer, layers, data, band_names, area='right'):
         return None
     elif option == 1:
         slider_widget = SelectionMinMaxSlider(viewer)
-        viewer.window.add_dock_widget(slider_widget,
-                                      name="Min-Max Range Slider",
-                                      area=area)
         return slider_widget, slider_widget
     elif option == 2:
         sliders = []
@@ -33,7 +30,4 @@ def create_sliders(option, viewer, layers, data, band_names, area='right'):
         scroll_area_widget.setWidgetResizable(True)
         scroll_area_widget.setWidget(container)
 
-        viewer.window.add_dock_widget(scroll_area_widget,
-                                      name="Min/Max Sliders",
-                                      area=area)
-        return sliders, layout
+        return sliders, scroll_area_widget

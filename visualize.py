@@ -109,16 +109,16 @@ def visualize(data,
         label_layers.append(edit_layer)
         label_data.append(edit_data)
 
-    min_max_slider, min_max_layout = create_sliders(option=int(
-        config["min_max_slider_option"]),
-                                    viewer=viewer,
-                                    layers=im_layers,
-                                    data=data,
-                                    band_names=band_names[:name_end]
-                                    )
+    min_max_slider, min_max_layout = create_sliders(
+        option=int(config["min_max_slider_option"]),
+        viewer=viewer,
+        layers=im_layers,
+        data=data,
+        band_names=band_names[:name_end])
+
     viewer.window.add_dock_widget(min_max_layout,
                                   name="Min-Max Range Slider",
-                                  area=area=config["slider_location"])
+                                  area=config["slider_location"])
 
     if data.shape[-1] > 1:
         POV_nav = PointOfViewNavigator(viewer,
