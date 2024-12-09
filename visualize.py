@@ -124,14 +124,17 @@ def visualize(data,
                                   area=config["slider_location"])
 
     if data.shape[-1] > 1:
-        POV_nav = PointOfViewNavigator(viewer,
-                                       im_layers=im_layers,
+        POV_nav = PointOfViewNavigator(im_layers=im_layers,
                                        min_max_slider=min_max_slider,
                                        im_data=data,
                                        label_layers=label_layers,
                                        label_data=label_data,
                                        view_text=views,
                                        angles=angles)
+
+        # Connect viewer's key events to this widget
+        viewer.bind_key('Left', POV_nav.go_left)
+        viewer.bind_key('Right', POV_nav.go_right)
         viewer.window.add_dock_widget(POV_nav,
                                       name="Point of View Navigator",
                                       area='top')
@@ -151,7 +154,6 @@ def visualize(data,
     else:
         scene_labels_dict = {}
 
-        create_scene_dropdowns
     if label_mode:
         save_button = create_label_save_buttons(
             labels_layer=POV_nav if data.shape[-1] > 1 else edit_layer,

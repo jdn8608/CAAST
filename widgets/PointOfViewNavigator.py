@@ -7,10 +7,9 @@ from superqt import QRangeSlider
 
 class PointOfViewNavigator(QWidget):
 
-    def __init__(self, viewer, im_layers, min_max_slider, im_data,
-                 label_layers, label_data, view_text, angles):
+    def __init__(self, im_layers, min_max_slider, im_data, label_layers,
+                 label_data, view_text, angles):
         super().__init__()
-        self.viewer = viewer
         self.im_layers = im_layers
         self.min_max_slider = min_max_slider
         self.im_data = im_data
@@ -43,10 +42,6 @@ class PointOfViewNavigator(QWidget):
 
         # Set focus for handling key events
         self.setFocusPolicy(Qt.StrongFocus)
-
-        # Connect viewer's key events to this widget
-        self.viewer.bind_key('Left', self.go_left)
-        self.viewer.bind_key('Right', self.go_right)
 
     def update_all_layers_view(self):
         """Update all layers to display the selected point of view."""
