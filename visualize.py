@@ -13,7 +13,7 @@ from widgets.LegendWidget import create_legend
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 
 
-def create_napari_visualization(
+def label(
         data,
         band_names,
         output_filepath,
@@ -31,6 +31,7 @@ def create_napari_visualization(
 
     with open(vis_config_file, "r") as file:
         config = json.load(file)
+    scene_labels = config['scene_labels']
 
     band_colormaps, label_colormap, mask_colormap = get_all_colormaps(config)
     label_colormap_text = {
@@ -42,8 +43,7 @@ def create_napari_visualization(
                   label_colormap_text,
                   area=config["legend_location"])
 
-    scene_labels = config['scene_labels']
-
+    # set up lists for widgets
     name_end = None
     label_layers = []
     label_data = []

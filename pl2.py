@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from get_numpy_data import get_data
-from visualize import create_napari_visualization
+from visualize import label
 '''
 TO DO:
 	-ITERATE ON PASS IN FUNCTIONALITY
@@ -40,7 +40,7 @@ if __name__ == "__main__":
         description=
         "Remote Sensing - Pixel Label (RS-PL) tool:\n This tool was developed to have an easy, quick, and accesible tool to label imagery from various remote sensing platforms.",
         epilog=
-        'Tool is currently under developement. For more information, goto GITHUB_LINK'
+        'Tool is currently under developement. For more information, goto https://github.com/jdn8608/PL-RS'
     )
 
     # required arguments
@@ -52,6 +52,13 @@ if __name__ == "__main__":
     )
 
     # optional arguments
+
+    parser.add_argument(
+        '-m',
+        '--label_mode',
+        help=
+        "flag to set the tool in label mode. If not set, tool will be in review only mode. See README for more details",
+        action='store_true')
     parser.add_argument(
         '-o',
         '--output_settings_file',
@@ -97,13 +104,16 @@ if __name__ == "__main__":
     # settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
     prior_manual_labels = args.check_manual_labels
 
-    create_napari_visualization(data=data,
-                                band_names=band_names,
-                                output_filepath=output_filename,
-                                prior_mask=prior_mask,
-                                prior_manual_labels=prior_manual_labels,
-                                load_labels=args.load_labels,
-                                dataset_name=dataset_name,
-                                vis_config_file=args.vis_config,
-                                views=views,
-                                angles=angles)
+    if args.label_mode:
+        label(data=data,
+              band_names=band_names,
+              output_filepath=output_filename,
+              prior_mask=prior_mask,
+              prior_manual_labels=prior_manual_labels,
+              load_labels=args.load_labels,
+              dataset_name=dataset_name,
+              vis_config_file=args.vis_config,
+              views=views,
+              angles=angles)
+    else:
+        print('superseeded')
