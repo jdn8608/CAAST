@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from get_numpy_data import get_data
-from visualize import label
+from visualize import visualize
 '''
 TO DO:
 	-ITERATE ON PASS IN FUNCTIONALITY
@@ -104,10 +104,10 @@ if __name__ == "__main__":
     # settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
     prior_manual_labels = args.check_manual_labels
 
-    if args.label_mode:
-        label(data=data,
+    visualize(data=data,
               band_names=band_names,
               output_filepath=output_filename,
+              label_mode=args.label_mode,
               prior_mask=prior_mask,
               prior_manual_labels=prior_manual_labels,
               load_labels=args.load_labels,
@@ -115,5 +115,3 @@ if __name__ == "__main__":
               vis_config_file=args.vis_config,
               views=views,
               angles=angles)
-    else:
-        print('superseeded')

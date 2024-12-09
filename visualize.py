@@ -13,17 +13,17 @@ from widgets.LegendWidget import create_legend
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 
 
-def label(
-        data,
-        band_names,
-        output_filepath,
-        prior_mask=False,
-        prior_manual_labels=False,
-        load_labels=None,
-        dataset_name=None,
-        vis_config_file='./util_files/default_vizconfig.json',
-        views='AN',
-        angles='0.0'):
+def visualize(data,
+          band_names,
+          output_filepath,
+          label_mode=False,
+          prior_mask=False,
+          prior_manual_labels=False,
+          load_labels=None,
+          dataset_name=None,
+          vis_config_file='./util_files/default_vizconfig.json',
+          views='AN',
+          angles='0.0'):
 
     viewer = napari.Viewer(show=False)
     #viewer.window._qt_window.showFullScreen()
@@ -58,6 +58,7 @@ def label(
         label_layers.append(orig_labels_layer)
         label_data.append(prior_mask[:, :, :].astype(int))
 
+    # add data to visualize
     im_layers = viewer.add_image(data[:, :, :, 0],
                                  name=band_names[:name_end],
                                  channel_axis=2,
@@ -75,6 +76,9 @@ def label(
                                                  name="Prior Manual Labels",
                                                  colormap=label_colormap)
             man_labels_layer.editable = False
+            label_layers.append(man_labels_layer)
+            label_data.append(man_labels.astype(int))
+
         except FileNotFoundError as error:
             print(Fore.RED + f"Error encountered: {error}")
             print(Fore.YELLOW +
@@ -82,30 +86,28 @@ def label(
             print("Fore-going loading prior labels")
             print(Style.RESET_ALL)
             prior_manual_labels = False
+
+    if label_mode:
+        # load editing layer
+        if load_labels is None:
+            edit_data = 1 + np.zeros(data[:, :, 0, :].shape, dtype=int)
+        elif not prior_mask is None and load_labels.upper() == "MASK":
+            edit_data = prior_mask[:, :, :].astype(int)
+        elif prior_manual_labels and load_labels.upper() == "MANUAL":
+            edit_data = man_labels.astype(int)
+            if scene_labels:
+                scene_labels = man_scene_attrs
         else:
-            label_layers.append(man_labels_layer)
-            label_data.append(man_labels.astype(int))
+            raise Warning(
+                "load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer"
+            )
+            edit_data = np.zeros(data[:, :, 0, :].shape, dtype=int)
 
-    # load editing layer
-    if load_labels is None:
-        edit_data = 1 + np.zeros(data[:, :, 0, :].shape, dtype=int)
-    elif not prior_mask is None and load_labels.upper() == "MASK":
-        edit_data = prior_mask[:, :, :].astype(int)
-    elif prior_manual_labels and load_labels.upper() == "MANUAL":
-        edit_data = man_labels.astype(int)
-        if scene_labels:
-            scene_labels = man_scene_attrs
-    else:
-        raise Warning(
-            "load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer"
-        )
-        edit_data = np.zeros(data[:, :, 0, :].shape, dtype=int)
-
-    edit_layer = viewer.add_labels(edit_data[:, :, 0],
-                                   name='Editing',
-                                   colormap=label_colormap)
-    label_layers.append(edit_layer)
-    label_data.append(edit_data)
+        edit_layer = viewer.add_labels(edit_data[:, :, 0],
+                                       name='Editing',
+                                       colormap=label_colormap)
+        label_layers.append(edit_layer)
+        label_data.append(edit_data)
 
     min_max_slider = create_sliders(option=int(
         config["min_max_slider_option"]),
@@ -128,12 +130,13 @@ def label(
                                       name="Point of View Navigator",
                                       area='top')
 
-    create_buttons(viewer=viewer,
-                   labels_layer=POV_nav if data.shape[-1] > 1 else edit_layer,
-                   output_filepath=output_filepath,
-                   instrument_views=views,
-                   dataset_name=dataset_name,
-                   scene_labels=scene_labels,
-                   area=config["button_location"])
+    create_buttons(
+        viewer=viewer,
+        labels_layer=POV_nav if data.shape[-1] > 1 else edit_layer,
+        output_filepath=output_filepath,
+        instrument_views=views,
+        dataset_name=dataset_name,
+        scene_labels=scene_labels,
+        area=config["button_location"]) if label_mode else print('pass')
 
     napari.run()
