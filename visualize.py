@@ -41,10 +41,21 @@ def visualize(data,
         int(key): value
         for key, value in config["label_string_text"].items()
     }
-    create_legend(viewer,
-                  label_colormap,
-                  label_colormap_text,
-                  area=config["legend_location"])
+    legend_widget, legend_width, legend_height = create_legend(
+        label_colormap, label_colormap_text)
+    viewer.window.add_dock_widget(legend_widget,
+                                  area=config["legend_location"],
+                                  name="Legend")
+
+    # if legend on left, move the default dock controls/tools down
+    if config["legend_location"] == 'left':
+        layer_list_dock = viewer.window._qt_viewer.dockLayerList
+        layer_controls_dock = viewer.window._qt_viewer.dockLayerControls
+        layer_controls_dock.setMaximumWidth(legend_width)
+        layer_controls_dock.setMaximumHeight(400)
+        layer_list_dock.setMaximumWidth(legend_width)
+        viewer.window.add_dock_widget(layer_controls_dock, area='left')
+        viewer.window.add_dock_widget(layer_list_dock, area='left')
 
     # set up lists for widgets
     name_end = None
@@ -114,6 +125,7 @@ def visualize(data,
 
     min_max_slider, min_max_layout = create_sliders(
         option=int(config["min_max_slider_option"]),
+        # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
         viewer=viewer,
         layers=im_layers,
         data=data,

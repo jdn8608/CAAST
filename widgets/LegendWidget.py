@@ -41,18 +41,10 @@ class LegendWidget(QWidget):
         self.setLayout(layout)
 
 
-def create_legend(viewer, label_colormap, label_mapping, area='left'):
+def create_legend(label_colormap, label_mapping):
+    height = 30 * len(list(label_mapping.keys()))
+    width = 250
     legend_widget = LegendWidget(label_colormap, label_mapping)
-    legend_widget.setMaximumWidth(250)
-    legend_widget.setMaximumHeight(30 * len(list(label_mapping.keys())))
-    viewer.window.add_dock_widget(legend_widget, area=area, name="Legend")
-
-    if area == 'left':
-        layer_list_dock = viewer.window._qt_viewer.dockLayerList
-        print(help(layer_list_dock))
-        layer_controls_dock = viewer.window._qt_viewer.dockLayerControls
-        layer_controls_dock.setMaximumWidth(250)
-        layer_controls_dock.setMaximumHeight(400)
-        layer_list_dock.setMaximumWidth(250)
-        viewer.window.add_dock_widget(layer_controls_dock, area=area)
-        viewer.window.add_dock_widget(layer_list_dock, area=area)
+    legend_widget.setMaximumWidth(width)
+    legend_widget.setMaximumHeight(height)
+    return legend_widget, width, height
