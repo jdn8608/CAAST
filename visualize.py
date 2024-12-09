@@ -128,7 +128,6 @@ def create_napari_visualization(
                                       name="Point of View Navigator",
                                       area='top')
 
-    # TODO: will need to add multi-angle saving -> see pl2.py load labels for logic
     create_buttons(viewer=viewer,
                    labels_layer=POV_nav if data.shape[-1] > 1 else edit_layer,
                    output_filepath=output_filepath,
