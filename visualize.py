@@ -2,11 +2,14 @@ import json
 import os
 import numpy as np
 import napari
+
 from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel
+
 from colorama import Fore, Style
 
 from widgets.colormaps import get_all_colormaps
-from widgets.SubmitButtons import create_buttons
+from widgets.SubmitButtons import create_label_save_buttons, create_scene_dropdowns
 from widgets.read_write_outputs import read_labels
 from widgets.create_sliders import create_sliders
 from widgets.LegendWidget import create_legend
@@ -133,13 +136,34 @@ def visualize(data,
                                       name="Point of View Navigator",
                                       area='top')
 
-    create_buttons(
-        viewer=viewer,
-        labels_layer=POV_nav if data.shape[-1] > 1 else edit_layer,
-        output_filepath=output_filepath,
-        instrument_views=views,
-        dataset_name=dataset_name,
-        scene_labels=scene_labels,
-        area=config["button_location"]) if label_mode else print('pass')
+    # rename  later
+    # Create a save button widget
+    save_button_widget = QWidget()
+    save_button_layout = QVBoxLayout()
+    if scene_labels:
+        if isinstance(scene_labels, list):
+            scene_labels_dict, grid_layout = create_scene_dropdowns(
+                scene_labels)
+        else:
+            scene_labels_dict, grid_layout = create_scene_dropdowns(
+                list(scene_labels.keys()), priors=list(scene_labels.values()))
+        save_button_layout.addLayout(grid_layout)
+    else:
+        scene_labels_dict = {}
+
+        create_scene_dropdowns
+    if label_mode:
+        save_button = create_label_save_buttons(
+            labels_layer=POV_nav if data.shape[-1] > 1 else edit_layer,
+            output_filepath=output_filepath,
+            instrument_views=views,
+            dataset_name=dataset_name,
+            scene_labels_dict=scene_labels_dict)
+
+        # Add the button widget to Napari's dock
+        save_button_layout.addWidget(save_button)
+        save_button_widget.setLayout(save_button_layout)
+        viewer.window.add_dock_widget(save_button_widget,
+                                      area=config["button_location"])
 
     napari.run()

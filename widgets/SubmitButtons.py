@@ -2,34 +2,16 @@ from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPu
 from widgets.read_write_outputs import save_labels
 
 
-def create_buttons(viewer,
-                   labels_layer,
-                   output_filepath,
-                   instrument_views,
-                   dataset_name=None,
-                   scene_labels=None,
-                   area="top"):
-
-    # Create a save button widget
-    save_button_widget = QWidget()
-    save_button_layout = QVBoxLayout()
-
-    save_button_text = 'Save Labels'
-
-    if scene_labels:
-        if isinstance(scene_labels, list):
-            scene_labels_dict, grid_layout = create_scene_dropdowns(
-                scene_labels)
-        else:
-            scene_labels_dict, grid_layout = create_scene_dropdowns(
-                list(scene_labels.keys()), priors=list(scene_labels.values()))
-        save_button_layout.addLayout(grid_layout)
-        save_button_text += ' & Flags'
-    else:
-        scene_labels_dict = {}
+def create_label_save_buttons(
+    labels_layer,
+    output_filepath,
+    instrument_views,
+    dataset_name=None,
+    scene_labels_dict=None,
+):
 
     # Create the Save & Submit Button
-    save_button = QPushButton(save_button_text)
+    save_button = QPushButton('Save Labels')
     save_button.clicked.connect(lambda: save_labels(
         labels_layer.data,
         output_filepath,
@@ -37,11 +19,7 @@ def create_buttons(viewer,
         instrument_views,
         scene_labels_dict,
     ))
-    save_button_layout.addWidget(save_button)
-    save_button_widget.setLayout(save_button_layout)
-
-    # Add the button widget to Napari's dock
-    viewer.window.add_dock_widget(save_button_widget, area=area)
+    return save_button
 
 
 def create_scene_dropdowns(scene_labels, priors=None):
