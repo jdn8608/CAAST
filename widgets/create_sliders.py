@@ -13,7 +13,7 @@ def create_sliders(option, viewer, layers, data, band_names, area='right'):
         viewer.window.add_dock_widget(slider_widget,
                                       name="Min-Max Range Slider",
                                       area=area)
-        return slider_widget
+        return slider_widget, slider_widget
     elif option == 2:
         sliders = []
         layout = QVBoxLayout()
@@ -36,4 +36,4 @@ def create_sliders(option, viewer, layers, data, band_names, area='right'):
         viewer.window.add_dock_widget(scroll_area_widget,
                                       name="Min/Max Sliders",
                                       area=area)
-        return sliders
+        return sliders, layout

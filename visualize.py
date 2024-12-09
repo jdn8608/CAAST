@@ -14,16 +14,16 @@ from widgets.PointOfViewNavigator import PointOfViewNavigator
 
 
 def visualize(data,
-          band_names,
-          output_filepath,
-          label_mode=False,
-          prior_mask=False,
-          prior_manual_labels=False,
-          load_labels=None,
-          dataset_name=None,
-          vis_config_file='./util_files/default_vizconfig.json',
-          views='AN',
-          angles='0.0'):
+              band_names,
+              output_filepath,
+              label_mode=False,
+              prior_mask=False,
+              prior_manual_labels=False,
+              load_labels=None,
+              dataset_name=None,
+              vis_config_file='./util_files/default_vizconfig.json',
+              views='AN',
+              angles='0.0'):
 
     viewer = napari.Viewer(show=False)
     #viewer.window._qt_window.showFullScreen()
@@ -109,13 +109,16 @@ def visualize(data,
         label_layers.append(edit_layer)
         label_data.append(edit_data)
 
-    min_max_slider = create_sliders(option=int(
+    min_max_slider, min_max_layout = create_sliders(option=int(
         config["min_max_slider_option"]),
                                     viewer=viewer,
                                     layers=im_layers,
                                     data=data,
-                                    band_names=band_names[:name_end],
-                                    area=config["slider_location"])
+                                    band_names=band_names[:name_end]
+                                    )
+    viewer.window.add_dock_widget(min_max_layout,
+                                  name="Min-Max Range Slider",
+                                  area=area=config["slider_location"])
 
     if data.shape[-1] > 1:
         POV_nav = PointOfViewNavigator(viewer,
