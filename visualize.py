@@ -101,6 +101,9 @@ def visualize(data,
             print(Style.RESET_ALL)
             prior_manual_labels = False
 
+    if scene_labels and man_scene_attrs:
+        scene_labels = man_scene_attrs
+
     if label_mode:
         # load editing layer
         if load_labels is None:
@@ -109,8 +112,6 @@ def visualize(data,
             edit_data = prior_mask[:, :, :].astype(int)
         elif prior_manual_labels and load_labels.upper() == "MANUAL":
             edit_data = man_labels.astype(int)
-            if scene_labels:
-                scene_labels = man_scene_attrs
         else:
             raise Warning(
                 "load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer"
