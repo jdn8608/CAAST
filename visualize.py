@@ -9,7 +9,7 @@ from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPu
 from colorama import Fore, Style
 
 from widgets.colormaps import get_all_colormaps
-from widgets.SubmitButtons import create_label_save_buttons, create_scene_dropdowns
+from widgets.SubmitButtons import create_label_save_buttons, create_review_save_buttons, create_scene_dropdowns
 from widgets.read_write_outputs import read_labels
 from widgets.create_sliders import create_sliders
 from widgets.LegendWidget import create_legend
@@ -175,8 +175,12 @@ def visualize(data,
             scene_labels_dict=scene_labels_dict)
 
         # add the editing label savebutton
-        save_button_layout.addWidget(save_button)
+    else:
+        save_button = create_review_save_buttons(
+            output_filepath=output_filepath,
+            scene_labels_dict=scene_labels_dict)
 
+    save_button_layout.addWidget(save_button)
     # Add the button widget to Napari's dock
     save_button_widget.setLayout(save_button_layout)
     viewer.window.add_dock_widget(save_button_widget,

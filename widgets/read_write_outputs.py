@@ -7,11 +7,13 @@ import os
 import errno
 
 
-def save_labels(labels, output_filepath, dataset_name, views,
-                scene_labels_dict):
+def save_labels(output_filepath,
+                labels=None,
+                dataset_name=None,
+                views=None,
+                scene_labels_dict=None):
     print(f"{datetime.datetime.now()}: labels saved to {output_filepath}")
 
-    filetype = output_filepath.split('.')[-1]
     if scene_labels_dict:
         scene_attributes = {
             label: combo_box.currentText()
@@ -19,21 +21,22 @@ def save_labels(labels, output_filepath, dataset_name, views,
         }
         scene_labels_write(format_scene_label_file(output_filepath),
                            scene_attributes)
+    if not labels is None:
+        filetype = output_filepath.split('.')[-1]
+        if filetype == 'npy':
+            writer = npy_write
+        elif filetype == 'hdf' or filetype == 'hdf5':
+            writer = hdf_write
+        elif filetype == 'nc':
+            writer = nc_write
+        else:
+            raise Exception(
+                f"filetype '{filetype}' id not currently supported for saving files.\n please use a different filetype for output, or add functionality for this filetype"
+            )
 
-    if filetype == 'npy':
-        writer = npy_write
-    elif filetype == 'hdf' or filetype == 'hdf5':
-        writer = hdf_write
-    elif filetype == 'nc':
-        writer = nc_write
-    else:
-        raise Exception(
-            f"filetype '{filetype}' id not currently supported for saving files.\n please use a different filetype for output, or add functionality for this filetype"
-        )
-
-    for v, view in enumerate(tqdm(views, desc="Saving File(s)")):
-        writer(format_output_filepath_views(output_filepath, view),
-               dataset_name, labels[:, :, v])
+        for v, view in enumerate(tqdm(views, desc="Saving File(s)")):
+            writer(format_output_filepath_views(output_filepath, view),
+                   dataset_name, labels[:, :, v])
 
 
 def format_output_filepath_views(filepath, view):

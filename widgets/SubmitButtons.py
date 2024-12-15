@@ -13,11 +13,21 @@ def create_label_save_buttons(
     # Create the Save & Submit Button
     save_button = QPushButton('Save Labels')
     save_button.clicked.connect(lambda: save_labels(
-        labels_layer.data,
-        output_filepath,
-        dataset_name,
-        instrument_views,
-        scene_labels_dict,
+        output_filepath=output_filepath,
+        labels=labels_layer.data,
+        dataset_name=dataset_name,
+        views=instrument_views,
+        scene_labels_dict=scene_labels_dict,
+    ))
+    return save_button
+
+
+def create_review_save_buttons(output_filepath, scene_labels_dict=None):
+    # Create the Save & Submit Button
+    save_button = QPushButton('Save Review Labels')
+    save_button.clicked.connect(lambda: save_labels(
+        output_filepath=output_filepath,
+        scene_labels_dict=scene_labels_dict,
     ))
     return save_button
 
