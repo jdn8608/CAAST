@@ -41,12 +41,12 @@ def visualize(data,
         int(key): value
         for key, value in config["label_string_text"].items()
     }
+
     legend_widget, legend_width, legend_height = create_legend(
         label_colormap, label_colormap_text)
     viewer.window.add_dock_widget(legend_widget,
                                   area=config["legend_location"],
                                   name="Legend")
-
     # if legend on left, move the default dock controls/tools down
     if config["legend_location"] == 'left':
         layer_list_dock = viewer.window._qt_viewer.dockLayerList
@@ -174,10 +174,12 @@ def visualize(data,
             dataset_name=dataset_name,
             scene_labels_dict=scene_labels_dict)
 
-        # Add the button widget to Napari's dock
+        # add the editing label savebutton
         save_button_layout.addWidget(save_button)
-        save_button_widget.setLayout(save_button_layout)
-        viewer.window.add_dock_widget(save_button_widget,
-                                      area=config["button_location"])
+
+    # Add the button widget to Napari's dock
+    save_button_widget.setLayout(save_button_layout)
+    viewer.window.add_dock_widget(save_button_widget,
+                                  area=config["button_location"])
 
     napari.run()
