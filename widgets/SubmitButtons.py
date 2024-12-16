@@ -2,31 +2,21 @@ from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPu
 from widgets.read_write_outputs import save_labels
 
 
-def create_label_save_buttons(
-    labels_layer,
+def create_save_button(
+    button_text,
     output_filepath,
-    instrument_views,
+    labels_layer=None,
+    instrument_views=None,
     dataset_name=None,
     scene_labels_dict=None,
 ):
-
     # Create the Save & Submit Button
-    save_button = QPushButton('Save Labels')
+    save_button = QPushButton(button_text)
     save_button.clicked.connect(lambda: save_labels(
         output_filepath=output_filepath,
-        labels=labels_layer.data,
+        labels=labels_layer,
         dataset_name=dataset_name,
         views=instrument_views,
-        scene_labels_dict=scene_labels_dict,
-    ))
-    return save_button
-
-
-def create_review_save_buttons(output_filepath, scene_labels_dict=None):
-    # Create the Save & Submit Button
-    save_button = QPushButton('Save Review Labels')
-    save_button.clicked.connect(lambda: save_labels(
-        output_filepath=output_filepath,
         scene_labels_dict=scene_labels_dict,
     ))
     return save_button

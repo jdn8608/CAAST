@@ -4,12 +4,12 @@ import numpy as np
 import napari
 
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel
+from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel, QTabWidget
 
 from colorama import Fore, Style
 
 from widgets.colormaps import get_all_colormaps
-from widgets.SubmitButtons import create_label_save_buttons, create_review_save_buttons, create_scene_dropdowns
+from widgets.SubmitButtons import create_save_button, create_scene_dropdowns
 from widgets.read_write_outputs import read_labels
 from widgets.create_sliders import create_sliders
 from widgets.LegendWidget import create_legend
@@ -31,6 +31,9 @@ def visualize(data,
     viewer = napari.Viewer(show=False)
     #viewer.window._qt_window.showFullScreen()
     viewer.show()
+
+    bottom_tabs = QTabWidget()
+    bottom_tabs.setTabPosition(QTabWidget.North)
 
     with open(vis_config_file, "r") as file:
         config = json.load(file)
@@ -136,6 +139,8 @@ def visualize(data,
                                   name="Min-Max Range Slider",
                                   area=config["slider_location"])
 
+    top_widget = QWidget()
+    top_layout = QVBoxLayout()
     if data.shape[-1] > 1:
         POV_nav = PointOfViewNavigator(im_layers=im_layers,
                                        min_max_slider=min_max_slider,
@@ -148,43 +153,65 @@ def visualize(data,
         # Connect viewer's key events to this widget
         viewer.bind_key('Left', POV_nav.go_left)
         viewer.bind_key('Right', POV_nav.go_right)
-        viewer.window.add_dock_widget(POV_nav,
-                                      name="Point of View Navigator",
-                                      area='top')
+        top_layout.addWidget(POV_nav, name="Point of View Navigator")
+        #viewer.window.add_dock_widget(POV_nav,
+        #                              name="Point of View Navigator",
+        #                              area='top')
 
-    # rename  later
-    # Create a save button widget
-    save_button_widget = QWidget()
-    save_button_layout = QVBoxLayout()
+    # Tab Set-up:
+    #TODO: add back in customization .json settings?? maybe not
+    # Editing Tab:
+    if label_mode:
+        editing_widget = QWidget()
+        editing_layout = QVBoxLayout()
+        label_save_button = create_save_button(
+            button_text="Save Pixel Labels",
+            output_filepath=output_filepath,
+            labels_layer=POV_nav.data
+            if data.shape[-1] > 1 else edit_layer.data,
+            instrument_views=views,
+            dataset_name=dataset_name)
+        editing_layout.addWidget(label_save_button)
+        editing_widget.setLayout(editing_layout)
+        bottom_tabs.addTab(editing_widget, "Editing")
+
+    # Scene Labels Tab
     if scene_labels:
+        scenelabels_widget = QWidget()
+        scenelabels_layout = QVBoxLayout()
         if isinstance(scene_labels, list):
-            scene_labels_dict, grid_layout = create_scene_dropdowns(
+            scene_labels_dict, scenelabels_grid_layout = create_scene_dropdowns(
                 scene_labels)
         else:
-            scene_labels_dict, grid_layout = create_scene_dropdowns(
+            scene_labels_dict, scenelabels_grid_layout = create_scene_dropdowns(
                 list(scene_labels.keys()), priors=list(scene_labels.values()))
-        save_button_layout.addLayout(grid_layout)
+        scenelabels_layout.addLayout(scenelabels_grid_layout)
+        scenelabels_save_button = create_save_button(
+            button_text="Save Scene Labels",
+            output_filepath=output_filepath,
+            scene_labels_dict=scene_labels_dict)
+        scenelabels_layout.addWidget(scenelabels_save_button)
+        scenelabels_widget.setLayout(scenelabels_layout)
+        bottom_tabs.addTab(scenelabels_widget, "Scene Labels")
+
     else:
         scene_labels_dict = {}
 
-    if label_mode:
-        save_button = create_label_save_buttons(
-            labels_layer=POV_nav if data.shape[-1] > 1 else edit_layer,
-            output_filepath=output_filepath,
-            instrument_views=views,
-            dataset_name=dataset_name,
-            scene_labels_dict=scene_labels_dict)
+    save_all_button = create_save_button(
+        button_text="Save All",
+        output_filepath=output_filepath,
+        labels_layer=None if not label_mode else
+        POV_nav.data if data.shape[-1] > 1 else edit_layer.data,
+        instrument_views=views,
+        dataset_name=dataset_name,
+        scene_labels_dict=scene_labels_dict)
+    top_layout.addWidget(save_all_button)
+    top_widget.setLayout(top_layout)
+    viewer.window.add_dock_widget(
+        top_widget,
+        #name="Point of View Navigator",
+        area="top")
 
-        # add the editing label savebutton
-    else:
-        save_button = create_review_save_buttons(
-            output_filepath=output_filepath,
-            scene_labels_dict=scene_labels_dict)
-
-    save_button_layout.addWidget(save_button)
-    # Add the button widget to Napari's dock
-    save_button_widget.setLayout(save_button_layout)
-    viewer.window.add_dock_widget(save_button_widget,
-                                  area=config["button_location"])
+    viewer.window.add_dock_widget(bottom_tabs, area="bottom")
 
     napari.run()
