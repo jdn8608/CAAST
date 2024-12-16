@@ -21,6 +21,8 @@ class PointOfViewNavigator(QWidget):
         self.data = self.label_data[
             -1]  # editing labels is always listed in last entry
 
+        self.setObjectName("Point of View Navigator")
+
         # Setup layout
         layout = QVBoxLayout()
         self.view_label = QLabel(

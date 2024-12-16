@@ -5,6 +5,7 @@ import napari
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel, QTabWidget
+from qtpy.QtGui import QFont
 
 from colorama import Fore, Style
 
@@ -142,6 +143,10 @@ def visualize(data,
     top_widget = QWidget()
     top_layout = QVBoxLayout()
     if data.shape[-1] > 1:
+        POV_title = QLabel("Point of View Navigator",
+                           alignment=Qt.AlignCenter,
+                           font=QFont("Arial", weight=QFont.Bold))
+        top_layout.addWidget(POV_title)
         POV_nav = PointOfViewNavigator(im_layers=im_layers,
                                        min_max_slider=min_max_slider,
                                        im_data=data,
@@ -149,14 +154,10 @@ def visualize(data,
                                        label_data=label_data,
                                        view_text=views,
                                        angles=angles)
-
         # Connect viewer's key events to this widget
         viewer.bind_key('Left', POV_nav.go_left)
         viewer.bind_key('Right', POV_nav.go_right)
-        top_layout.addWidget(POV_nav, name="Point of View Navigator")
-        #viewer.window.add_dock_widget(POV_nav,
-        #                              name="Point of View Navigator",
-        #                              area='top')
+        top_layout.addWidget(POV_nav)
 
     # Tab Set-up:
     #TODO: add back in customization .json settings?? maybe not
