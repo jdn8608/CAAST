@@ -4,7 +4,7 @@ import numpy as np
 import napari
 
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel, QTabWidget
+from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel, QTabWidget, QTextEdit, QFileDialog
 from qtpy.QtGui import QFont
 
 from colorama import Fore, Style
@@ -198,6 +198,18 @@ def visualize(data,
 
         review_tab_widget.setLayout(review_layout)
         bottom_tabs.addTab(review_tab_widget, "Review")
+
+    # Notes Tab
+    notes_tab_widget = QWidget()
+    notes_layout = QVBoxLayout()
+    notes_widget = QTextEdit()
+    notes_widget.setPlaceholderText("Write your notes here...")
+    notes_layout.addWidget(notes_widget)
+    notes_save_button = create_save_button(button_text="Save Notes",
+                                           output_filepath=output_filepath)
+    notes_layout.addWidget(notes_save_button)
+    notes_tab_widget.setLayout(notes_layout)
+    bottom_tabs.addTab(notes_tab_widget, "Notes")
 
     # Scene Labels Tab
     if scene_labels:
