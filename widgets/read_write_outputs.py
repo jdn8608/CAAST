@@ -11,8 +11,13 @@ def save_labels(output_filepath,
                 labels=None,
                 dataset_name=None,
                 views=None,
-                scene_labels_dict=None):
+                scene_labels_dict=None,
+                review_dropdown=None,
+                grade_labels_dropdown=None):
     print(f"{datetime.datetime.now()}: labels saved to {output_filepath}")
+
+    if not review_dropdown is None:
+        print(review_dropdown.currentText())
 
     if scene_labels_dict:
         scene_attributes = {

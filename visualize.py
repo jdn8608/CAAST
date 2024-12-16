@@ -10,7 +10,7 @@ from qtpy.QtGui import QFont
 from colorama import Fore, Style
 
 from widgets.colormaps import get_all_colormaps
-from widgets.SubmitButtons import create_save_button, create_scene_dropdowns
+from widgets.SubmitButtons import create_save_button, create_scene_dropdowns, GradeSlider
 from widgets.read_write_outputs import read_labels
 from widgets.create_sliders import create_sliders
 from widgets.LegendWidget import create_legend
@@ -175,6 +175,29 @@ def visualize(data,
         editing_layout.addWidget(label_save_button)
         editing_widget.setLayout(editing_layout)
         bottom_tabs.addTab(editing_widget, "Editing")
+    else:
+        review_tab_widget = QWidget()
+        review_layout = QHBoxLayout()
+
+        left_review_vbox = QVBoxLayout()
+        dropdown = QComboBox()
+        dropdown.addItems(["Ungraded", "Approve", "Reject"])
+        dropdown.setCurrentText("Ungraded")
+        dropdown.setFixedWidth(300)
+        left_review_vbox.addWidget(dropdown)
+
+        review_save_button = create_save_button(
+            button_text="Save Review Labels",
+            output_filepath=output_filepath,
+            review_dropdown=dropdown)
+        left_review_vbox.addWidget(review_save_button)
+        review_layout.addLayout(left_review_vbox)
+
+        gs = GradeSlider(1, 5, 1)
+        review_layout.addWidget(gs)
+
+        review_tab_widget.setLayout(review_layout)
+        bottom_tabs.addTab(review_tab_widget, "Review")
 
     # Scene Labels Tab
     if scene_labels:
