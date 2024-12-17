@@ -138,6 +138,11 @@ def scene_labels_write(filepath, scene_attributes):
     """
     Writes a dictionary to a JSON file.
     """
+    if os.path.exists(filepath):
+        old_scene_attributes = scene_labels_read(filepath)
+        for key, value in scene_attributes.items():
+            old_scene_attributes[key] = value
+        scene_attributes = old_scene_attributes
     with open(filepath, "w") as json_file:
         json.dump(scene_attributes, json_file, indent=4)
 
