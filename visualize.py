@@ -14,6 +14,8 @@ from widgets.create_sliders import create_sliders
 from widgets.LegendWidget import create_legend
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 
+import warnings
+
 
 def visualize(data,
               band_names,
@@ -112,9 +114,9 @@ def visualize(data,
         elif prior_manual_labels and load_labels.upper() == "MANUAL":
             edit_data = man_labels.astype(int)
         else:
-            raise Warning(
-                "load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer"
-            )
+            warnings.warn(
+                "load_labels settigs have ambigous settings when compare to prior_mask or prior_manual_labels variables\n defaulting to 'None' value functionality and loading zeros as the Editing Layer",
+                category=UserWarning)
             edit_data = np.zeros(data[:, :, 0, :].shape, dtype=int)
 
         edit_layer = viewer.add_labels(edit_data[:, :, 0],
