@@ -206,7 +206,8 @@ def visualize(data,
     notes_widget.setPlaceholderText("Write your notes here...")
     notes_layout.addWidget(notes_widget)
     notes_save_button = create_save_button(button_text="Save Notes",
-                                           output_filepath=output_filepath)
+                                           output_filepath=output_filepath,
+                                           notes_textbox=notes_widget)
     notes_layout.addWidget(notes_save_button)
     notes_tab_widget.setLayout(notes_layout)
     bottom_tabs.addTab(notes_tab_widget, "Notes")

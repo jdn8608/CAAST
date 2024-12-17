@@ -17,7 +17,8 @@ def save_labels(output_filepath,
                 scene_labels_dict=None,
                 review_filepath='./labels/cloud_mask_review.csv',
                 review_dropdown=None,
-                review_grader=None):
+                review_grader=None,
+                notes_textbox=None):
 
     if not review_dropdown is None and not review_grader is None:
 
@@ -57,6 +58,15 @@ def save_labels(output_filepath,
         scene_labels_write(scene_labels_output_filepath, scene_attributes)
         print(
             f"{datetime.datetime.now()}: scene labels saved to {scene_labels_output_filepath}"
+        )
+
+    if notes_textbox:
+        print(notes_textbox.toPlainText())
+        scene_labels_output_filepath = format_scene_label_file(output_filepath)
+        scene_labels_write(scene_labels_output_filepath,
+                           {'notes': notes_textbox.toPlainText()})
+        print(
+            f"{datetime.datetime.now()}: notes text saved to {scene_labels_output_filepath}"
         )
 
     if not labels is None:
