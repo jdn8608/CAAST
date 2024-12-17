@@ -78,7 +78,11 @@ class GradeSlider(QWidget):
         self.slider.setMinimumWidth(300)
         layout.addWidget(self.slider)
 
+        self.slider.valueChanged.connect(self.on_value_changed)
         self.setLayout(layout)
+
+    def on_value_changed(self):
+        self.value = self.slider.value()
 
     def paintEvent(self, event):
         super().paintEvent(event)
