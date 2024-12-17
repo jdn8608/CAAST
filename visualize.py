@@ -93,8 +93,8 @@ def visualize(data,
             man_labels_layer.editable = False
             label_layers.append(man_labels_layer)
             label_data.append(man_labels.astype(int))
-
-        prior_manual_labels = False
+        else:
+            prior_manual_labels = False
     else:
         man_scene_attrs = None
         review_grade = None
