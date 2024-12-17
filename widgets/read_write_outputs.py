@@ -174,6 +174,8 @@ def read_labels(output_filepath,
         check_file_exists(scene_label_filepath)
         scene_attributes = scene_labels_read(scene_label_filepath)
         notes = scene_attributes.pop('notes', None)
+        if notes == '':
+            notes = None
     else:
         scene_attributes = None
         notes = None
@@ -181,9 +183,13 @@ def read_labels(output_filepath,
     if review_filepath:
         df = pd.read_csv(review_filepath)
         df = df[df['filename'] == output_filepath]
-        review_grade = df['cloud_mask_grade'][0]
-        review_status = df['cloud_mask_status'][0]
-    else:
+        if len(df) > 0:
+            review_grade = df['cloud_mask_grade'][0]
+            review_status = df['cloud_mask_status'][0]
+    try:
+        review_grade
+        review_status
+    except:
         review_grade = None
         review_status = None
 
