@@ -20,9 +20,6 @@ def save_labels(output_filepath,
     if not review_dropdown is None and not review_grader is None:
         import pandas as pd
 
-        print(review_dropdown.currentText())
-        print(review_grader.value)
-
         try:
             df = pd.read_csv(review_filepath)
         except FileNotFoundError:

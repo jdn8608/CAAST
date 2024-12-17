@@ -15,7 +15,13 @@ TO DO:
 '''
 
 
-def get_output_settings(json_file, input_filepath):
+def get_review_mode_output_settings(json_file):
+    with open(json_file, 'r') as file:
+        config = json.load(file)
+    return config['review-mode_csv_filepath']
+
+
+def get_general_output_settings(json_file, input_filepath):
     with open(json_file, 'r') as file:
         config = json.load(file)
     if config["override_filename"]:
@@ -98,8 +104,13 @@ if __name__ == "__main__":
     (data, band_names, prior_mask, input_filename), views, angles = get_data(
         args.dir, args.instrument_name, reader_config_file=args.reader_config)
 
-    output_filename, dataset_name = get_output_settings(
+    output_filename, dataset_name = get_general_output_settings(
         args.output_settings_file, input_filename)
+
+    if not args.label_mode:
+        review_mode_csv_filepath = get_review_mode_output_settings(args.output_settings_file) 
+    else:
+        review_mode_csv_filepath = None
 
     # settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
     prior_manual_labels = args.check_manual_labels
@@ -108,6 +119,7 @@ if __name__ == "__main__":
               band_names=band_names,
               output_filepath=output_filename,
               label_mode=args.label_mode,
+              review_mode_csv_filepath=review_mode_csv_filepath,
               prior_mask=prior_mask,
               prior_manual_labels=prior_manual_labels,
               load_labels=args.load_labels,

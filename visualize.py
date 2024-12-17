@@ -20,6 +20,7 @@ from widgets.PointOfViewNavigator import PointOfViewNavigator
 def visualize(data,
               band_names,
               output_filepath,
+              review_mode_csv_filepath='./labels/cloud_mask_review.csv',
               label_mode=False,
               prior_mask=False,
               prior_manual_labels=False,
@@ -191,6 +192,7 @@ def visualize(data,
         review_save_button = create_save_button(
             button_text="Save Review Labels",
             output_filepath=output_filepath,
+            review_csv_filepath=review_mode_csv_filepath,
             review_dropdown=dropdown,
             review_grader=gs)
         left_review_vbox.addWidget(review_save_button)
