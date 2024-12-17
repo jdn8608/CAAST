@@ -244,7 +244,8 @@ def visualize(data,
         scene_labels_dict=scene_labels_dict,
         review_csv_filepath=review_mode_csv_filepath,
         review_dropdown=None if label_mode else dropdown,
-        review_grader=None if label_mode else gs)
+        review_grader=None if label_mode else gs,
+        notes_textbox=notes_widget)
 
     top_layout.addWidget(save_all_button)
     top_widget.setLayout(top_layout)
