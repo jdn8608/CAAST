@@ -83,7 +83,7 @@ def visualize(data,
 
     # load the prior manual labels into a (non-edit) layer
     if prior_manual_labels:
-        man_labels, man_scene_attrs, review_grade, review_status = read_labels(
+        man_labels, man_scene_attrs, review_grade, review_status, prior_notes = read_labels(
             output_filepath, dataset_name, views, scene_attrs=scene_labels)
         if man_labels is not None:
             man_labels_layer = viewer.add_labels(man_labels[:, :,
@@ -203,7 +203,10 @@ def visualize(data,
     notes_tab_widget = QWidget()
     notes_layout = QVBoxLayout()
     notes_widget = QTextEdit()
-    notes_widget.setPlaceholderText("Write your notes here...")
+    if prior_notes is None:
+        notes_widget.setPlaceholderText("Write your notes here...")
+    else:
+        notes_widget.setPlainText(prior_notes)
     notes_layout.addWidget(notes_widget)
     notes_save_button = create_save_button(button_text="Save Notes",
                                            output_filepath=output_filepath,
