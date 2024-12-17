@@ -7,8 +7,6 @@ from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel, QTabWidget, QTextEdit, QFileDialog
 from qtpy.QtGui import QFont
 
-from colorama import Fore, Style
-
 from widgets.colormaps import get_all_colormaps
 from widgets.SubmitButtons import create_save_button, create_scene_dropdowns, GradeSlider
 from widgets.read_write_outputs import read_labels
@@ -85,11 +83,9 @@ def visualize(data,
 
     # load the prior manual labels into a (non-edit) layer
     if prior_manual_labels:
-        try:
-            man_labels, man_scene_attrs = read_labels(output_filepath,
-                                                      dataset_name,
-                                                      views,
-                                                      scene_attrs=scene_labels)
+        man_labels, man_scene_attrs, review_grade, review_status = read_labels(
+            output_filepath, dataset_name, views, scene_attrs=scene_labels)
+        if man_labels is not None:
             man_labels_layer = viewer.add_labels(man_labels[:, :,
                                                             0].astype(int),
                                                  name="Prior Manual Labels",
@@ -98,13 +94,7 @@ def visualize(data,
             label_layers.append(man_labels_layer)
             label_data.append(man_labels.astype(int))
 
-        except FileNotFoundError as error:
-            print(Fore.RED + f"Error encountered: {error}")
-            print(Fore.YELLOW +
-                  "Prior labels file was not found (see error above)")
-            print("Fore-going loading prior labels")
-            print(Style.RESET_ALL)
-            prior_manual_labels = False
+        prior_manual_labels = False
 
     if scene_labels and man_scene_attrs:
         scene_labels = man_scene_attrs

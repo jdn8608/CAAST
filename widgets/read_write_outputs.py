@@ -4,7 +4,9 @@ import xarray as xr
 import datetime
 from tqdm import tqdm
 import os
+from colorama import Fore, Style
 import errno
+import pandas as pd
 
 
 def save_labels(output_filepath,
@@ -17,7 +19,6 @@ def save_labels(output_filepath,
                 review_grader=None):
 
     if not review_dropdown is None and not review_grader is None:
-        import pandas as pd
 
         try:
             df = pd.read_csv(review_filepath)
@@ -168,15 +169,22 @@ def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
         raise Exception(
             f"filetype '{filetype}' id not currently supported for reading files.\n please use a different filetype for output, or add functionality for this filetype"
         )
+    try:
+        check_file_exists(
+            format_output_filepath_views(output_filepath, views[0]))
+        X, Y = reader(format_output_filepath_views(output_filepath, views[0]),
+                      dataset_name).shape
+        labels = np.zeros((X, Y, len(views)))
+        for v, view in enumerate(tqdm(views, "Loading Prior Label File(s)")):
+            label_view_filepath = format_output_filepath_views(
+                output_filepath, view)
+            check_file_exists(label_view_filepath)
+            labels[:, :, v] = reader(label_view_filepath, dataset_name)
+    except FileNotFoundError as error:
+        print(Fore.RED + f"Error encountered: {error}")
+        print(Fore.YELLOW +
+              "Prior labels file was not found (see error above)")
+        print("Fore-going loading prior labels")
+        print(Style.RESET_ALL)
+        labels = None
 
-    check_file_exists(format_output_filepath_views(output_filepath, views[0]))
-    X, Y = reader(format_output_filepath_views(output_filepath, views[0]),
-                  dataset_name).shape
-    labels = np.zeros((X, Y, len(views)))
-    for v, view in enumerate(tqdm(views, "Loading Prior Label File(s)")):
-        label_view_filepath = format_output_filepath_views(
-            output_filepath, view)
-        check_file_exists(label_view_filepath)
-        labels[:, :, v] = reader(label_view_filepath, dataset_name)
-
-    return labels, scene_attributes
