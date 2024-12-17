@@ -4,5 +4,5 @@
 	"append_name":		"_labels",
 	"file_type":		".hdf",
 	"dataset_name":		"Manual Labels",
-    "review-mode_csv_filepath" : "./labels/MAIA_cloud_mask_review.csv"
+    "review-mode_csv_filepath" : "./labels/cloud_mask_review.csv"
 }
