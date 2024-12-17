@@ -3,16 +3,22 @@ import numpy as np
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QLabel, QLineEdit
 from superqt import QRangeSlider  # Import QRangeSlider from superqt
 
+
 class LayerMinMaxSlider(QWidget):
     """Individual min/max slider for each layer."""
-    def __init__(self, layer, slider_scale=1000, override_max=None, override_min=None):
+
+    def __init__(self,
+                 layer,
+                 slider_scale=1000,
+                 override_max=None,
+                 override_min=None):
         super().__init__()
         self.layer = layer  # Specific layer for this slider
         self.slider_scale = slider_scale
         self.data_max = override_max if override_max else np.nanmax(layer.data)
         self.data_min = override_min if override_min else np.nanmin(layer.data)
         self.layer_name_label = QLabel(f"Layer: {self.layer.name}")
-        self.name = self.layer.name 
+        self.name = self.layer.name
 
         # Set up layout
         layout = QVBoxLayout()
@@ -47,29 +53,38 @@ class LayerMinMaxSlider(QWidget):
         contrast_min, contrast_max = self.layer.contrast_limits
         self.min_textbox.setText(f"{contrast_min:.2f}")
         self.max_textbox.setText(f"{contrast_max:.2f}")
-	
+
         try:
-                scaled_min = int((contrast_min - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
-                scaled_max = int((contrast_max - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
+            scaled_min = int(
+                (contrast_min - self.data_min) /
+                (self.data_max - self.data_min) * self.slider_scale)
+            scaled_max = int(
+                (contrast_max - self.data_min) /
+                (self.data_max - self.data_min) * self.slider_scale)
         except:
-                scaled_min = 0.
-                scaled_max = 1. 
+            scaled_min = 0.
+            scaled_max = 1.
         self.range_slider.setValue((scaled_min, scaled_max))
 
-    def update_contrast_limits(self, data_min, data_max, contrast_min, contrast_max):
+    def update_contrast_limits(self, data_min, data_max, contrast_min,
+                               contrast_max):
         """Update slider and text boxes to new contrast limits for the layer."""
         self.data_min, self.data_max = data_min, data_max
         self.min_textbox.setText(f"{contrast_min:.2f}")
         self.max_textbox.setText(f"{contrast_max:.2f}")
-        scaled_min = int((contrast_min - data_min) / (data_max - data_min) * self.slider_scale)
-        scaled_max = int((contrast_max - data_min) / (data_max - data_min) * self.slider_scale)
+        scaled_min = int((contrast_min - data_min) / (data_max - data_min) *
+                         self.slider_scale)
+        scaled_max = int((contrast_max - data_min) / (data_max - data_min) *
+                         self.slider_scale)
         self.range_slider.setValue((scaled_min, scaled_max))
 
     def update_image(self):
         """Update the contrast limits for the layer based on the slider values."""
         slider_min, slider_max = self.range_slider.value()
-        min_value = slider_min / self.slider_scale * (self.data_max - self.data_min) + self.data_min
-        max_value = slider_max / self.slider_scale * (self.data_max - self.data_min) + self.data_min
+        min_value = slider_min / self.slider_scale * (
+            self.data_max - self.data_min) + self.data_min
+        max_value = slider_max / self.slider_scale * (
+            self.data_max - self.data_min) + self.data_min
 
         if min_value < max_value:
             self.layer.contrast_limits = (min_value, max_value)
@@ -83,8 +98,12 @@ class LayerMinMaxSlider(QWidget):
             max_value = float(self.max_textbox.text())
             if min_value < max_value:
                 self.layer.contrast_limits = (min_value, max_value)
-                scaled_min = int((min_value - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
-                scaled_max = int((max_value - self.data_min) / (self.data_max - self.data_min) * self.slider_scale)
+                scaled_min = int(
+                    (min_value - self.data_min) /
+                    (self.data_max - self.data_min) * self.slider_scale)
+                scaled_max = int(
+                    (max_value - self.data_min) /
+                    (self.data_max - self.data_min) * self.slider_scale)
                 self.range_slider.setValue((scaled_min, scaled_max))
         except ValueError:
             pass  # Ignore invalid input

@@ -1,6 +1,6 @@
-
 def read(filepath):
-	print('Reader not developed yet')
+    print('Reader not developed yet')
+
 
 def get_multiangle():
-	return None
+    return None
