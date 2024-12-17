@@ -236,7 +236,11 @@ def visualize(data,
         POV_nav.data if data.shape[-1] > 1 else edit_layer.data,
         instrument_views=views,
         dataset_name=dataset_name,
-        scene_labels_dict=scene_labels_dict)
+        scene_labels_dict=scene_labels_dict,
+        review_csv_filepath=review_mode_csv_filepath,
+        review_dropdown=None if label_mode else dropdown,
+        review_grader=None if label_mode else gs)
+
     top_layout.addWidget(save_all_button)
     top_widget.setLayout(top_layout)
     viewer.window.add_dock_widget(
