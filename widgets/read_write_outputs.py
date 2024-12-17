@@ -7,6 +7,7 @@ import os
 from colorama import Fore, Style
 import errno
 import pandas as pd
+import json
 
 
 def save_labels(output_filepath,
@@ -120,28 +121,44 @@ def hdf_write(filepath, dataset_name, data):
 
 
 def format_scene_label_file(filepath):
-    return f'{os.path.splitext(filepath)[0]}_scenelabels.txt'.replace(
+    return f'{os.path.splitext(filepath)[0]}_scenelabels.json'.replace(
         "<view>", "ALL")
 
 
+#def scene_labels_read(filepath):
+#    scene_attributes = {}
+#    with open(filepath, 'r') as txt_file:
+#        for line in txt_file:
+#            key, value = tuple(line.split(" : "))
+#            value = value.strip()
+#            scene_attributes[key] = value
+#    return scene_attributes
+#
+#
+#def scene_labels_write(filepath, scene_attributes):
+#
+#    with open(filepath, "w") as txt_file:
+#        for key, value in zip(scene_attributes.keys(),
+#                              scene_attributes.values()):
+#            txt_file.write(f"{key} : {value}\n")
+#
+#    return
+#
 def scene_labels_read(filepath):
-    scene_attributes = {}
-    with open(filepath, 'r') as txt_file:
-        for line in txt_file:
-            key, value = tuple(line.split(" : "))
-            value = value.strip()
-            scene_attributes[key] = value
+    """
+    Reads a JSON file and returns the contents as a dictionary.
+    """
+    with open(filepath, 'r') as json_file:
+        scene_attributes = json.load(json_file)
     return scene_attributes
 
 
 def scene_labels_write(filepath, scene_attributes):
-
-    with open(filepath, "w") as txt_file:
-        for key, value in zip(scene_attributes.keys(),
-                              scene_attributes.values()):
-            txt_file.write(f"{key} : {value}\n")
-
-    return
+    """
+    Writes a dictionary to a JSON file.
+    """
+    with open(filepath, "w") as json_file:
+        json.dump(scene_attributes, json_file, indent=4)
 
 
 def check_file_exists(filepath):
