@@ -174,6 +174,10 @@ def read_labels(output_filepath,
         scene_label_filepath = format_scene_label_file(output_filepath)
         check_file_exists(scene_label_filepath)
         scene_attributes = scene_labels_read(scene_label_filepath)
+        notes = scene_attributes.pop('notes', None)
+    else:
+        scene_attributes = None
+        notes = None
 
     if review_filepath:
         df = pd.read_csv(review_filepath)
@@ -214,4 +218,4 @@ def read_labels(output_filepath,
         print(Style.RESET_ALL)
         labels = None
 
-    return labels, scene_attributes, review_grade, review_status
+    return labels, scene_attributes, review_grade, review_status, notes
