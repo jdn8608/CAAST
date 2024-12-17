@@ -61,7 +61,6 @@ def save_labels(output_filepath,
         )
 
     if notes_textbox:
-        print(notes_textbox.toPlainText())
         scene_labels_output_filepath = format_scene_label_file(output_filepath)
         scene_labels_write(scene_labels_output_filepath,
                            {'notes': notes_textbox.toPlainText()})
