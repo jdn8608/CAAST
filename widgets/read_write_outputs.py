@@ -15,7 +15,6 @@ def save_labels(output_filepath,
                 review_filepath='./labels/cloud_mask_review.csv',
                 review_dropdown=None,
                 review_grader=None):
-    print(f"{datetime.datetime.now()}: labels saved to {output_filepath}")
 
     if not review_dropdown is None and not review_grader is None:
         import pandas as pd
@@ -42,14 +41,22 @@ def save_labels(output_filepath,
         df = df[df['filename'] != new_row['filename']]
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_csv(review_filepath, index=False)
+        print(
+            f"{datetime.datetime.now()}: review evaluation saved to {review_filepath}"
+        )
 
     if scene_labels_dict:
+
         scene_attributes = {
             label: combo_box.currentText()
             for label, combo_box in scene_labels_dict.items()
         }
-        scene_labels_write(format_scene_label_file(output_filepath),
-                           scene_attributes)
+        scene_labels_output_filepath = format_scene_label_file(output_filepath)
+        scene_labels_write(scene_labels_output_filepath, scene_attributes)
+        print(
+            f"{datetime.datetime.now()}: scene labels saved to {scene_labels_output_filepath}"
+        )
+
     if not labels is None:
         filetype = output_filepath.split('.')[-1]
         if filetype == 'npy':
@@ -64,8 +71,12 @@ def save_labels(output_filepath,
             )
 
         for v, view in enumerate(tqdm(views, desc="Saving File(s)")):
-            writer(format_output_filepath_views(output_filepath, view),
-                   dataset_name, labels[:, :, v])
+            pixel_labels_output_filepath = format_output_filepath_views(
+                output_filepath, view)
+            writer(pixel_labels_output_filepath, dataset_name, labels[:, :, v])
+            tqdm.write(
+                f"{datetime.datetime.now()}: pixel labels saved to {pixel_labels_output_filepath}"
+            )
 
 
 def format_output_filepath_views(filepath, view):
