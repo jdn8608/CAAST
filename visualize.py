@@ -186,14 +186,16 @@ def visualize(data,
         dropdown.setFixedWidth(300)
         left_review_vbox.addWidget(dropdown)
 
+        gs = GradeSlider(1, 5, 1)
+
         review_save_button = create_save_button(
             button_text="Save Review Labels",
             output_filepath=output_filepath,
-            review_dropdown=dropdown)
+            review_dropdown=dropdown,
+            review_grader=gs)
         left_review_vbox.addWidget(review_save_button)
         review_layout.addLayout(left_review_vbox)
 
-        gs = GradeSlider(1, 5, 1)
         review_layout.addWidget(gs)
 
         review_tab_widget.setLayout(review_layout)

@@ -12,12 +12,39 @@ def save_labels(output_filepath,
                 dataset_name=None,
                 views=None,
                 scene_labels_dict=None,
+                review_filepath='./labels/cloud_mask_review.csv',
                 review_dropdown=None,
-                grade_labels_dropdown=None):
+                review_grader=None):
     print(f"{datetime.datetime.now()}: labels saved to {output_filepath}")
 
-    if not review_dropdown is None:
+    if not review_dropdown is None and not review_grader is None:
+        import pandas as pd
+
         print(review_dropdown.currentText())
+        print(review_grader.value)
+
+        try:
+            df = pd.read_csv(review_filepath)
+        except FileNotFoundError:
+            # If the file doesn't exist, initialize a new DataFrame with appropriate columns
+            df = pd.DataFrame(columns=[
+                'filename', 'cloud_mask_status', 'cloud_mask_grade',
+                'entry_date_time'
+            ])
+        new_row = {
+            "filename":
+            output_filepath,
+            "cloud_mask_status":
+            review_dropdown.currentText(),
+            "cloud_mask_grade":
+            review_grader.value,
+            "entry_date_time":
+            datetime.datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S")  # Format datetime as string
+        }
+        df = df[df['filename'] != new_row['filename']]
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        df.to_csv(review_filepath, index=False)
 
     if scene_labels_dict:
         scene_attributes = {
