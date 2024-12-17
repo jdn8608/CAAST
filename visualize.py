@@ -95,6 +95,10 @@ def visualize(data,
             label_data.append(man_labels.astype(int))
 
         prior_manual_labels = False
+    else:
+        man_scene_attrs = None
+        review_grade = None
+        review_status = None
 
     if scene_labels and man_scene_attrs:
         scene_labels = man_scene_attrs
