@@ -12,7 +12,7 @@ def create_save_button(button_text,
                        dataset_name=None,
                        scene_labels_dict=None,
                        review_dropdown=None,
-                       grade_labels_dropdown=None,
+                       review_grader=None,
                        width=None):
     # Create the Save & Submit Button
     save_button = QPushButton(button_text)
@@ -25,7 +25,7 @@ def create_save_button(button_text,
                             views=instrument_views,
                             scene_labels_dict=scene_labels_dict,
                             review_dropdown=review_dropdown,
-                            grade_labels_dropdown=grade_labels_dropdown))
+                            review_grader=review_grader))
     return save_button
 
 
