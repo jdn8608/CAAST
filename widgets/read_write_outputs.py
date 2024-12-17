@@ -152,11 +152,24 @@ def check_file_exists(filepath):
                                 filepath)
 
 
-def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
+def read_labels(output_filepath,
+                dataset_name,
+                views,
+                review_filepath='./labels/cloud_mask_review.csv',
+                scene_attrs=False):
     if scene_attrs:
         scene_label_filepath = format_scene_label_file(output_filepath)
         check_file_exists(scene_label_filepath)
         scene_attributes = scene_labels_read(scene_label_filepath)
+
+    if review_filepath:
+        df = pd.read_csv(review_filepath)
+        df = df[df['filename'] == output_filepath]
+        review_grade = df['cloud_mask_grade'][0]
+        review_status = df['cloud_mask_status'][0]
+    else:
+        review_grade = None
+        review_status = None
 
     filetype = output_filepath.split('.')[-1]
     if filetype == 'npy':
@@ -188,3 +201,4 @@ def read_labels(output_filepath, dataset_name, views, scene_attrs=False):
         print(Style.RESET_ALL)
         labels = None
 
+    return labels, scene_attributes, review_grade, review_status

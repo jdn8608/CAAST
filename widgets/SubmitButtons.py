@@ -11,6 +11,7 @@ def create_save_button(button_text,
                        instrument_views=None,
                        dataset_name=None,
                        scene_labels_dict=None,
+                       review_csv_filepath=None,
                        review_dropdown=None,
                        review_grader=None,
                        width=None):
@@ -24,6 +25,7 @@ def create_save_button(button_text,
                             dataset_name=dataset_name,
                             views=instrument_views,
                             scene_labels_dict=scene_labels_dict,
+                            review_filepath=review_csv_filepath,
                             review_dropdown=review_dropdown,
                             review_grader=review_grader))
     return save_button
@@ -65,7 +67,7 @@ def create_scene_dropdowns(scene_labels, priors=None):
 
 class GradeSlider(QWidget):
 
-    def __init__(self, min_val, max_val, interval=1):
+    def __init__(self, min_val, max_val, interval=1, init_val=1):
         super().__init__()
         layout = QVBoxLayout()
 
@@ -79,6 +81,9 @@ class GradeSlider(QWidget):
         layout.addWidget(self.slider)
 
         self.slider.valueChanged.connect(self.on_value_changed)
+        self.value = init_val
+        self.slider.setValue(self.value)
+
         self.setLayout(layout)
 
     def on_value_changed(self):

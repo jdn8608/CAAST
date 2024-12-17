@@ -173,11 +173,13 @@ def visualize(data,
         left_review_vbox = QVBoxLayout()
         dropdown = QComboBox()
         dropdown.addItems(["Ungraded", "Approve", "Reject"])
-        dropdown.setCurrentText("Ungraded")
+        dropdown.setCurrentText(
+            review_status if review_status is not None else "Ungraded")
         dropdown.setFixedWidth(300)
         left_review_vbox.addWidget(dropdown)
 
-        gs = GradeSlider(1, 5, 1)
+        gs = GradeSlider(1, 5, 1,
+                         review_grade if review_grade is not None else 1)
 
         review_save_button = create_save_button(
             button_text="Save Review Labels",
