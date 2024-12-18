@@ -72,10 +72,6 @@
 .
 ├── LICENSE
 ├── README.md
-├── __pycache__
-│   ├── get_numpy_data.cpython-310.pyc
-│   ├── get_numpy_data.cpython-312.pyc
-│   └── visualize.cpython-312.pyc
 ├── environment.yml
 ├── file_readers
 │   ├── MAIA.py
@@ -109,13 +105,30 @@
 ### Running the Main Tool
 To process, visualize, and label satellite data, run the main script `pl2.py`:
 ```bash
-python pl2.py --config <config.json>
+python pl2.py [-h] [-m] [-o OUTPUT_SETTINGS_FILE] [-r READER_CONFIG] [-v VIS_CONFIG] [-c] [-l LOAD_LABELS] [-V] dir instrument_name 
 ```
-- **Arguments**:
-  - `--config`: A JSON file that specifies the input file paths, search keys, and processing settings.
-- **Workflow**:
-  - Reads and processes input data using the appropriate file reader.
-  - Generates outputs, including visualizations and labeled datasets.
+
+
+**positional arguments:**
+
+| Parameter            | Description                                                                                     |
+|:---:|---|
+| `dir`                | Root directory to retrieve files from.                                                         |
+| `instrument_name`    | Instrument that we will be reading in data for. This will determine how to read in data (i.e., determine the file reader). See the README for more details. |
+
+**options:**
+| Parameter            | Description                                                                                     |
+|:------------------------------------:|---|
+| `-h, --help`                | show this help message and exit |
+| `-m, --label_mode` | flag to set the tool in label mode. If not set, tool will be in review only mode. See README for more details |
+| `-r READER_CONFIG, --reader_config READER_CONFIG`| Path to a .json file for additional information to use by the instrument file reader, if it is needed.|
+| `-o OUTPUT_SETTINGS_FILE, --output_settings_file OUTPUT_SETTINGS_FILE `| file containing the output settings to save the labels created by the user. See the README for more details. |  
+| `-v VIS_CONFIG, --vis_config VIS_CONFIG` | Path to a .json file for additional information and options to use by the visualization script/software. | 
+| `  -c, --check_manual_labels` | Flag to check for if manual labels already exists, based on the OUTPUT_SETTINGS_FILE settings. If a file is found, these labels will be loaded as an additional layer. If no file is found, this flag does nothing.
+|`-l LOAD_LABELS, --load_labels LOAD_LABELS` | Pass in argument to select what labels to load into the Editing layer. Values can be 'mask' or 'manual'. If not provided, Editing layer will be loaded with 1s or 0s. IF mask is selected: the file reader needs to return the mask and load_labels=True. IF manual selected, the -l parameter needs to be passed and the file needs to be detected. If either case fails, default settings of None are selected. | 
+| `-V, --verbose` | Flag to turn on software activity output to the terminal. | 
+
+
 
 ## Adding a New File Reader
 
