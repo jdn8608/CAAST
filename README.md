@@ -223,14 +223,22 @@ To support a new satellite instrument, follow these steps to create a file reade
 - [x] Multi-view Set-up for Single-view Imagers
     - [x] Point of View (POV) Slider widget
     - [x] Integration of POV Slider with all prior functionality
-- [ ] Review-only Mode
-    - [ ] Approve/Deny Labeling
+- [x] Review-only Mode
+    - [x] Approve/Deny Labeling
+    - [x] Notes Widget Development 
+- [ ] Reading in & Visualizing Meta-data
+    - [ ] Re-work `read()` for file readers 
+    - [ ] Adjustments to `visualize.py`
+- [ ] Visual Additions & Fixes 
     - [ ] RGB Visualization
-    - [ ] Notes Widget Development 
-    - [ ] Fix Multi-Angle brightness Adjustments for MAIA
-- [ ] New Widgets 
+    - [ ] Grid View Indicators
+    - [ ] Grid View Enhancements
+- [ ] MAIA Features
+    - Fix Brightness Changes in Multi-views 
+    - Distance to Threshold Widget
+- [ ] New Pixel Labeling Widgets 
     - [ ] "Object" Selection Tool
-    - [ ] MAIA Distance to Threshold Compatability
+- [ ] Interface with ML Models
     - [ ] Train/Apply ML Models (RF, DNN, CNN, etc.)
 
 ---
