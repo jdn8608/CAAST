@@ -184,20 +184,24 @@ To support a new satellite instrument, follow these steps to create a file reade
 
 ### File Reader Requirements
 1. **File Structure and Location**:
-   - Place the new file reader in the `file_readers/` directory.
+   - Place the new file reader script in the `file_readers/` directory.
    - Name the file descriptively (e.g., `NEW_INSTRUMENT.py`).
 
 2. **Define `read` Function**:
-   - Implement a `read()` function that processes the instrument's data format and returns a NumPy array.
+   - Implement a `read()` function that processes the instrument's data format and returns the following parameters:
    - Example Inputs:
      - `parent_dir`: Base directory containing the data files.
      - `search`: File search pattern.
      - `view`: View identifier (e.g. for MISR: AN, DA, CF, etc.). Note this is unneeded if your instrument has a only single-view.
      - `bands_to_get`: Bands to extract from the data file.
      - `config`: Additional configuration parameters necessary.
-   - Example Outputs:
-     - Multi-dimensional arrays representing the satellite data (e.g., bands, angles).
+   - Required Outputs:
+     - `band_data`: A NumPy array with the band data to visualize. In should have shape (\<WIDTH>,\<HEIGHT>,<NUMBER_OF_SPECTRAL_BANDS>,<NUMBER_OF_VIEWS>). The <NUMBER_OF_VIEWS> dimension is for multi-angular instruments, such as NASA MISR or MAIA, if your instrument is a single-view imager (i.e., NASA MODIS), this value should be 1. Disclaimer, if you do not list this dimension as 1 and instead do not provide this 4th dimension, the tool will not work.
+     - `band_names`: a list of length <NUMBER_OF_SPECTRAL_BANDS> of strings representing names for each spectral channel, such as "BAND_5" or "900nm." This is for user preference and will be used to name the channel layers in the tool.
+     - `labels` : Predefined labels from the instrument. This is mainly to pass in the cloud mask from the instrument to the visuals, but could be repurposed for a variety of use-cases, such as providing land type classifications or other pixel label datasets. This should be of shape (<WIDTH>,<HEIGHT>,<NUMBER_OF_VIEWS>)
+     - `filepath` :  the filepath to the file that is being used to open retrieve the data.
 
+       
 3. **Integration**:
    - Add the new file reader to `get_numpy_data.py` in the `reader_dict`:
    ```python
