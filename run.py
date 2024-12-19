@@ -20,8 +20,8 @@ def get_review_mode_output_settings(json_filepath):
     """ Get the configurations for the review mode of the tool
 
     Args:
-        json_filepath: the filepath to the review mode configuration json file
-        
+        json_filepath: the filepath to the review mode configuration JSON file
+
     Returns:
         a dictionairy of the review_mode configuration settings
     """
@@ -39,7 +39,7 @@ def get_general_output_settings(json_filepath, input_filepath):
     Returns:
         an os formated string to the pixel-label output file, and the name for the dataset in the file
     """
-    # Open json file as a dictionary
+    # Open the JSON file as a dictionary
     with open(json_filepath, 'r') as file:
         config = json.load(file)
 
@@ -96,13 +96,13 @@ if __name__ == "__main__":
         '-r',
         '--reader_config',
         help=
-        "Path to a .json file for additional information to use by the instrument file reader, if it is needed."
+        "Path to a JSON file for additional information to use by the instrument file reader, if it is needed."
     )
     parser.add_argument(
         '-v',
         '--vis_config',
         help=
-        "Path to a .json file for additional information and options to use by the visualization script/software.",
+        "Path to a JSON file for additional information and options to use by the visualization script/software.",
         default='./util_files/default_vizconfig.json')
     parser.add_argument(
         '-c',
