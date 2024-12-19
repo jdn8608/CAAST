@@ -1,8 +1,6 @@
 import argparse
-import glob
 import json
 import os
-from pathlib import Path
 
 from get_numpy_data import get_data
 from visualize import visualize
