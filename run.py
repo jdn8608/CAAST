@@ -112,16 +112,13 @@ if __name__ == "__main__":
     else:
         review_mode_csv_filepath = None
 
-    # settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
-    prior_manual_labels = args.check_manual_labels
-
     visualize(data=data,
               band_names=band_names,
               output_filepath=output_filename,
               label_mode=args.label_mode,
               review_mode_csv_filepath=review_mode_csv_filepath,
               prior_mask=prior_mask,
-              prior_manual_labels=prior_manual_labels,
+              prior_manual_labels=args.check_manual_labels,
               load_labels=args.load_labels,
               dataset_name=dataset_name,
               vis_config_file=args.vis_config,
