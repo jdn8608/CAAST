@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
     # Call get_data() to get the data to visualize. This call the correct instrument filereader module to ingest the data
     (data, band_names, prior_mask, input_filename), views, angles = get_data(
-        args.dir, args.instrument_name, reader_config_file=args.reader_config)
+        args.dir, args.instrument_name, reader_config_filepath=args.reader_config)
 
     # Get the filepath and dataset name to save out pixel labels
     output_filename, dataset_name = get_general_output_settings(
