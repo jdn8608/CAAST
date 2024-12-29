@@ -132,6 +132,24 @@ def read(parent_dir,
          add_cloud_mask=False,
          add_nan_mask=True,
          config=None):
+    """Finds MAIA files and reads in required data for the tool
+
+    Args:
+        parent_dir: the root (parent) directory to search for files within
+        search: a comprehensive string to search for files with a pattern... '*' symbols are wildcards.
+           See find_file() for use case and details.
+        views: a list of strings indicating the views to load. These sub-strings should be present in the filename
+        bands_to_get: a list of numbers (as ints or strs) indicating the bands to open from the MAIA file(s).
+            A value of 'ALL' will load all bands found within the file(s).
+        add_cloud_mask: a binary to indicate the call of cloud mask loading.
+        add_nan_mask: a binary to indicate the call of creating a mask where nan MAIA values are found.
+
+    Returns:
+        a dictionairy, where the keys are the name of the layer data for the tool/visualization, and the values
+        are tuples of (layer type, NumPy data array).
+
+        See TBD for possible layer type values, and the implications on the tool.
+    """
 
     # Check what bands to load and how many bands
     if bands_to_get[0].upper() == 'ALL':
