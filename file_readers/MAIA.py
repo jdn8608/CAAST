@@ -71,6 +71,25 @@ def format_band_names(bands_to_get):
     return band_names
 
 
+def get_bands(hdf_file, band_names, num_of_channels):
+    """Get the band data imagery from the hdf file
+
+    Args:
+        hdf_file: h5 File object for the current file
+        band_names: a list of MAIA formatted band name strings
+        num_of_channels: an int representing the number of channels to ingest
+
+    Returns:
+        a NumPy array of the MAIA band imagery data of shape (HEIGHT,WIDTH,num_of_channels)
+    """
+    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels))
+
+    for i, name in enumerate(band_names):
+        band_data[:, :, i] = np.array(hdf_file['Reflectance'][name])
+
+    return band_data
+
+
 def read_single_view(parent_dir,
                      search,
                      view,
@@ -119,7 +138,6 @@ def read(parent_dir,
     for i, v in enumerate(view):
         # Find the file
         filepath = find_file(parent_dir, search, view=v)
-        print(filepath)
 
         # Open file
         hdf_file = h5.File(filepath, 'r')
@@ -127,10 +145,8 @@ def read(parent_dir,
         # If bands_to_get is 'ALL', on first file pass, grab the band names
         if band_names is None:
             band_names = np.array(list(hdf_file['Reflectance'].keys()))
-        print(band_names)
 
-        # band_data[:, :, :, i] = get_bands(hdf_file, band_names,
-        #                                 num_of_channels)
+        band_data[..., i] = get_bands(hdf_file, band_names, num_of_channels)
 
         #if get_cloud_mask:
         #    cloud_masks[:,:,i] = get_cloud_mask()
