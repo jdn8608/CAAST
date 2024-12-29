@@ -55,7 +55,7 @@ def format_band_names(bands_to_get):
     Returns:
         a list of strings of MAIA formatted band names:w
     """
-    bands = np.empty((len(bands_to_get)), dtype='S7')
+    band_names = np.empty((len(bands_to_get)), dtype='S7')
     for i, band_num in enumerate(bands_to_get):
 
         # Format the band number to a string if an int
@@ -64,11 +64,11 @@ def format_band_names(bands_to_get):
 
         # MAIA band naming convention formatting
         if band_num > 9:
-            bands[i] = f'band_{band_num}'
+            band_names[i] = f'band_{band_num}'
         else:
-            bands[i] = f'band_0{band_num}'
+            band_names[i] = f'band_0{band_num}'
 
-    return bands
+    return band_names
 
 
 def read_single_view(parent_dir,
