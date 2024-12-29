@@ -72,20 +72,24 @@ def read(parent_dir,
         num_of_data_channels = MAX_CHANNELS
     else:
         num_of_data_channels = len(bands_to_get)
+    band_data = np.zeros((Y_DIM, X_DIM, num_of_data_channels + 1, len(view)))
 
-    multiangle_data = np.zeros(
-        (Y_DIM, X_DIM, num_of_data_channels + 1, len(view)))
-    cloud_masks = np.zeros((Y_DIM, X_DIM, len(view)))
+    if get_cloud_mask:
+        cloud_masks = np.zeros((Y_DIM, X_DIM, len(view)))
 
     for i, v in enumerate(view):
-        multiangle_data[:, :, :,
-                        i], bands, cloud_masks[:, :,
-                                               i], path = read_single_view(
-                                                   parent_dir,
-                                                   search=search,
-                                                   view=v,
-                                                   bands_to_get=bands_to_get,
-                                                   get_cloud_mask=get_cloud_mask
-                                               )
+        # open file
 
+        band_data[:,:,:,i] = get_bands()
+
+        if get_cloud_mask:
+            cloud_masks[:,:,i] = get_cloud_mask()
+
+        if load_nan_mask:
+            = get_nan_vals()
+
+
+
+
+    # Add to dict
     return multiangle_data, bands, cloud_masks, path
