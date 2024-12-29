@@ -16,10 +16,14 @@ def create_save_button(button_text,
                        review_grader=None,
                        notes_textbox=None,
                        width=None):
+    """Creates and returns a submit button that is conencted to certain save options based
+    on pass-in parameters.
+    """
     # Create the Save & Submit Button
     save_button = QPushButton(button_text)
     if width:
         save_button.setFixedWidth(width)
+    # Connect the button's click event to a call to save_labels()
     save_button.clicked.connect(
         lambda: save_labels(output_filepath=output_filepath,
                             labels=labels_layer,
@@ -34,6 +38,17 @@ def create_save_button(button_text,
 
 
 def create_scene_dropdowns(scene_labels, priors=None):
+    """Creates a grid of dropdown boxes for scene label options provided
+
+    Args:
+        scene_labels: a list of scene attributes to (binary) label if present within the scene
+        priors: if not None, corresponding fill-in values from prior labeling for each of the entries in scene_labels
+
+    Returns:
+        a dictionary of the scene_labels and their corrsponding values
+        the QGridLayout for the dropdown widgets
+
+    """
     scene_labels_dict = dict((q, QComboBox()) for q in scene_labels)
 
     grid_layout = QGridLayout()
