@@ -72,7 +72,7 @@ def format_band_names(bands_to_get):
 
 
 def get_bands(hdf_file, band_names, num_of_channels):
-    """Get the band data imagery from the hdf file
+    """Get the band data imagery from the MAIA hdf file
 
     Args:
         hdf_file: h5 File object for the current file
@@ -90,6 +90,22 @@ def get_bands(hdf_file, band_names, num_of_channels):
     return band_data
 
 
+def get_cloud_mask(hdf_file):
+    """Get the cloud mask from the MAIA hdf file
+
+    Args:
+        hdf_file: h5 File object for the current file
+
+    Returns:
+        the MAIA cloud mask of shape (HEIGHT, WIDTH) with NaN values replaced with the value 3
+    """
+    # Open and load the cloud mask
+    cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
+    # Convet NaN mask values (3) to -1 for the purpose of colormap formatting
+    cloud_mask[cloud_mask == 3] = -1
+    return cloud_mask
+
+
 def read_single_view(parent_dir,
                      search,
                      view,
@@ -104,10 +120,7 @@ def read_single_view(parent_dir,
     data[:, :, -1] = np.any(NA_MASK, axis=2)
 
     if get_cloud_mask.upper() == 'CLOUD MASK':
-        cloud_mask = np.array(
-            hdf_file['cloud_mask_output']['final_cloud_mask'])
         bands = np.concatenate((bands, ['MAIA Cloud Mask']))
-        cloud_mask[cloud_mask == 3] = -1
     else:
         cloud_mask = None
 
@@ -146,10 +159,12 @@ def read(parent_dir,
         if band_names is None:
             band_names = np.array(list(hdf_file['Reflectance'].keys()))
 
+        # Get the band data
         band_data[..., i] = get_bands(hdf_file, band_names, num_of_channels)
 
-        #if get_cloud_mask:
-        #    cloud_masks[:,:,i] = get_cloud_mask()
+        # Get the cloud mask
+        if add_cloud_mask:
+            cloud_masks[..., i] = get_cloud_mask(hdf_file)
 
         #if load_nan_mask:
         #    = get_nan_vals()
