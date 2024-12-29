@@ -125,29 +125,6 @@ def create_nan_mask(band_data):
     return nan_mask
 
 
-def read_single_view(parent_dir,
-                     search,
-                     view,
-                     bands_to_get='ALL',
-                     get_cloud_mask=False,
-                     config=None):
-
-    # add NAN mask to data cube
-    bands = np.concatenate((bands, ['No Retrieval']))
-    data[NA_MASK] = 0
-    data[:, :, -1] = np.any(NA_MASK, axis=2)
-
-    if get_cloud_mask.upper() == 'CLOUD MASK':
-        bands = np.concatenate((bands, ['MAIA Cloud Mask']))
-    else:
-        cloud_mask = None
-
-    # TODO: ADD APRIORI LOADING
-
-    return data, bands, cloud_mask, search_result_files[0].replace(
-        view, '<view>')
-
-
 def read(parent_dir,
          search,
          view,
@@ -156,20 +133,22 @@ def read(parent_dir,
          add_nan_mask=True,
          config=None):
 
+    # Check what bands to load and how many bands
     if bands_to_get[0].upper() == 'ALL':
         num_of_channels = MAX_CHANNELS
         band_names = None
     else:
         num_of_channels = len(bands_to_get)
         band_names = format_band_names(bands_to_get)
-    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(view)))
 
+    # Intialize NumPy arrays
+    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(view)))
     if add_cloud_mask:
         cloud_masks = np.zeros((Y_DIM, X_DIM, len(view)))
-
     if add_nan_mask:
         nan_masks = np.zeros((Y_DIM, X_DIM, len(view)))
 
+    # Loop through all views
     for i, v in enumerate(view):
         # Find the file
         filepath = find_file(parent_dir, search, view=v)
@@ -192,8 +171,10 @@ def read(parent_dir,
         if add_nan_mask:
             nan_mask[..., i] = create_nan_mask()
 
+        # Close the hdf file to force garbage collection and limit memory needs
+        # Also prevents h5py File load errors
         hdf_file.close()
 
-    # Add to dict
+    # Create dict
     quit()
     return multiangle_data, bands, cloud_masks, path
