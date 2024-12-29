@@ -1,34 +1,55 @@
+"""
+Author: Joseph Nied (jdnied2@illinois.edu)
+Date: 12-19-2024
+Description:
+    The main run script for the PL-RS visualization tool to be ran from the command line.
+
+    This script sub-modules with settings from configuration files to read-in, format, & 
+    visualize satelitte imager data. 
+"""
+
 import argparse
-import glob
 import json
 import os
-from pathlib import Path
 
 from get_numpy_data import get_data
 from visualize import visualize
-'''
-TO DO:
-	-ITERATE ON PASS IN FUNCTIONALITY
-	-ADD OS SEPERATOR FUNCTIONALITY FOR WINDOWS
-	-DOCUMENT DOCUMENT DOCUMENT
-		-REQUIRMENTS.TXT
-'''
 
 
-def get_review_mode_output_settings(json_file):
-    with open(json_file, 'r') as file:
+def get_review_mode_output_settings(json_filepath):
+    """ Get the configurations for the review mode of the tool
+
+    Args:
+        json_filepath: the filepath to the review mode configuration JSON file
+
+    Returns:
+        a dictionairy of the review_mode configuration settings
+    """
+    with open(json_filepath, 'r') as file:
         config = json.load(file)
     return config['review-mode_csv_filepath']
 
 
-def get_general_output_settings(json_file, input_filepath):
-    with open(json_file, 'r') as file:
+def get_general_output_settings(json_filepath, input_filepath):
+    """
+    Args:
+        json_filepath:  the file path to ingest/format output file settings
+        input_filepath: the filepath to the input file that is ingested for visualization
+
+    Returns:
+        an os formated string to the pixel-label output file, and the name for the dataset in the file
+    """
+    # Open the JSON file as a dictionary
+    with open(json_filepath, 'r') as file:
         config = json.load(file)
+
+    # Get the filename pattern to override the input filename, if set
     if config["override_filename"]:
         filename = config["output_file_configs"]
     else:
         filename = os.path.splitext(os.path.basename(input_filepath))[0]
 
+    # Get the dir path for the output file if provided, otherwise use that from the input file
     if config["override_dirpath"]:
         dirpath = config["override_dirpath"]
     else:
@@ -40,7 +61,8 @@ def get_general_output_settings(json_file, input_filepath):
 
 if __name__ == "__main__":
 
-    # set-up arge parser
+    # Set-up arge parser
+    #Decsriptions for all pass-in parameters are provided in their declaration under <help>
     parser = argparse.ArgumentParser(
         prog="RS-PL",
         description=
@@ -49,7 +71,7 @@ if __name__ == "__main__":
         'Tool is currently under developement. For more information, goto https://github.com/jdn8608/PL-RS'
     )
 
-    # required arguments
+    # Required arguments
     parser.add_argument('dir', help="root directory to retrieve files from")
     parser.add_argument(
         'instrument_name',
@@ -57,8 +79,7 @@ if __name__ == "__main__":
         "instrument that we will be reading in data for. This will determine how to read in data, (i.e., determine the file reader). See the README for more details."
     )
 
-    # optional arguments
-
+    # Optional arguments
     parser.add_argument(
         '-m',
         '--label_mode',
@@ -75,13 +96,13 @@ if __name__ == "__main__":
         '-r',
         '--reader_config',
         help=
-        "Path to a .json file for additional information to use by the instrument file reader, if it is needed."
+        "Path to a JSON file for additional information to use by the instrument file reader, if it is needed."
     )
     parser.add_argument(
         '-v',
         '--vis_config',
         help=
-        "Path to a .json file for additional information and options to use by the visualization script/software.",
+        "Path to a JSON file for additional information and options to use by the visualization script/software.",
         default='./util_files/default_vizconfig.json')
     parser.add_argument(
         '-c',
@@ -97,31 +118,32 @@ if __name__ == "__main__":
         default=None)
     parser.add_argument('-V', '--verbose', action='store_true')
 
-    # compile args
+    # Compile args passed in from the command line by the user
     args = parser.parse_args()
 
-    # retrieve data
+    # Call get_data() to get the data to visualize. This call the correct instrument filereader module to ingest the data
     (data, band_names, prior_mask, input_filename), views, angles = get_data(
-        args.dir, args.instrument_name, reader_config_file=args.reader_config)
+        args.dir, args.instrument_name, reader_config_filepath=args.reader_config)
 
+    # Get the filepath and dataset name to save out pixel labels
     output_filename, dataset_name = get_general_output_settings(
         args.output_settings_file, input_filename)
 
+    # If we are not in pixel labeling mode, we need to provide the settings for review mode
     if not args.label_mode:
-        review_mode_csv_filepath = get_review_mode_output_settings(args.output_settings_file) 
+        review_mode_csv_filepath = get_review_mode_output_settings(
+            args.output_settings_file)
     else:
         review_mode_csv_filepath = None
 
-    # settings flag: if output file exists, and if labels are desired, this flag will let them to be loaded in
-    prior_manual_labels = args.check_manual_labels
-
+    # Forward read-in data and pass-in variable to the visualization script that will generate the GUI + necessary widgets
     visualize(data=data,
               band_names=band_names,
               output_filepath=output_filename,
               label_mode=args.label_mode,
               review_mode_csv_filepath=review_mode_csv_filepath,
               prior_mask=prior_mask,
-              prior_manual_labels=prior_manual_labels,
+              prior_manual_labels=args.check_manual_labels,
               load_labels=args.load_labels,
               dataset_name=dataset_name,
               vis_config_file=args.vis_config,

@@ -8,7 +8,8 @@ from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPu
 from qtpy.QtGui import QFont
 
 from widgets.colormaps import get_all_colormaps
-from widgets.SubmitButtons import create_save_button, create_scene_dropdowns, GradeSlider
+from widgets.SubmitButtons import create_save_button, create_scene_dropdowns
+from widgets.GradeSlider import GradeSlider
 from widgets.read_write_outputs import read_labels
 from widgets.create_sliders import create_sliders
 from widgets.LegendWidget import create_legend

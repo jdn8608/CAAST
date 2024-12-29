@@ -4,13 +4,26 @@ from qtpy.QtWidgets import QVBoxLayout, QWidget, QSlider, QLabel, QScrollArea, Q
 import numpy as np
 
 
-def create_sliders(option, viewer, layers, data, band_names, area='right'):
+def create_sliders(option, viewer, layers, data, band_names):
+    """ creates and returns slider(s) (either Selection or Layer-based sliders) to be added to a napari viewer
 
-    if option == 0:
-        return None
-    elif option == 1:
+    Args:
+        option : an integer to select which kind of slider to create for the tool
+        viewer : a pointer to the napari viewer object (only to be referenced by the Selection Slider widget) 
+        layers : band layers from the instrument to allow slider functionality for
+        data : the NumPy data array for the band data
+        band_names : corresponding names of band to used by slider naming conventions
+
+    Returns:
+        slider_widget : object of the slider widget created
+        scroll_area_widget : the scroll widget contained for the LayerSliders (if used)
+    """
+
+    # Create a min/max selection slider
+    if option == 1:
         slider_widget = SelectionMinMaxSlider(viewer)
         return slider_widget, slider_widget
+    # Create a min/max slider for each band
     elif option == 2:
         sliders = []
         layout = QVBoxLayout()
@@ -23,6 +36,7 @@ def create_sliders(option, viewer, layers, data, band_names, area='right'):
                 layout.addWidget(slider_widget)
                 sliders.append(slider_widget)
 
+        # Add the sliders to a scrollable widget (if they don't all fit on screen)
         container = QWidget()
         container.setLayout(layout)
 
@@ -31,3 +45,5 @@ def create_sliders(option, viewer, layers, data, band_names, area='right'):
         scroll_area_widget.setWidget(container)
 
         return sliders, scroll_area_widget
+    else:
+        return None, None
