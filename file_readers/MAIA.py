@@ -10,20 +10,46 @@ Y_DIM = 480
 MAX_CHANNELS = 6
 
 
+def find_file(parent_dir, search, view=''):
+    """find the file to open within a directory based on a search string
+
+    Args:
+        parent_dir: the root (parent) directory to search for files within
+        search: a comprehensive string to search for files with a pattern... '*' symbols are wildcards.
+            The string should only return either 1 or <number of views> files.
+        view: a string to seperate filename strings for a specific view from others. This is wanted when,
+            the search string returns multiple files for various views. If not needed, the default value 
+            is sufficient.
+
+    Returns:
+        a filepath string to be opened for ingesting data for the given view
+
+    Exception:
+        An exception is thrown if more than one file is found from the search string and view string
+
+    """
+
+    # Search for a file based on the search string and filter by the view string
+    search_result_files = [
+        r for r in glob.glob(f'{parent_dir}/{search}') if view in r
+    ]
+
+    # If there is more than one file found, throw an Exception
+    if len(search_result_files) != 1:
+        raise Exception(
+            "A single file was not found. \n"
+            "Please refine the search key found in the config file.\n"
+            f"The results of the search was:\n {search_result_files}")
+
+    return search_result_files[0]
+
+
 def read_single_view(parent_dir,
                      search,
                      view,
                      bands_to_get='ALL',
                      get_cloud_mask=False,
                      config=None):
-
-    search_result_files = [
-        r for r in glob.glob(f'{parent_dir}/{search}') if view in r
-    ]
-    if len(search_result_files) != 1:
-        raise Exception(
-            f"A single file was not found. \n please refine the search key found in the config file.\n The results of the search was:\n {search_result_files}"
-        )
 
     hdf_file = h5.File(search_result_files[0], 'r')
     if bands_to_get[0].upper() == 'ALL':
@@ -78,18 +104,20 @@ def read(parent_dir,
         cloud_masks = np.zeros((Y_DIM, X_DIM, len(view)))
 
     for i, v in enumerate(view):
+        # Find the file
+        filepath = find_file(parent_dir, search, view=v)
+        print(filepath)
+
         # open file
 
-        band_data[:,:,:,i] = get_bands()
+        #band_data[:,:,:,i] = get_bands()
 
-        if get_cloud_mask:
-            cloud_masks[:,:,i] = get_cloud_mask()
+        #if get_cloud_mask:
+        #    cloud_masks[:,:,i] = get_cloud_mask()
 
-        if load_nan_mask:
-            = get_nan_vals()
-
-
-
+        #if load_nan_mask:
+        #    = get_nan_vals()
 
     # Add to dict
+    quit()
     return multiangle_data, bands, cloud_masks, path
