@@ -121,7 +121,7 @@ def read(parent_dir,
          search,
          view,
          bands_to_get='ALL',
-         get_cloud_mask=False,
+         add_cloud_mask=False,
          config=None):
 
     if bands_to_get[0].upper() == 'ALL':
@@ -132,7 +132,7 @@ def read(parent_dir,
         band_names = format_band_names(bands_to_get)
     band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(view)))
 
-    if get_cloud_mask:
+    if add_cloud_mask:
         cloud_masks = np.zeros((Y_DIM, X_DIM, len(view)))
 
     for i, v in enumerate(view):

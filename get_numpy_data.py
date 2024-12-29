@@ -45,7 +45,7 @@ def get_data(parent_dir, instrument_name, reader_config_filepath=None):
                            search=config["filename_search_string"],
                            view=config["view"],
                            bands_to_get=config["bands"],
-                           get_cloud_mask=config["load_labels"]
+                           add_cloud_mask=config["load_labels"]
                            ), config["view"], config["angle"]
     else:
         # Raise an exception if no file reader is found for the given name
