@@ -4,5 +4,6 @@
 	"angle" : ["-70.0","-60.0","-45.6","-26.1","  0.0","+26.1","+45.6","+60.0","+70.0"],
 	"bands" : ["ALL"],
 	"aprioi" : "None",
-	"load_labels": "cloud mask"
+	"load_labels": "cloud mask",
+    "create_nan_mask": 1
 }

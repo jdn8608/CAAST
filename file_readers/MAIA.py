@@ -106,6 +106,25 @@ def get_cloud_mask(hdf_file):
     return cloud_mask
 
 
+def create_nan_mask(band_data):
+    """Create a mask indicating where any nan_values are found across the loaded band data.
+    Note this is subjective to the data loaded... if there are nans in bands not loaded, this
+    will not be indicated by this mask.
+
+    Args:
+        band_data: a NumPy array of the MAIA band data loaded
+
+    Returns:
+        a NumPy array of shape (HEIGHT,WIDTH) indicating where nan values are found
+    """
+    # MAIA uses -999, -998, or NaN as values indicating no data present
+    # Each value indicates different out of bound conditions
+    # For the purpose of the NaN mask, they are all considered the same
+    nan_mask = (band_data == -999.0) | (band_data
+                                        == -998.0) | (np.isnan(band_data))
+    return nan_mask
+
+
 def read_single_view(parent_dir,
                      search,
                      view,
@@ -115,7 +134,6 @@ def read_single_view(parent_dir,
 
     # add NAN mask to data cube
     bands = np.concatenate((bands, ['No Retrieval']))
-    NA_MASK = (data == -999.0) | (data == -998.0) | (np.isnan(data))
     data[NA_MASK] = 0
     data[:, :, -1] = np.any(NA_MASK, axis=2)
 
@@ -135,6 +153,7 @@ def read(parent_dir,
          view,
          bands_to_get='ALL',
          add_cloud_mask=False,
+         add_nan_mask=True,
          config=None):
 
     if bands_to_get[0].upper() == 'ALL':
@@ -147,6 +166,9 @@ def read(parent_dir,
 
     if add_cloud_mask:
         cloud_masks = np.zeros((Y_DIM, X_DIM, len(view)))
+
+    if add_nan_mask:
+        nan_masks = np.zeros((Y_DIM, X_DIM, len(view)))
 
     for i, v in enumerate(view):
         # Find the file
@@ -166,8 +188,10 @@ def read(parent_dir,
         if add_cloud_mask:
             cloud_masks[..., i] = get_cloud_mask(hdf_file)
 
-        #if load_nan_mask:
-        #    = get_nan_vals()
+        # Create a mask indicating where NaNs are found
+        if add_nan_mask:
+            nan_mask[..., i] = create_nan_mask()
+
         hdf_file.close()
 
     # Add to dict
