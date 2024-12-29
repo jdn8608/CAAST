@@ -11,7 +11,7 @@ MAX_CHANNELS = 6
 
 
 def find_file(parent_dir, search, view=''):
-    """find the file to open within a directory based on a search string
+    """Find the file to open within a directory based on a search string
 
     Args:
         parent_dir: the root (parent) directory to search for files within
@@ -45,7 +45,7 @@ def find_file(parent_dir, search, view=''):
 
 
 def format_band_names(bands_to_get):
-    """format band numbers to MAIA formated band name strings. This will allow for the
+    """Format band numbers to MAIA formated band name strings. This will allow for the
     names to be used to get the appropriate band data when ingested 
 
     Args:
@@ -54,14 +54,15 @@ def format_band_names(bands_to_get):
 
     Returns:
         a list of strings of MAIA formatted band names:w
-
     """
     bands = np.empty((len(bands_to_get)), dtype='S7')
     for i, band_num in enumerate(bands_to_get):
 
+        # Format the band number to a string if an int
         if isinstance(band_num, str):
             band_num = int(band_num)
 
+        # MAIA band naming convention formatting
         if band_num > 9:
             bands[i] = f'band_{band_num}'
         else:
