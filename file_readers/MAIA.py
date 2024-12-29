@@ -44,28 +44,38 @@ def find_file(parent_dir, search, view=''):
     return search_result_files[0]
 
 
+def format_band_names(bands_to_get):
+    """format band numbers to MAIA formated band name strings. This will allow for the
+    names to be used to get the appropriate band data when ingested 
+
+    Args:
+        bands_to_get: a list of band numbers to retrieve from the MAIA file(s). The entries
+            in the list can be of type int or str
+
+    Returns:
+        a list of strings of MAIA formatted band names:w
+
+    """
+    bands = np.empty((len(bands_to_get)), dtype='S7')
+    for i, band_num in enumerate(bands_to_get):
+
+        if isinstance(band_num, str):
+            band_num = int(band_num)
+
+        if band_num > 9:
+            bands[i] = f'band_{band_num}'
+        else:
+            bands[i] = f'band_0{band_num}'
+
+    return bands
+
+
 def read_single_view(parent_dir,
                      search,
                      view,
                      bands_to_get='ALL',
                      get_cloud_mask=False,
                      config=None):
-
-    hdf_file = h5.File(search_result_files[0], 'r')
-    if bands_to_get[0].upper() == 'ALL':
-        bands = np.array(list(hdf_file['Reflectance'].keys()))
-    else:
-        bands = np.empty((len(bands_to_get)), dtype='S7')
-        for i, band_num in enumerate(bands_to_get):
-            if band_num > 9:
-                bands[i] = f'band_{band_num}'
-            else:
-                bands[i] = f'band_0{band_num}'
-
-    num_of_data_channels = bands.shape[0]
-    data = np.zeros((Y_DIM, X_DIM, num_of_data_channels + 1))
-    for i, band in enumerate(bands):
-        data[:, :, i] = np.array(hdf_file['Reflectance'][band])
 
     # add NAN mask to data cube
     bands = np.concatenate((bands, ['No Retrieval']))
@@ -95,10 +105,12 @@ def read(parent_dir,
          config=None):
 
     if bands_to_get[0].upper() == 'ALL':
-        num_of_data_channels = MAX_CHANNELS
+        num_of_channels = MAX_CHANNELS
+        band_names = None
     else:
-        num_of_data_channels = len(bands_to_get)
-    band_data = np.zeros((Y_DIM, X_DIM, num_of_data_channels + 1, len(view)))
+        num_of_channels = len(bands_to_get)
+        band_names = format_band_names(bands_to_get)
+    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(view)))
 
     if get_cloud_mask:
         cloud_masks = np.zeros((Y_DIM, X_DIM, len(view)))
@@ -108,15 +120,23 @@ def read(parent_dir,
         filepath = find_file(parent_dir, search, view=v)
         print(filepath)
 
-        # open file
+        # Open file
+        hdf_file = h5.File(filepath, 'r')
 
-        #band_data[:,:,:,i] = get_bands()
+        # If bands_to_get is 'ALL', on first file pass, grab the band names
+        if band_names is None:
+            band_names = np.array(list(hdf_file['Reflectance'].keys()))
+        print(band_names)
+
+        # band_data[:, :, :, i] = get_bands(hdf_file, band_names,
+        #                                 num_of_channels)
 
         #if get_cloud_mask:
         #    cloud_masks[:,:,i] = get_cloud_mask()
 
         #if load_nan_mask:
         #    = get_nan_vals()
+        hdf_file.close()
 
     # Add to dict
     quit()
