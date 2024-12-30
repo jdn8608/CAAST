@@ -98,12 +98,8 @@ if __name__ == "__main__":
         parent_dir=args.dir,
         instrument_name=args.instrument_name,
         output_settings_filepath=args.output_settings_file,
-        load_prior_manual_labels=args.check_manual_labels,
-        reader_config_filepath=args.reader_config)
-
-    # Get the filepath and dataset name to save out pixel labels
-    output_filename, dataset_name = get_general_output_settings(
-        args.output_settings_file, input_filename)
+        reader_config_filepath=args.reader_config,
+        load_prior_manual_labels=args.check_manual_labels)
 
     # If we are not in pixel labeling mode, we need to provide the settings for review mode
     if not args.label_mode:
