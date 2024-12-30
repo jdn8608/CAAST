@@ -30,35 +30,6 @@ def get_review_mode_output_settings(json_filepath):
     return config['review-mode_csv_filepath']
 
 
-def get_general_output_settings(json_filepath, input_filepath):
-    """
-    Args:
-        json_filepath:  the file path to ingest/format output file settings
-        input_filepath: the filepath to the input file that is ingested for visualization
-
-    Returns:
-        an os formated string to the pixel-label output file, and the name for the dataset in the file
-    """
-    # Open the JSON file as a dictionary
-    with open(json_filepath, 'r') as file:
-        config = json.load(file)
-
-    # Get the filename pattern to override the input filename, if set
-    if config["override_filename"]:
-        filename = config["output_file_configs"]
-    else:
-        filename = os.path.splitext(os.path.basename(input_filepath))[0]
-
-    # Get the dir path for the output file if provided, otherwise use that from the input file
-    if config["override_dirpath"]:
-        dirpath = config["override_dirpath"]
-    else:
-        dirpath = os.path.dirname(input_filepath)
-
-    return os.path.join(dirpath, filename + config["append_name"] +
-                        config["file_type"]), config["dataset_name"]
-
-
 if __name__ == "__main__":
 
     # Set-up arge parser
