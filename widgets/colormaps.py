@@ -56,7 +56,7 @@ def get_colormaps_from_config(config, option_name):
         return None
     else:
         raise Exception(
-            "Erro within visualization config file: 'f{option_name}' option is of invalid type 'f{type(config['band_color_maps'])}'"
+            "Error within visualization config file: 'f{option_name}' option is of invalid type 'f{type(config['band_color_maps'])}'"
         )
 
 
