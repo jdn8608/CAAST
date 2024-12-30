@@ -1,8 +1,11 @@
 import glob
 import os
+
 import h5py as h5
 import numpy as np
 from tqdm import tqdm
+
+from file_readers.LayerType import LayerType
 
 X_DIM = 360
 Y_DIM = 480
@@ -196,6 +199,19 @@ def read(parent_dir,
         # Also prevents h5py File load errors
         hdf_file.close()
 
-    # Create dict
+    # Create the returnable dictionary
+    data_layer_dict = {}
+    # Add the band data to the dict, one band at a time
+    for i, name in enumerate(band_names):
+        data_layer_dict[str(name)] = (LayerType.GRAY_BAND, band_data[...,
+                                                                     i, :])
+    # Add the nan mask to the dict
+    if add_nan_mask:
+        data_layer_dict["NaN Mask"] = (LayerType.NAN_MASK, nan_masks)
+
+    # Add the MAIA cloud mask to the dict
+    if add_cloud_mask:
+        data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
+
     quit()
     return multiangle_data, bands, cloud_masks, path
