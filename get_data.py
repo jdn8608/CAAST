@@ -141,7 +141,6 @@ def get_data(
     if not label_mode:
         review_csv_filepath = get_review_mode_output_settings(
             output_settings_filepath)
-        print(review_csv_filepath)
     else:
         review_csv_filepath = None
 
@@ -165,5 +164,6 @@ def get_data(
         review_status = None
         notes = None
 
-    return data_layer_dict, output_filepath_convention, config["view"], config[
-        "angle"]
+    return output_filepath_convention, config["view"], config[
+        "angle"], data_layer_dict, scene_attrs, (review_grade, review_status,
+                                                 notes)
