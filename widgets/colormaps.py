@@ -70,6 +70,6 @@ def get_all_colormaps(config):
         colormaps for each colormap use-case
     """
     return tuple([
-        get_colormaps_from_config(config, x)
-        for x in ['band_colormaps', 'label_colormap', 'mask_colormap']
+        get_colormaps_from_config(config, x) for x in
+        ['band_colormap', 'label_colormap', 'mask_colormap', 'nan_colormap']
     ])

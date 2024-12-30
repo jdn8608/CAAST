@@ -1,13 +1,14 @@
 {
-	"band_colormaps"	:	["gray","gray","gray","gray","gray","gray","red"],
-	"mask_colormap"		:	"custom_nan_mask",
+	"band_colormap"	    :	"gray",
+    "nan_colormap"      :   "custom_nan_mask",
+	"mask_colormap"		:	"custom_labeling1",
 	"mask_string_text"	:	{
-						"0": "clouds", 
-						"1": "clear-sky" 
+						"0": "clouds",
+						"1": "clear-sky"
 					},
 	"label_colormap"	:	"custom_labeling1",
 	"label_string_text"	:	{
-						"0": "clouds", 
+						"0": "clouds",
 						"1": "clear-sky",
 						"2": "haze",
 						"3": "smoke"
