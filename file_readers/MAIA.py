@@ -122,7 +122,9 @@ def create_nan_mask(band_data):
     # For the purpose of the NaN mask, they are all considered the same
     nan_mask = (band_data == -999.0) | (band_data
                                         == -998.0) | (np.isnan(band_data))
-    return nan_mask
+    band_data[nan_mask] = 0
+    nan_mask = np.any(nan_mask, axis=2)
+    return nan_mask, band_data
 
 
 def read(parent_dir,
@@ -180,14 +182,15 @@ def read(parent_dir,
 
         # Get the band data
         band_data[..., i] = get_bands(hdf_file, band_names, num_of_channels)
+        # Create a mask indicating where NaNs are found
+        if add_nan_mask:
+            nan_masks[..., i], band_data[...,
+                                         i] = create_nan_mask(band_data[...,
+                                                                        i])
 
         # Get the cloud mask
         if add_cloud_mask:
             cloud_masks[..., i] = get_cloud_mask(hdf_file)
-
-        # Create a mask indicating where NaNs are found
-        if add_nan_mask:
-            nan_mask[..., i] = create_nan_mask()
 
         # Close the hdf file to force garbage collection and limit memory needs
         # Also prevents h5py File load errors
