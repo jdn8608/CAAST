@@ -15,21 +15,6 @@ import os
 from get_data import get_data
 # from visualize import visualize
 
-
-def get_review_mode_output_settings(json_filepath):
-    """ Get the configurations for the review mode of the tool
-
-    Args:
-        json_filepath: the filepath to the review mode configuration JSON file
-
-    Returns:
-        a dictionairy of the review_mode configuration settings
-    """
-    with open(json_filepath, 'r') as file:
-        config = json.load(file)
-    return config['review-mode_csv_filepath']
-
-
 if __name__ == "__main__":
 
     # Set-up arge parser
@@ -99,14 +84,8 @@ if __name__ == "__main__":
         instrument_name=args.instrument_name,
         output_settings_filepath=args.output_settings_file,
         reader_config_filepath=args.reader_config,
+        label_mode=args.label_mode,
         load_prior_manual_labels=args.check_manual_labels)
-
-    # If we are not in pixel labeling mode, we need to provide the settings for review mode
-    if not args.label_mode:
-        review_mode_csv_filepath = get_review_mode_output_settings(
-            args.output_settings_file)
-    else:
-        review_mode_csv_filepath = None
 
     # Forward read-in data and pass-in variable to the visualization script that will generate the GUI + necessary widgets
     #visualize(data=data_layer_dict,

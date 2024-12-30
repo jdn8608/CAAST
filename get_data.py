@@ -90,11 +90,26 @@ def get_general_output_settings(json_filepath, input_filepath):
                         config["file_type"]), config["dataset_name"]
 
 
+def get_review_mode_output_settings(json_filepath):
+    """ Get the configurations for the review mode of the tool
+
+      Args:
+          json_filepath: the filepath to the review mode configuration JSON file
+
+      Returns:
+          a dictionairy of the review_mode configuration settings
+      """
+    with open(json_filepath, 'r') as file:
+        config = json.load(file)
+    return config['review-mode_csv_filepath']
+
+
 def get_data(
     parent_dir,
     instrument_name,
     output_settings_filepath,
     reader_config_filepath,
+    label_mode=False,
     load_prior_manual_labels=False,
 ):
     """Calls get sub-functions to ingest various data(sets) for the toolkit
@@ -120,6 +135,12 @@ def get_data(
     # Get the filepath and dataset name to save out pixel labels
     output_filepath_convention, dataset_name = get_general_output_settings(
         output_settings_filepath, input_filepath)
+
+    if label_mode:
+        review_csv_filepath = get_review_mode_output_settings(
+            output_settings_filepath)
+    else:
+        review_csv_filepath = None
 
     if load_prior_manual_labels:
         # read_labels(output_filename_convention, views=config["view"])
