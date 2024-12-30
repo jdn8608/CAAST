@@ -130,7 +130,7 @@ def get_data(
             config = json.load(file)
 
     # Get instrument NumPy Layer data (and input file location)
-    data_layer_dict, input_filepath = get_instrument_layer_data(
+    data_layer_dict, input_filepath, shape = get_instrument_layer_data(
         parent_dir, instrument_name, config)
 
     # Get the filepath and dataset name to save out pixel labels
@@ -165,5 +165,5 @@ def get_data(
         notes = None
 
     return output_filepath_convention, config["view"], config[
-        "angle"], data_layer_dict, scene_attrs, (review_grade, review_status,
+        "angle"], data_layer_dict, shape, scene_attrs, (review_grade, review_status,
                                                  notes)

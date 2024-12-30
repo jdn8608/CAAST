@@ -214,4 +214,4 @@ def read(parent_dir,
     if add_cloud_mask:
         data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
 
-    return data_layer_dict, filepath.replace(view, '<view>')
+    return data_layer_dict, filepath.replace(view, '<view>'), band_data.shape
