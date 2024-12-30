@@ -88,8 +88,15 @@ if __name__ == "__main__":
         label_mode=args.label_mode,
         load_prior_manual_labels=args.check_manual_labels)
 
-    create_tool(data_layer_dict, shape, output_filepath, views, angles,
-                scene_attrs, review_data)
+    create_tool(data_layer_dict,
+                shape,
+                output_filepath,
+                views,
+                angles,
+                scene_attrs,
+                review_data,
+                load_labels_name=args.load_labels if args.label_mode else '',
+                config_filepath=args.vis_config)
 
     # Forward read-in data and pass-in variable to the visualization script that will generate the GUI + necessary widgets
     #visualize(data=data_layer_dict,
