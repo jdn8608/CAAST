@@ -12,7 +12,6 @@
 						"2": "haze",
 						"3": "smoke"
 					},
-	"scene_labels"		:	["cirrus","cumulus","sub-pixel_cumulus","smoke","aerosols","dark cloud","snow", "glint"],
 	"button_location"	:	"bottom",
 	"slider_location"	:	"right",
 	"legend_location"	:	"top",
