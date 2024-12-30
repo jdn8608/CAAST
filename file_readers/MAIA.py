@@ -119,6 +119,7 @@ def create_nan_mask(band_data):
 
     Returns:
         a NumPy array of shape (HEIGHT,WIDTH) indicating where nan values are found
+        an updated band_data, where NaN values are replaced with a value of 0.
     """
     # MAIA uses -999, -998, or NaN as values indicating no data present
     # Each value indicates different out of bound conditions
@@ -132,7 +133,7 @@ def create_nan_mask(band_data):
 
 def read(parent_dir,
          search,
-         view,
+         views,
          bands_to_get='ALL',
          add_cloud_mask=False,
          add_nan_mask=True,
@@ -165,16 +166,16 @@ def read(parent_dir,
         band_names = format_band_names(bands_to_get)
 
     # Intialize NumPy arrays
-    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(view)))
+    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(views)))
     if add_cloud_mask:
-        cloud_masks = np.zeros((Y_DIM, X_DIM, len(view)))
+        cloud_masks = np.zeros((Y_DIM, X_DIM, len(views)))
     if add_nan_mask:
-        nan_masks = np.zeros((Y_DIM, X_DIM, len(view)))
+        nan_masks = np.zeros((Y_DIM, X_DIM, len(views)))
 
     # Loop through all views
-    for i, v in enumerate(view):
+    for i, view in enumerate(views):
         # Find the file
-        filepath = find_file(parent_dir, search, view=v)
+        filepath = find_file(parent_dir, search, view=view)
 
         # Open file
         hdf_file = h5.File(filepath, 'r')
@@ -214,4 +215,4 @@ def read(parent_dir,
         data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
 
     quit()
-    return multiangle_data, bands, cloud_masks, path
+    return data_layer_dict, filepath.replace(view, '<view>')

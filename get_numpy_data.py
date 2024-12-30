@@ -28,7 +28,8 @@ def get_data(parent_dir, instrument_name, reader_config_filepath=None):
         reader_config_filepath: filepath to the JSON file for extra configurations that may be needed by the file reader
 
      Returns:
-        the output from the file reader call (see README for guidelines)
+        the output from the file reader call: a dictionary of instrument data and a filepath to input files
+        (see README for guidelines)
     """
     # Open the file reader configuration JSON file into a dict
     if reader_config_filepath:
@@ -41,13 +42,14 @@ def get_data(parent_dir, instrument_name, reader_config_filepath=None):
     # Select and call the file reader based on the str name
     file_reader = reader_dict.get(instrument_name, None)
     if file_reader:
-        return file_reader(parent_dir,
-                           search=config["filename_search_string"],
-                           view=config["view"],
-                           bands_to_get=config["bands"],
-                           add_cloud_mask=config["load_labels"].upper()=="CLOUD MASK",
-                           add_nan_mask=config["create_nan_mask"]
-                           ), config["view"], config["angle"]
+        return file_reader(
+            parent_dir,
+            search=config["filename_search_string"],
+            views=config["view"],
+            bands_to_get=config["bands"],
+            add_cloud_mask=config["load_labels"].upper() == "CLOUD MASK",
+            add_nan_mask=config["create_nan_mask"]
+        ), config["view"], config["angle"]
     else:
         # Raise an exception if no file reader is found for the given name
         raise Exception(f'''file reader not found for instrument name: 
