@@ -214,5 +214,4 @@ def read(parent_dir,
     if add_cloud_mask:
         data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
 
-    quit()
     return data_layer_dict, filepath.replace(view, '<view>')

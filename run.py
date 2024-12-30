@@ -121,9 +121,13 @@ if __name__ == "__main__":
     # Compile args passed in from the command line by the user
     args = parser.parse_args()
 
-    # Call get_data() to get the data to visualize. This call the correct instrument filereader module to ingest the data
-    (data, band_names, prior_mask, input_filename), views, angles = get_data(
-        args.dir, args.instrument_name, reader_config_filepath=args.reader_config)
+    # Call get_data() to get the data to visualize. This calls the correct instrument filereader module to ingest the data
+    # The filereader will create a formatted dict for the ingested data -> data_layer_dict
+    (data_layer_dict, input_filename), views, angles = get_data(
+        args.dir,
+        args.instrument_name,
+        load_prior_manual_labels=args.check_manual_labels,
+        reader_config_filepath=args.reader_config)
 
     # Get the filepath and dataset name to save out pixel labels
     output_filename, dataset_name = get_general_output_settings(
@@ -137,15 +141,13 @@ if __name__ == "__main__":
         review_mode_csv_filepath = None
 
     # Forward read-in data and pass-in variable to the visualization script that will generate the GUI + necessary widgets
-    visualize(data=data,
-              band_names=band_names,
-              output_filepath=output_filename,
-              label_mode=args.label_mode,
-              review_mode_csv_filepath=review_mode_csv_filepath,
-              prior_mask=prior_mask,
-              prior_manual_labels=args.check_manual_labels,
-              load_labels=args.load_labels,
-              dataset_name=dataset_name,
-              vis_config_file=args.vis_config,
-              views=views,
-              angles=angles)
+    #visualize(data=data_layer_dict,
+    #          output_filepath=output_filename,
+    #          label_mode=args.label_mode,
+    #          review_mode_csv_filepath=review_mode_csv_filepath,
+    #          prior_manual_labels=args.check_manual_labels,
+    #          load_labels=args.load_labels,
+    #          dataset_name=dataset_name,
+    #          vis_config_file=args.vis_config,
+    #          views=views,
+    #          angles=angles)

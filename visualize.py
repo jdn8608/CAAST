@@ -19,11 +19,9 @@ import warnings
 
 
 def visualize(data,
-              band_names,
               output_filepath,
               review_mode_csv_filepath='./labels/cloud_mask_review.csv',
               label_mode=False,
-              prior_mask=False,
               prior_manual_labels=False,
               load_labels=None,
               dataset_name=None,
@@ -34,6 +32,8 @@ def visualize(data,
     viewer = napari.Viewer(show=False)
     #viewer.window._qt_window.showFullScreen()
     viewer.show()
+
+    quit()
 
     bottom_tabs = QTabWidget()
     bottom_tabs.setTabPosition(QTabWidget.North)

@@ -1,9 +1,12 @@
 """
 This module determines which instrument file reader to call to ingest data for visualization and calls it accordingly 
 """
-import file_readers
-import numpy as np
 import json
+
+import numpy as np
+
+import file_readers
+from widgets.read_write_outputs import read_labels
 
 
 def create_instrument_dict():
@@ -19,7 +22,10 @@ def create_instrument_dict():
     return reader_dict
 
 
-def get_data(parent_dir, instrument_name, reader_config_filepath=None):
+def get_data(parent_dir,
+             instrument_name,
+             load_prior_manual_labels=False,
+             reader_config_filepath=None):
     """Calls the corresponding module to ingest instrument imager data
 
      Args:
@@ -42,14 +48,16 @@ def get_data(parent_dir, instrument_name, reader_config_filepath=None):
     # Select and call the file reader based on the str name
     file_reader = reader_dict.get(instrument_name, None)
     if file_reader:
-        return file_reader(
+        data_layer_dict, output_filename_convention = file_reader(
             parent_dir,
             search=config["filename_search_string"],
             views=config["view"],
             bands_to_get=config["bands"],
             add_cloud_mask=config["load_labels"].upper() == "CLOUD MASK",
-            add_nan_mask=config["create_nan_mask"]
-        ), config["view"], config["angle"]
+            add_nan_mask=config["create_nan_mask"])
+        if load_prior_manual_labels:
+            pass
+        # , config["view"], config["angle"]
     else:
         # Raise an exception if no file reader is found for the given name
         raise Exception(f'''file reader not found for instrument name: 
