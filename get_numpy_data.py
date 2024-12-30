@@ -57,7 +57,8 @@ def get_data(parent_dir,
             add_nan_mask=config["create_nan_mask"])
         if load_prior_manual_labels:
             pass
-        # , config["view"], config["angle"]
+        return data_layer_dict, output_filename_convention, config[
+            "view"], config["angle"]
     else:
         # Raise an exception if no file reader is found for the given name
         raise Exception(f'''file reader not found for instrument name: 

@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
     # Call get_data() to get the data to visualize. This calls the correct instrument filereader module to ingest the data
     # The filereader will create a formatted dict for the ingested data -> data_layer_dict
-    (data_layer_dict, input_filename), views, angles = get_data(
+    data_layer_dict, input_filename, views, angles = get_data(
         args.dir,
         args.instrument_name,
         load_prior_manual_labels=args.check_manual_labels,
