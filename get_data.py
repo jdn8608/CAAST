@@ -7,6 +7,7 @@ import os
 import numpy as np
 
 import file_readers
+from file_readers import LayerType
 from util_files.read_write_outputs import read_labels
 
 
@@ -136,14 +137,33 @@ def get_data(
     output_filepath_convention, dataset_name = get_general_output_settings(
         output_settings_filepath, input_filepath)
 
-    if label_mode:
+    # If we are not in pixel labeling mode, we need to provide the settings for review mode
+    if not label_mode:
         review_csv_filepath = get_review_mode_output_settings(
             output_settings_filepath)
+        print(review_csv_filepath)
     else:
         review_csv_filepath = None
 
+    # If flag is on, attempt to find and read prior manual label file(s)
     if load_prior_manual_labels:
-        # read_labels(output_filename_convention, views=config["view"])
-        pass
+        manual_labels, scene_attrs, review_grade, review_status, notes = read_labels(
+            output_filepath=output_filepath_convention,
+            dataset_name=dataset_name,
+            views=config["view"],
+            review_filepath=review_csv_filepath,
+            scene_attrs=config["scene_labels"])
+
+        # add the prior manual labels to the data layer dict
+        data_layer_dict["Manual Labels"] = (LayerType.MANUAL_LABELS,
+                                            manual_labels)
+
+    else:
+        # If flag is off, set default values
+        scene_attrs = config["scene_labels"]
+        review_grade = None
+        review_status = None
+        notes = None
+
     return data_layer_dict, output_filepath_convention, config["view"], config[
         "angle"]
