@@ -16,18 +16,20 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
     # filled by a instrument layer
     try:
         edit_data = np.zeros(data.shape, dtype=int) + int(load_labels_name)
-        edit_data_override = True 
+        edit_data_override = True
     except:
         editing_data = None
         edit_data_override = False
 
     # Empty list for all image type layers
     # Initial size of the shape provided from data ingestion (spectral dim)
-    im_layers = []*shape[2]
+    im_layers = [] * shape[2]
     # Image data NumPy array
     im_data = np.zeros(shape)
     im_iter = 0
 
+    # Loop through all layers by their name and add them to the viewer with the correct
+    # widget formatting/connections for other widgets
     for layer_name in data_layer_dict.keys():
         layer_type, data = data_layer_dict[layer_name]
 
@@ -56,7 +58,8 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             current_layer.editable = False  # do not allow for editing
 
             # Check to see if current layer is initial editing labels set by user
-            if not edit_data_override and layer_name.upper() == load_labels_name.upper():
+            if not edit_data_override and layer_name.upper(
+            ) == load_labels_name.upper():
                 editing_data = data.astype(int)
 
     # Check to see if editing data was found... if not, store as zeros
@@ -64,13 +67,14 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
         # ambigous name was provided (not found)
         warnings.warn(
             "load_labels settings string was not found in the naming convetions"
-            "for the layers loaded. \nPlease refine the string entered you would "
+            " for the layers loaded. \nPlease refine the string entered you would "
             "like initial labels loaded for editing.\nTo view the naming conventions"
             " of the loaded layers, turn verbose on. \n "
             "Loading zeros into the Editing Layer for now.",
             category=UserWarning)
         edit_data = np.zeros(data.shape, dtype=int)
 
+    # Add editing_data as an editing layer to the viewer
     if load_labels_name:
         editing_layer = viewer.add_labels(editing_data[..., 0],
                                           name='Editing',
