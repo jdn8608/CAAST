@@ -3,6 +3,7 @@ import os
 
 from file_readers.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
+from widgets.create_sliders import create_sliders
 
 import numpy as np
 import napari
@@ -23,7 +24,7 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
 
     # Empty list for all image type layers
     # Initial size of the shape provided from data ingestion (spectral dim)
-    im_layers = [] * shape[2]
+    im_layers = [None] * shape[2]
     # Image data NumPy array
     im_data = np.zeros(shape)
     im_iter = 0
@@ -35,9 +36,10 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
 
         # If Gray band, add a layer with a gray-scale colormap
         if layer_type is LayerType.GRAY_BAND:
-            viewer.add_image(data[..., 0],
-                             name=layer_name,
-                             colormap=band_colormap)
+            current_layer = viewer.add_image(data[..., 0],
+                                             name=layer_name,
+                                             colormap=band_colormap)
+            im_layers[im_iter] = current_layer
             im_data[..., im_iter, :] = data
             im_iter += 1
 
@@ -58,8 +60,8 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             current_layer.editable = False  # do not allow for editing
 
             # Check to see if current layer is initial editing labels set by user
-            if not edit_data_override and layer_name.upper(
-            ) == load_labels_name.upper():
+            if (not edit_data_override) and \
+                (layer_name.upper() == load_labels_name.upper()):
                 editing_data = data.astype(int)
 
     # Check to see if editing data was found... if not, store as zeros
@@ -80,10 +82,7 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
                                           name='Editing',
                                           colormap=label_colormap)
 
-    print('here')
-    print(im_layers)
-    print(im_data.shape)
-    return editing_data, editing_layer, im_data, im_layers
+    return (editing_data, editing_layer), (im_data, im_layers)
 
 
 def create_tool(data_layer_dict,
@@ -105,10 +104,22 @@ def create_tool(data_layer_dict,
     #viewer.window._qt_window.showFullScreen()
     viewer.show()
 
-    add_layers(data_layer_dict,
+    (edit_np, edit_layer), \
+        (im_np, im_layers) = add_layers(data_layer_dict,
                shape,
                viewer,
                config,
                load_labels_name=load_labels_name)
+
+    min_max_slider, min_max_layout = create_sliders(
+        option=int(config["min_max_slider_option"]),
+        # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
+        viewer=viewer,
+        layers=im_layers,
+        data=im_np)
+
+    viewer.window.add_dock_widget(min_max_layout,
+                                  name="Min-Max Range Slider",
+                                  area=config["slider_location"])
 
     napari.run()
