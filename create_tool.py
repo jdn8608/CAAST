@@ -12,7 +12,6 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
     band_colormap, label_colormap, mask_colormap, nan_colormap = get_all_colormaps(
         config)
 
-
     # Check if the fill value is an int, if now, set-up for checking if layer to be
     # filled by a instrument layer
     try:
@@ -22,6 +21,13 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
         editing_data = None
         edit_data_override = False
 
+    # Empty list for all image type layers
+    # Initial size of the shape provided from data ingestion (spectral dim)
+    im_layers = []*shape[2]
+    # Image data NumPy array
+    im_data = np.zeros(shape)
+    im_iter = 0
+
     for layer_name in data_layer_dict.keys():
         layer_type, data = data_layer_dict[layer_name]
 
@@ -30,6 +36,8 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             viewer.add_image(data[..., 0],
                              name=layer_name,
                              colormap=band_colormap)
+            im_data[..., im_iter, :] = data
+            im_iter += 1
 
         # If not an image-type layer, process as labels
         else:
@@ -52,7 +60,7 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
                 editing_data = data.astype(int)
 
     # Check to see if editing data was found... if not, store as zeros
-    elif editing_data is None and load_labels_name:
+    if editing_data is None and load_labels_name:
         # ambigous name was provided (not found)
         warnings.warn(
             "load_labels settings string was not found in the naming convetions"
@@ -68,7 +76,10 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
                                           name='Editing',
                                           colormap=label_colormap)
 
-    return editing_data
+    print('here')
+    print(im_layers)
+    print(im_data.shape)
+    return editing_data, editing_layer, im_data, im_layers
 
 
 def create_tool(data_layer_dict,
