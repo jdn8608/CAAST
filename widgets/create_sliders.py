@@ -4,7 +4,7 @@ from qtpy.QtWidgets import QVBoxLayout, QWidget, QSlider, QLabel, QScrollArea, Q
 import numpy as np
 
 
-def create_sliders(option, viewer, layers, data, band_names):
+def create_sliders(option, viewer, layers, data):
     """ creates and returns slider(s) (either Selection or Layer-based sliders) to be added to a napari viewer
 
     Args:
@@ -12,7 +12,6 @@ def create_sliders(option, viewer, layers, data, band_names):
         viewer : a pointer to the napari viewer object (only to be referenced by the Selection Slider widget) 
         layers : band layers from the instrument to allow slider functionality for
         data : the NumPy data array for the band data
-        band_names : corresponding names of band to used by slider naming conventions
 
     Returns:
         slider_widget : object of the slider widget created
@@ -28,13 +27,12 @@ def create_sliders(option, viewer, layers, data, band_names):
         sliders = []
         layout = QVBoxLayout()
         for i, layer in enumerate(layers):
-            if band_names[i] != "No Retrieval":
-                slider_widget = LayerMinMaxSlider(
-                    layer,
-                    override_max=np.nanmax(data[:, :, i, :]),
-                    override_min=np.nanmin(data[:, :, i, :]))
-                layout.addWidget(slider_widget)
-                sliders.append(slider_widget)
+            slider_widget = LayerMinMaxSlider(
+                layer,
+                override_max=np.nanmax(data[:, :, i, :]),
+                override_min=np.nanmin(data[:, :, i, :]))
+            layout.addWidget(slider_widget)
+            sliders.append(slider_widget)
 
         # Add the sliders to a scrollable widget (if they don't all fit on screen)
         container = QWidget()
