@@ -122,7 +122,21 @@ def get_data(
             to load, what kind of data to load, etc. Config dict is passed if there are additional
             details need for an instrument besides the standardized pass-in vars.
 
-
+    Returns:
+        (output_filepath_convention, dataset_name) : the output_filepath and the name of the dataset
+            to keep where the user wants to save files out to
+        views : the names of the views for this insturment
+        angles : the view angle for each view of this instrument
+        data_layer_dict :  a dictionairy, where the keys are the name of the layer data for the
+            tool/visualization, and the values are tuples of (layer type, NumPy data array).
+        scene_attrs : a list or dict. If list, the attributes wanted to create scene-level labels
+            by the user. If a dict, the dictionary of these attributes and past labels provided
+            by the user.
+        review_csv_filepath : the filepath to the csv file for review mode grading. None if not in
+            review mode.
+        (review_grade, review_status) : the past review grade and approve/reject status of this scene
+            if previously graded. If not or not in review mode, the default value is None.
+        notes : a string of the user's last notes if created. If not, default value is None
     """
     # Open the file reader configuration JSON file into a dict
     if reader_config_filepath:
@@ -164,5 +178,5 @@ def get_data(
         review_status = None
         notes = None
 
-    return output_filepath_convention, config["view"], config["angle"], data_layer_dict, \
+    return (output_filepath_convention, dataset_name), config["view"], config["angle"], data_layer_dict, \
         shape, scene_attrs, review_csv_filepath, (review_grade, review_status), notes
