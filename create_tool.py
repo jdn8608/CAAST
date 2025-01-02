@@ -2,15 +2,17 @@ import json
 import os
 
 import numpy as np
+
 import napari
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel, QTextEdit
 
 from file_readers.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
 from widgets.create_sliders import create_sliders
 from widgets.PointOfViewNavigator import PointOfViewNavigator
+from widgets.SubmitButtons import create_save_button
 
 
 def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
@@ -103,6 +105,24 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
         (label_list, label_layers)
 
 
+def create_notes_tab(bottom_tabs, output_filepath, prior_notes=None):
+    # Notes Tab
+    notes_tab_widget = QWidget()
+    notes_layout = QVBoxLayout()
+    notes_widget = QTextEdit()
+    if prior_notes is None:
+        notes_widget.setPlaceholderText("Write your notes here...")
+    else:
+        notes_widget.setPlainText(prior_notes)
+    save_button = create_save_button(button_text="Save Notes",
+                                     output_filepath=output_filepath,
+                                     notes_textbox=notes_widget)
+    notes_layout.addWidget(notes_widget)
+    notes_layout.addWidget(save_button)
+    notes_tab_widget.setLayout(notes_layout)
+    bottom_tabs.addTab(notes_tab_widget, "Notes")
+
+
 def create_tool(data_layer_dict,
                 shape,
                 output_filepath,
@@ -110,6 +130,7 @@ def create_tool(data_layer_dict,
                 angles,
                 scene_attrs,
                 review_data,
+                notes,
                 load_labels_name='',
                 config_filepath='./util_files/default_vizconfig.json'):
 
@@ -122,7 +143,8 @@ def create_tool(data_layer_dict,
     #viewer.window._qt_window.showFullScreen()
     viewer.show()
 
-    #Create Area layouts for tool widgets
+    # Create Area layouts for tool widgets
+    # Create top area and add to viewer
     top_widget = QWidget()
     top_layout = QVBoxLayout()
     top_widget.setLayout(top_layout)
@@ -130,7 +152,10 @@ def create_tool(data_layer_dict,
         top_widget,
         #name="Point of View Navigator",
         area="top")
-
+    # Create bottom area for tabs and add to viewer
+    bottom_tabs = QTabWidget()
+    bottom_tabs.setTabPosition(QTabWidget.North)
+    viewer.window.add_dock_widget(bottom_tabs, area="bottom")
 
     # Add the instrument layer data to the viewer
     (edit_np, edit_layer), \
@@ -171,6 +196,10 @@ def create_tool(data_layer_dict,
         viewer.bind_key('Left', POV_nav.go_left)
         viewer.bind_key('Right', POV_nav.go_right)
         top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
+
+    # Create Notes Tab
+    # check notes var from instrument returnable
+    create_notes_tab(bottom_tabs, output_filepath, prior_notes=notes)
 
     # Open the viewer window to the user
     napari.run()
