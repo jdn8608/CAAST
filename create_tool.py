@@ -86,7 +86,7 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             # Check to see if current layer is initial editing labels set by user
             if (not edit_data_override) and \
                 (layer_name.upper() == load_labels_name.upper()):
-                editing_data = data
+                editing_data = data.copy()
 
     # Check to see if editing data was found... if not, store as zeros
     if editing_data is None and load_labels_name:
