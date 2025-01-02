@@ -1,3 +1,8 @@
+"""
+This modeule is used to create the visual tool to open and view remote sensing imager data.
+This tool can be opened in review-mode, or pixel-labeling mode, changing the functuonality
+and widgets loaded into the tool.
+"""
 import json
 import os
 
@@ -305,6 +310,36 @@ def create_tool(label_mode,
                 notes,
                 load_labels_name='',
                 config_filepath='./util_files/default_vizconfig.json'):
+    """This script creates the tool for the user from calls to sub-functions and widgets
+    and connects these accordingly from the provided data.
+
+    Args:
+        label_mode          : a bool where True-> open tool in pixel editing/labeling mode;
+                            False -> open the tool in review mode.
+        data_layer_dict     : a dictionary where the keys are the names of the layer, and the
+                            values are tuples of the LayerType Enum and the corresponding NumPy 
+                            data. This is the imagery and labels provided for visualization.
+        shape               : the shape of the band imagery in data_layer_dict
+        output_file_info    : a tuple where [0] is the output filepath convention, and [2]
+                            is the dataset name
+        views               : a list of the names of the views for the instrument data loaded
+        angles              : the viewing angles for each view
+        scene_attrs         : a list or dict of the scene attributes to load. If None, the 
+                            scene labeling tab will not be loaded
+        csv_filpeath        : the filepath the csv file to record the review mode entries from
+                            the user.
+        review_data         : a tuple where [0] is the review grade and [1] is the review status
+                            saved last for this scene. If Nones, the user has not edited this
+                            scene yet.
+        notes               : loaded notes if they were previously taken for this scene by a user
+        load_labels_name    : the string of the name of the layer in the keys of data_layer_dict
+                            entered by the user to pre-load for editing labels
+        config_filepath     : filepath to the visualization config file for various settings to
+                            change how the tool works and is created.
+
+    Returns:
+        Opens the Napari software with the data pre-loaded and extra widgets to the user
+    """
 
     output_filepath, dataset_name = output_file_info
 
