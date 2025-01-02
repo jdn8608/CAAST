@@ -1,12 +1,16 @@
 import json
 import os
 
+import numpy as np
+import napari
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QFont
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel
+
 from file_readers.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
 from widgets.create_sliders import create_sliders
-
-import numpy as np
-import napari
+from widgets.PointOfViewNavigator import PointOfViewNavigator
 
 
 def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
@@ -29,6 +33,12 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
     im_data = np.zeros(shape)
     im_iter = 0
 
+    # Create an empty lists for the points to the label layer objects
+    label_layers = []
+    # Create an empty list for the pointers to the label data
+    # the entries are the np arrays
+    label_list = []
+
     # Loop through all layers by their name and add them to the viewer with the correct
     # widget formatting/connections for other widgets
     for layer_name in data_layer_dict.keys():
@@ -45,6 +55,7 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
 
         # If not an image-type layer, process as labels
         else:
+            data = data.astype(int)
             # Determine which color map to use for labels
             if layer_type is LayerType.CLOUD_MASK:
                 current_colormap = mask_colormap
@@ -54,15 +65,19 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
                 current_colormap = nan_colormap
 
             # Add labels layer to viewer
-            current_layer = viewer.add_labels(data[..., 0].astype(int),
+            current_layer = viewer.add_labels(data[..., 0],
                                               name=layer_name,
                                               colormap=current_colormap)
             current_layer.editable = False  # do not allow for editing
 
+            # Append the layer and np data arrays to the corresponding lists
+            label_layers.append(current_layer)
+            label_list.append(data)
+
             # Check to see if current layer is initial editing labels set by user
             if (not edit_data_override) and \
                 (layer_name.upper() == load_labels_name.upper()):
-                editing_data = data.astype(int)
+                editing_data = data
 
     # Check to see if editing data was found... if not, store as zeros
     if editing_data is None and load_labels_name:
@@ -81,8 +96,11 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
         editing_layer = viewer.add_labels(editing_data[..., 0],
                                           name='Editing',
                                           colormap=label_colormap)
+        label_layers.append(editing_layer)
+        label_list.append(editing_data)
 
-    return (editing_data, editing_layer), (im_data, im_layers)
+    return (editing_data, editing_layer), (im_data, im_layers), \
+        (label_list, label_layers)
 
 
 def create_tool(data_layer_dict,
@@ -104,22 +122,55 @@ def create_tool(data_layer_dict,
     #viewer.window._qt_window.showFullScreen()
     viewer.show()
 
+    #Create Area layouts for tool widgets
+    top_widget = QWidget()
+    top_layout = QVBoxLayout()
+    top_widget.setLayout(top_layout)
+    viewer.window.add_dock_widget(
+        top_widget,
+        #name="Point of View Navigator",
+        area="top")
+
+
+    # Add the instrument layer data to the viewer
     (edit_np, edit_layer), \
-        (im_np, im_layers) = add_layers(data_layer_dict,
+        (im_np, im_layers), (label_list, label_layers) = add_layers(data_layer_dict,
                shape,
                viewer,
                config,
                load_labels_name=load_labels_name)
 
+    # Add Min/Max Slider for Image Layers
     min_max_slider, min_max_layout = create_sliders(
         option=int(config["min_max_slider_option"]),
         # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
         viewer=viewer,
         layers=im_layers,
         data=im_np)
-
     viewer.window.add_dock_widget(min_max_layout,
                                   name="Min-Max Range Slider",
-                                  area=config["slider_location"])
+                                  area='right')
 
+    if im_np.shape[-1] > 1:
+        # create title for top of POV nav widget
+        POV_title = QLabel("Point of View Navigator",
+                           alignment=Qt.AlignCenter,
+                           font=QFont("Arial", weight=QFont.Bold))
+        top_layout.addWidget(POV_title)  # add to top layout
+        # Create the POV nav to iterate through view angles
+        POV_nav = PointOfViewNavigator(im_layers=im_layers,
+                                       min_max_slider=min_max_slider,
+                                       im_data=im_np,
+                                       label_layers=label_layers,
+                                       label_data=label_list,
+                                       view_text=views,
+                                       angles=angles)
+        # Connect viewer's key events to this widget
+        # left arrow -> goes to next left view
+        # right arrow -> goes to next right view
+        viewer.bind_key('Left', POV_nav.go_left)
+        viewer.bind_key('Right', POV_nav.go_right)
+        top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
+
+    # Open the viewer window to the user
     napari.run()
