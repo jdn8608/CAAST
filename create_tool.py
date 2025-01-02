@@ -105,21 +105,37 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
         (label_list, label_layers)
 
 
-def create_notes_tab(bottom_tabs, output_filepath, prior_notes=None):
-    # Notes Tab
+def add_notes_tab(bottom_tabs, output_filepath, prior_notes=None):
+    """Function will create and add a note taking widget at the bottom of 
+    the screen (in the bottom tab area) for the user to be allowed to take notes
+    of the scene they are viewing, in both review or editing/labeling modes
+
+    Args:
+        bottom_tabs : a QTabWidget located at the bottom area of the toolkit to add tabs to 
+        output_filepath : the filepath to write output files to (as a formatted string)
+        prior_notes : a string representing past notes taken by user(s) to pre-load the notes
+            widget with. If not provided, then no prior text will be loaded.
+    """
     notes_tab_widget = QWidget()
     notes_layout = QVBoxLayout()
+    # Create the TextEdit Widget to let users type in
     notes_widget = QTextEdit()
+    # If there are no prior notes, put placeholder text
     if prior_notes is None:
         notes_widget.setPlaceholderText("Write your notes here...")
+    # Otherwise, fill with prior notes text
     else:
         notes_widget.setPlainText(prior_notes)
+    # Add Notes save button
     save_button = create_save_button(button_text="Save Notes",
                                      output_filepath=output_filepath,
                                      notes_textbox=notes_widget)
+    # Add to the widget layout/object
     notes_layout.addWidget(notes_widget)
     notes_layout.addWidget(save_button)
     notes_tab_widget.setLayout(notes_layout)
+
+    # Add as a tab at bottom of tool
     bottom_tabs.addTab(notes_tab_widget, "Notes")
 
 
@@ -198,7 +214,6 @@ def create_tool(data_layer_dict,
         top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
 
     # Create Notes Tab
-    # check notes var from instrument returnable
     create_notes_tab(bottom_tabs, output_filepath, prior_notes=notes)
 
     # Open the viewer window to the user
