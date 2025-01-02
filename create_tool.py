@@ -12,7 +12,7 @@ from file_readers.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
 from widgets.create_sliders import create_sliders
 from widgets.PointOfViewNavigator import PointOfViewNavigator
-from widgets.SubmitButtons import create_save_button
+from widgets.SubmitButtons import create_save_button, create_scene_dropdowns
 
 
 def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
@@ -139,6 +139,42 @@ def add_notes_tab(bottom_tabs, output_filepath, prior_notes=None):
     bottom_tabs.addTab(notes_tab_widget, "Notes")
 
 
+def add_scene_label_tab(bottom_tabs, output_filepath, scene_labels):
+    """Creates and adds a new tab to the bottom tab area for labeling whether
+    specific attributes are present within the scene. This is done by adding
+    a grid of drowndrop widgets for each attribute.
+
+    Args:
+        bottom_tabs : a QTabWidget located at the bottom area of the toolkit to add tabs to 
+        output_filepath : the filepath to write output files to (as a formatted string)
+        scene_labels : a list of types of attributes to add (setting default values), or a
+            dictionary of keys of attributes, within initial values as dict values
+    """
+    # Scene Labels Tab
+    scenelabels_widget = QWidget()
+    scenelabels_layout = QVBoxLayout()
+    if isinstance(scene_labels, list):
+        scene_labels_dict, scenelabels_grid_layout = create_scene_dropdowns(
+            scene_labels)
+    elif isinstance(scene_labels, dict):
+        scene_labels_dict, scenelabels_grid_layout = create_scene_dropdowns(
+            list(scene_labels.keys()), priors=list(scene_labels.values()))
+    else:
+        raise Exception(
+            "Scene Attributes/Labels provided from file reader is of invalid type.\n"
+            "The scene_attribute variable should be a list attributes or dict with "
+            "keys as the attributes and values as prior labels/initial values set.\n"
+            "See README for more detials")
+    scenelabels_layout.addLayout(scenelabels_grid_layout)
+    scenelabels_save_button = create_save_button(
+        button_text="Save Scene Labels",
+        output_filepath=output_filepath,
+        scene_labels_dict=scene_labels_dict)
+    scenelabels_layout.addWidget(scenelabels_save_button)
+    scenelabels_widget.setLayout(scenelabels_layout)
+    bottom_tabs.addTab(scenelabels_widget, "Scene Labels")
+
+
 def create_tool(data_layer_dict,
                 shape,
                 output_filepath,
@@ -192,6 +228,7 @@ def create_tool(data_layer_dict,
                                   name="Min-Max Range Slider",
                                   area='right')
 
+    # If there are multiple view-angles found, add a POV Slider to navigate them
     if im_np.shape[-1] > 1:
         # create title for top of POV nav widget
         POV_title = QLabel("Point of View Navigator",
@@ -214,7 +251,10 @@ def create_tool(data_layer_dict,
         top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
 
     # Create Notes Tab
-    create_notes_tab(bottom_tabs, output_filepath, prior_notes=notes)
+    add_notes_tab(bottom_tabs, output_filepath, prior_notes=notes)
+
+    #Create Scene Labeling Dropdown Tab
+    add_scene_label_tab(bottom_tabs, output_filepath, scene_attrs)
 
     # Open the viewer window to the user
     napari.run()
