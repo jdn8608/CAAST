@@ -112,13 +112,12 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
         (label_list, label_layers)
 
 
-def add_notes_tab(bottom_tabs, output_filepath, prior_notes=None):
-    """Function will create and add a note taking widget at the bottom of 
-    the screen (in the bottom tab area) for the user to be allowed to take notes
-    of the scene they are viewing, in both review or editing/labeling modes
+def get_notes_tab(output_filepath, prior_notes=None):
+    """Create and return a note taking widget for the bottom of the user to
+    be allowed to take notes of the scene they are viewing, in both review or
+    editing/labeling modes
 
     Args:
-        bottom_tabs : a QTabWidget located at the bottom area of the toolkit to add tabs to 
         output_filepath : the filepath to write output files to (as a formatted string)
         prior_notes : a string representing past notes taken by user(s) to pre-load the notes
             widget with. If not provided, then no prior text will be loaded.
@@ -142,29 +141,36 @@ def add_notes_tab(bottom_tabs, output_filepath, prior_notes=None):
     notes_layout.addWidget(save_button)
     notes_tab_widget.setLayout(notes_layout)
 
-    # Add as a tab at bottom of tool
-    bottom_tabs.addTab(notes_tab_widget, "Notes")
+    # Return the tab to be added to the tabs widget
+    return notes_tab_widget
 
 
-def add_scene_label_tab(bottom_tabs, output_filepath, scene_labels):
-    """Creates and adds a new tab to the bottom tab area for labeling whether
+def get_scene_label_tab(output_filepath, scene_labels):
+    """Creates and returns a new tab to the bottom tab area for labeling whether
     specific attributes are present within the scene. This is done by adding
     a grid of drowndrop widgets for each attribute.
 
     Args:
-        bottom_tabs : a QTabWidget located at the bottom area of the toolkit to add tabs to 
         output_filepath : the filepath to write output files to (as a formatted string)
         scene_labels : a list of types of attributes to add (setting default values), or a
             dictionary of keys of attributes, within initial values as dict values
+
+    Returns:
+        the scene labels tab widget
+
+    Exception:
+        if scene_labels is not a list or dict, throw an exception to the user and hault.
     """
-    # Scene Labels Tab
-    scenelabels_widget = QWidget()
-    scenelabels_layout = QVBoxLayout()
+    # Create the Scene Labels Tab widget and layout
+    scene_labels_widget = QWidget()
+    scene_labels_layout = QVBoxLayout()
+
+    # Check if the scene_labels are a list or dict and create the dropdowns accordingly
     if isinstance(scene_labels, list):
-        scene_labels_dict, scenelabels_grid_layout = create_scene_dropdowns(
+        scene_labels_dict, scene_labels_grid_layout = create_scene_dropdowns(
             scene_labels)
     elif isinstance(scene_labels, dict):
-        scene_labels_dict, scenelabels_grid_layout = create_scene_dropdowns(
+        scene_labels_dict, scene_labels_grid_layout = create_scene_dropdowns(
             list(scene_labels.keys()), priors=list(scene_labels.values()))
     else:
         raise Exception(
@@ -172,17 +178,26 @@ def add_scene_label_tab(bottom_tabs, output_filepath, scene_labels):
             "The scene_attribute variable should be a list attributes or dict with "
             "keys as the attributes and values as prior labels/initial values set.\n"
             "See README for more detials")
-    scenelabels_layout.addLayout(scenelabels_grid_layout)
-    scenelabels_save_button = create_save_button(
+
+    # Add the scene labels to the layout
+    scene_labels_layout.addLayout(scene_labels_grid_layout)
+
+    # Create and connect a buttom to save out the contents of the dropdowns
+    scene_labels_save_button = create_save_button(
         button_text="Save Scene Labels",
         output_filepath=output_filepath,
         scene_labels_dict=scene_labels_dict)
-    scenelabels_layout.addWidget(scenelabels_save_button)
-    scenelabels_widget.setLayout(scenelabels_layout)
-    bottom_tabs.addTab(scenelabels_widget, "Scene Labels")
+    # Add the save button to the layout
+    scene_labels_layout.addWidget(scene_labels_save_button)
+
+    # Set the tab widget to the create layout
+    scene_labels_widget.setLayout(scene_labels_layout)
+
+    # Return the scene labels tab widget
+    return scene_labels_widget
 
 
-def add_pixellabel_tool_tab(bottom_tabs, output_filepath, data_pointer, views,
+def get_pixellabel_tool_tab(output_filepath, data_pointer, views,
                             dataset_name):
     """Create and return the pixel labeling/editing tool tab.
 
@@ -192,7 +207,7 @@ def add_pixellabel_tool_tab(bottom_tabs, output_filepath, data_pointer, views,
         views : the name of the views for this instrument.
         dataset_name : the dataset_name for saving out the file..
     """
-    # Create and set-up layout
+    # Create and Set-up the editing tab widget and layout
     editing_widget = QWidget()
     editing_layout = QVBoxLayout()
     # Create and connect the save pixel labels buttons
@@ -204,26 +219,24 @@ def add_pixellabel_tool_tab(bottom_tabs, output_filepath, data_pointer, views,
     # Add the button to the tab
     editing_layout.addWidget(label_save_button)
     editing_widget.setLayout(editing_layout)
-    bottom_tabs.addTab(editing_widget, "Editing")
 
+    # return the editing tab widget
     return editing_widget
 
 
-def add_review_mode_tab(bottom_tabs,
-                        output_filepath,
+def get_review_mode_tab(output_filepath,
                         csv_filepath,
                         review_data=None,
                         min_val=1,
                         max_val=5):
-    """Add the review mode tab if we are in review mode. This tab will have an approve or reject
-    dropdown menu, a 'Grade Slider', and a save/submit buttom to record the values of these
+    """Create and return the review mode tab if we are in review mode. This tab will have an approve
+    or reject dropdown menu, a 'Grade Slider', and a save/submit buttom to record the values of these
     sub-wigdets. The dropdown menu allows a user to approve or reject labels (cloud mask) for a
     given scene... functionally flaggin if the scene labels need to be edited later. Furthermore,
     the use can use the Grade Slider to describe the quality of the labels, where higher the value
     means the labels are excellent. Then the save button records these into a CSV file.
 
     Args:
-        bottom_tabs : a QTabWidget located at the bottom area of the toolkit to add tabs to 
         output_filepath : the filepath to write output files to (as a formatted string)
         csv_filpeath :  the filepath to the csv file to record this scene's entry
         review_data :  a tuple containing (review_grade, review_status). These sub-values are used
@@ -231,6 +244,9 @@ def add_review_mode_tab(bottom_tabs,
             by the user.
         min_val : the minimum value for the grade slider. default value of 1.
         max_val : the maximum value for the grade slider. default value of 5.
+
+    Return:
+        the review mode tab widget
     """
 
     # Ensure that the review_data is a tuple and not none to get the sub-values
@@ -241,7 +257,7 @@ def add_review_mode_tab(bottom_tabs,
         review_grade = None
         review_status = None
 
-    # initialize widget area and layout
+    # initialize review mode tab widget area and layout
     review_tab_widget = QWidget()
     review_layout = QHBoxLayout()
 
@@ -273,8 +289,8 @@ def add_review_mode_tab(bottom_tabs,
     review_layout.addWidget(gs)
     review_tab_widget.setLayout(review_layout)
 
-    # Add the wiget to the bottom tab area
-    bottom_tabs.addTab(review_tab_widget, "Review")
+    # return the review tab widget
+    return review_tab_widget
 
 
 def create_tool(label_mode,
@@ -357,32 +373,38 @@ def create_tool(label_mode,
         viewer.bind_key('Right', POV_nav.go_right)
         top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
 
-    # Create Notes Tab
-    add_notes_tab(bottom_tabs, output_filepath, prior_notes=notes)
+    # Create and add the Notes Tab to the bottom tab area
+    bottom_tabs.addTab(get_notes_tab(output_filepath, prior_notes=notes),
+                       "Notes")
 
     # Create Scene Labeling Dropdown Tab
-    add_scene_label_tab(bottom_tabs, output_filepath, scene_attrs)
+    if scene_attrs:
+        bottom_tabs.addTab(get_scene_label_tab(output_filepath, scene_attrs),
+                           "Scene Labeling")
 
     # If Label/Editing Mode, load the Labeling Tool tab
     if label_mode:
-        add_pixellabel_tool_tab(bottom_tabs, output_filepath, edit_np, views,
-                                dataset_name)
+        bottom_tabs.addTab(
+            get_pixellabel_tool_tab(output_filepath, edit_np, views,
+                                    dataset_name), "Pixel Tools")
     # Otherwise, load the Review Mode tab
     else:
         if isinstance(config["grade_slider_min"], int) and \
         isinstance(config["grade_slider_max"],int) and \
         config["grade_slider_min"] < config["grade_slider_max"]:
-            add_review_mode_tab(bottom_tabs,
-                                output_filepath,
-                                csv_filepath,
-                                review_data=review_data,
-                                min_val=config["grade_slider_min"],
-                                max_val=config["grade_slider_max"])
+            bottom_tabs.addTab(
+                get_review_mode_tab(output_filepath,
+                                    csv_filepath,
+                                    review_data=review_data,
+                                    min_val=config["grade_slider_min"],
+                                    max_val=config["grade_slider_max"]),
+                "Review Grading")
         else:
-            add_review_mode_tab(bottom_tabs,
-                                output_filepath,
-                                csv_filepath,
-                                review_data=review_data)
+            bottom_tabs.addTab(
+                get_review_mode_tab(output_filepath,
+                                    csv_filepath,
+                                    review_data=review_data), \
+                "Review Grading")
 
     # Open the viewer window to the user
     napari.run()
