@@ -6,13 +6,14 @@ import numpy as np
 import napari
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel, QTextEdit
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel, QTextEdit, QComboBox
 
 from file_readers.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
 from widgets.create_sliders import create_sliders
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 from widgets.SubmitButtons import create_save_button, create_scene_dropdowns
+from widgets.GradeSlider import GradeSlider
 
 
 def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
@@ -26,7 +27,13 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
         edit_data_override = True
     except:
         editing_data = None
-        edit_data_override = False
+        editing_layer = None
+        # If there is a load labels name provided (not None), then search for it
+        if load_labels_name:
+            edit_data_override = False
+        # Otherwise, there is no editing labels to load (in review mode)
+        else:
+            edit_data_override = True
 
     # Empty list for all image type layers
     # Initial size of the shape provided from data ingestion (spectral dim)
@@ -175,12 +182,82 @@ def add_scene_label_tab(bottom_tabs, output_filepath, scene_labels):
     bottom_tabs.addTab(scenelabels_widget, "Scene Labels")
 
 
-def create_tool(data_layer_dict,
+def add_review_mode_tab(bottom_tabs,
+                        output_filepath,
+                        csv_filepath,
+                        review_data=None,
+                        min_val=1,
+                        max_val=5):
+    """Add the review mode tab if we are in review mode. This tab will have an approve or reject
+    dropdown menu, a 'Grade Slider', and a save/submit buttom to record the values of these
+    sub-wigdets. The dropdown menu allows a user to approve or reject labels (cloud mask) for a
+    given scene... functionally flaggin if the scene labels need to be edited later. Furthermore,
+    the use can use the Grade Slider to describe the quality of the labels, where higher the value
+    means the labels are excellent. Then the save button records these into a CSV file.
+
+    Args:
+        bottom_tabs : a QTabWidget located at the bottom area of the toolkit to add tabs to 
+        output_filepath : the filepath to write output files to (as a formatted string)
+        csv_filpeath :  the filepath to the csv file to record this scene's entry
+        review_data :  a tuple containing (review_grade, review_status). These sub-values are used
+            to provide initial values of the Grade Slider and dropdown widgets from prior grading
+            by the user.
+        min_val : the minimum value for the grade slider. default value of 1.
+        max_val : the maximum value for the grade slider. default value of 5.
+    """
+
+    # Ensure that the review_data is a tuple and not none to get the sub-values
+    if review_data is not None and isinstance(review_data, tuple):
+        # Seperate out the review data
+        review_grade, review_status = review_data
+    else:
+        review_grade = None
+        review_status = None
+
+    # initialize widget area and layout
+    review_tab_widget = QWidget()
+    review_layout = QHBoxLayout()
+
+    # Create left side layout
+    left_review_vbox = QVBoxLayout()
+
+    # Create a dropdown box to approve or reject the current scene
+    dropdown = QComboBox()
+    dropdown.addItems(["Ungraded", "Approve", "Reject"])
+    dropdown.setCurrentText(
+        review_status if review_status is not None else "Ungraded")
+    dropdown.setFixedWidth(300)
+
+    # Create a review grade slider
+    gs = GradeSlider(min_val, max_val, 1,
+                     review_grade if review_grade is not None else 1)
+
+    # Create a save button for the review mode slider/labels
+    review_save_button = create_save_button(button_text="Save Review Labels",
+                                            output_filepath=output_filepath,
+                                            review_csv_filepath=csv_filepath,
+                                            review_dropdown=dropdown,
+                                            review_grader=gs)
+
+    # Set layout of the tab
+    left_review_vbox.addWidget(dropdown)
+    left_review_vbox.addWidget(review_save_button)
+    review_layout.addLayout(left_review_vbox)
+    review_layout.addWidget(gs)
+    review_tab_widget.setLayout(review_layout)
+
+    # Add the wiget to the bottom tab area
+    bottom_tabs.addTab(review_tab_widget, "Review")
+
+
+def create_tool(label_mode,
+                data_layer_dict,
                 shape,
                 output_filepath,
                 views,
                 angles,
                 scene_attrs,
+                csv_filepath,
                 review_data,
                 notes,
                 load_labels_name='',
@@ -211,11 +288,12 @@ def create_tool(data_layer_dict,
 
     # Add the instrument layer data to the viewer
     (edit_np, edit_layer), \
-        (im_np, im_layers), (label_list, label_layers) = add_layers(data_layer_dict,
-               shape,
-               viewer,
-               config,
-               load_labels_name=load_labels_name)
+        (im_np, im_layers), \
+        (label_list, label_layers) = add_layers(data_layer_dict,
+                                               shape,
+                                               viewer,
+                                               config,
+                                               load_labels_name=load_labels_name if label_mode else '')
 
     # Add Min/Max Slider for Image Layers
     min_max_slider, min_max_layout = create_sliders(
@@ -253,8 +331,26 @@ def create_tool(data_layer_dict,
     # Create Notes Tab
     add_notes_tab(bottom_tabs, output_filepath, prior_notes=notes)
 
-    #Create Scene Labeling Dropdown Tab
+    # Create Scene Labeling Dropdown Tab
     add_scene_label_tab(bottom_tabs, output_filepath, scene_attrs)
+
+    if label_mode:
+        pass
+    else:
+        if isinstance(config["grade_slider_min"], int) and \
+        isinstance(config["grade_slider_max"],int) and \
+        config["grade_slider_min"] < config["grade_slider_max"]:
+            add_review_mode_tab(bottom_tabs,
+                                output_filepath,
+                                csv_filepath,
+                                review_data=review_data,
+                                min_val=config["grade_slider_min"],
+                                max_val=config["grade_slider_max"])
+        else:
+            add_review_mode_tab(bottom_tabs,
+                                output_filepath,
+                                csv_filepath,
+                                review_data=review_data)
 
     # Open the viewer window to the user
     napari.run()

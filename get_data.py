@@ -165,4 +165,4 @@ def get_data(
         notes = None
 
     return output_filepath_convention, config["view"], config["angle"], data_layer_dict, \
-        shape, scene_attrs, (review_grade, review_status), notes
+        shape, scene_attrs, review_csv_filepath, (review_grade, review_status), notes
