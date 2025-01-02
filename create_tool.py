@@ -182,6 +182,33 @@ def add_scene_label_tab(bottom_tabs, output_filepath, scene_labels):
     bottom_tabs.addTab(scenelabels_widget, "Scene Labels")
 
 
+def add_pixellabel_tool_tab(bottom_tabs, output_filepath, data_pointer, views,
+                            dataset_name):
+    """Create and return the pixel labeling/editing tool tab.
+
+    Args:
+        output_filepath : the filepath to write output files to (as a formatted string).
+        data_pointer : pointer to the editing data NumPy array.
+        views : the name of the views for this instrument.
+        dataset_name : the dataset_name for saving out the file..
+    """
+    # Create and set-up layout
+    editing_widget = QWidget()
+    editing_layout = QVBoxLayout()
+    # Create and connect the save pixel labels buttons
+    label_save_button = create_save_button(button_text="Save Pixel Labels",
+                                           output_filepath=output_filepath,
+                                           labels_layer=data_pointer,
+                                           instrument_views=views,
+                                           dataset_name=dataset_name)
+    # Add the button to the tab
+    editing_layout.addWidget(label_save_button)
+    editing_widget.setLayout(editing_layout)
+    bottom_tabs.addTab(editing_widget, "Editing")
+
+    return editing_widget
+
+
 def add_review_mode_tab(bottom_tabs,
                         output_filepath,
                         csv_filepath,
@@ -253,7 +280,7 @@ def add_review_mode_tab(bottom_tabs,
 def create_tool(label_mode,
                 data_layer_dict,
                 shape,
-                output_filepath,
+                output_file_info,
                 views,
                 angles,
                 scene_attrs,
@@ -262,6 +289,8 @@ def create_tool(label_mode,
                 notes,
                 load_labels_name='',
                 config_filepath='./util_files/default_vizconfig.json'):
+
+    output_filepath, dataset_name = output_file_info
 
     # Load Visualizaiton Config File
     with open(config_filepath, "r") as file:
@@ -334,8 +363,11 @@ def create_tool(label_mode,
     # Create Scene Labeling Dropdown Tab
     add_scene_label_tab(bottom_tabs, output_filepath, scene_attrs)
 
+    # If Label/Editing Mode, load the Labeling Tool tab
     if label_mode:
-        pass
+        add_pixellabel_tool_tab(bottom_tabs, output_filepath, edit_np, views,
+                                dataset_name)
+    # Otherwise, load the Review Mode tab
     else:
         if isinstance(config["grade_slider_min"], int) and \
         isinstance(config["grade_slider_max"],int) and \

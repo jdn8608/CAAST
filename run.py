@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
     # Call get_data() to get the data to visualize. This calls the correct instrument filereader module to ingest the data
     # The filereader will create a formatted dict for the ingested data -> data_layer_dict
-    output_filepath, views, angles, data_layer_dict, shape, \
+    output_file_info, views, angles, data_layer_dict, shape, \
         scene_attrs, review_csv_filepath, review_data, notes = get_data(
             parent_dir=args.dir,
             instrument_name=args.instrument_name,
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     create_tool(args.label_mode,
                 data_layer_dict,
                 shape,
-                output_filepath,
+                output_file_info,
                 views,
                 angles,
                 scene_attrs,
