@@ -11,7 +11,7 @@ import numpy as np
 import napari
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel, QTextEdit, QComboBox
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QLabel, QTextEdit, QComboBox
 
 from file_readers.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
@@ -202,8 +202,11 @@ def get_scene_label_tab(output_filepath, scene_labels):
     return scene_labels_widget
 
 
-def get_pixellabel_tool_tab(output_filepath, data_pointer, views,
-                            dataset_name):
+def get_pixellabel_tool_tab(output_filepath,
+                            data_pointer,
+                            views,
+                            dataset_name,
+                            controls=None):
     """Create and return the pixel labeling/editing tool tab.
 
     Args:
@@ -211,10 +214,14 @@ def get_pixellabel_tool_tab(output_filepath, data_pointer, views,
         data_pointer : pointer to the editing data NumPy array.
         views : the name of the views for this instrument.
         dataset_name : the dataset_name for saving out the file..
+        controls : optional parameter to provide the dock layer controls to move them
+            from the left side of the screen to this tab.
     """
     # Create and Set-up the editing tab widget and layout
     editing_widget = QWidget()
-    editing_layout = QVBoxLayout()
+    main_layout = QVBoxLayout()
+    sub_layout = QHBoxLayout()
+
     # Create and connect the save pixel labels buttons
     label_save_button = create_save_button(button_text="Save Pixel Labels",
                                            output_filepath=output_filepath,
@@ -222,8 +229,17 @@ def get_pixellabel_tool_tab(output_filepath, data_pointer, views,
                                            instrument_views=views,
                                            dataset_name=dataset_name)
     # Add the button to the tab
-    editing_layout.addWidget(label_save_button)
-    editing_widget.setLayout(editing_layout)
+    main_layout.addWidget(label_save_button)
+
+    # if the dock layer controls are provided, add them to this tab
+    if controls is not None:
+        # Add controls to the lower portion of the tab
+        sub_layout.addWidget(controls)
+
+    # Add the sub to the main
+    main_layout.addLayout(sub_layout)
+    # Set the tab layout to the main
+    editing_widget.setLayout(main_layout)
 
     # return the editing tab widget
     return editing_widget
@@ -233,7 +249,8 @@ def get_review_mode_tab(output_filepath,
                         csv_filepath,
                         review_data=None,
                         min_val=1,
-                        max_val=5):
+                        max_val=5,
+                        controls=None):
     """Create and return the review mode tab if we are in review mode. This tab will have an approve
     or reject dropdown menu, a 'Grade Slider', and a save/submit buttom to record the values of these
     sub-wigdets. The dropdown menu allows a user to approve or reject labels (cloud mask) for a
@@ -249,6 +266,8 @@ def get_review_mode_tab(output_filepath,
             by the user.
         min_val : the minimum value for the grade slider. default value of 1.
         max_val : the maximum value for the grade slider. default value of 5.
+        controls : optional parameter to provide the dock layer controls to move them
+            from the left side of the screen to this tab.
 
     Return:
         the review mode tab widget
@@ -266,8 +285,12 @@ def get_review_mode_tab(output_filepath,
     review_tab_widget = QWidget()
     review_layout = QHBoxLayout()
 
+    # if the dock layer controls are provided, add them to this tab
+    if controls is not None:
+        review_layout.addWidget(controls)
+
     # Create left side layout
-    left_review_vbox = QVBoxLayout()
+    review_vbox = QVBoxLayout()
 
     # Create a dropdown box to approve or reject the current scene
     dropdown = QComboBox()
@@ -288,9 +311,9 @@ def get_review_mode_tab(output_filepath,
                                             review_grader=gs)
 
     # Set layout of the tab
-    left_review_vbox.addWidget(dropdown)
-    left_review_vbox.addWidget(review_save_button)
-    review_layout.addLayout(left_review_vbox)
+    review_vbox.addWidget(dropdown)
+    review_vbox.addWidget(review_save_button)
+    review_layout.addLayout(review_vbox)
     review_layout.addWidget(gs)
     review_tab_widget.setLayout(review_layout)
 
@@ -417,11 +440,25 @@ def create_tool(label_mode,
         bottom_tabs.addTab(get_scene_label_tab(output_filepath, scene_attrs),
                            "Scene Labeling")
 
+    # Get the dock layer controls from the napari window
+    # NOTE: this will be depreciated in napari 0.6.0
+    # TODO: Open up an issue on GitHub and update for future napari versions
+    dock_layer_controls = viewer.window.qt_viewer.dockLayerControls
+    dock_layer_controls.setMaximumWidth(300)
+    # Create a scroll area for the dock layer controls and add it to this widget
+    layer_controls_scroll_area = QScrollArea()
+    layer_controls_scroll_area.setMaximumWidth(300)
+    layer_controls_scroll_area.setWidgetResizable(True)
+    layer_controls_scroll_area.setWidget(dock_layer_controls)
     # If Label/Editing Mode, load the Labeling Tool tab
     if label_mode:
         bottom_tabs.addTab(
-            get_pixellabel_tool_tab(output_filepath, edit_np, views,
-                                    dataset_name), "Pixel Tools")
+            get_pixellabel_tool_tab(output_filepath,
+                                    edit_np,
+                                    views,
+                                    dataset_name,
+                                    controls=layer_controls_scroll_area),
+            "Pixel Tools")
     # Otherwise, load the Review Mode tab
     else:
         if isinstance(config["grade_slider_min"], int) and \
@@ -432,14 +469,18 @@ def create_tool(label_mode,
                                     csv_filepath,
                                     review_data=review_data,
                                     min_val=config["grade_slider_min"],
-                                    max_val=config["grade_slider_max"]),
+                                    max_val=config["grade_slider_max"],
+                                    controls=layer_controls_scroll_area),
                 "Review Grading")
         else:
             bottom_tabs.addTab(
                 get_review_mode_tab(output_filepath,
                                     csv_filepath,
-                                    review_data=review_data), \
+                                    review_data=review_data,
+                                    controls=layer_controls_scroll_area), \
                 "Review Grading")
+
+    bottom_tabs.setMaximumHeight(300)
 
     # Open the viewer window to the user
     napari.run()
