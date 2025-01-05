@@ -411,11 +411,18 @@ def create_tool(label_mode,
 
     # If there are multiple view-angles found, add a POV Slider to navigate them
     if im_np.shape[-1] > 1:
+        # Create Tab widget & layout
+        POV_tab_widget = QWidget()
+        POV_tab_layout = QVBoxLayout()
+        POV_tab_widget.setLayout(POV_tab_layout)
         # create title for top of POV nav widget
         POV_title = QLabel("Point of View Navigator",
                            alignment=Qt.AlignCenter,
                            font=QFont("Arial", weight=QFont.Bold))
-        top_layout.addWidget(POV_title)  # add to top layout
+        POV_tab_layout.addWidget(POV_title)
+
+        #top_layout.addWidget(POV_title)  # add to top layout
+
         # Create the POV nav to iterate through view angles
         POV_nav = PointOfViewNavigator(im_layers=im_layers,
                                        min_max_slider=min_max_slider,
@@ -429,7 +436,9 @@ def create_tool(label_mode,
         # right arrow -> goes to next right view
         viewer.bind_key('Left', POV_nav.go_left)
         viewer.bind_key('Right', POV_nav.go_right)
-        top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
+        #top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
+        POV_tab_layout.addWidget(POV_nav)
+        bottom_tabs.addTab(POV_tab_widget, "Point of View Navigator")
 
     # Create and add the Notes Tab to the bottom tab area
     bottom_tabs.addTab(get_notes_tab(output_filepath, prior_notes=notes),
@@ -480,7 +489,7 @@ def create_tool(label_mode,
                                     controls=layer_controls_scroll_area), \
                 "Review Grading")
 
-    bottom_tabs.setMaximumHeight(300)
+    bottom_tabs.setMaximumHeight(200)
 
     # Open the viewer window to the user
     napari.run()
