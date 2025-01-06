@@ -228,7 +228,7 @@ To support a new satellite instrument, follow these steps to create a file reade
     - [x] Notes Widget Development 
 - [ ] Reading in & Visualizing Meta-data
     - [x] Re-work `read()` for file readers 
-    - [ ] Adjustments to `visualize.py`
+    - [x] Adjustments to `visualize.py`
     - [ ] Add metadata attributes to pipeline
 - [ ] Visual Additions & Fixes 
     - [ ] RGB Visualization
