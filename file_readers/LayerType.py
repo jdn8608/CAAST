@@ -1,3 +1,11 @@
+"""
+This module defines an Enum class to determine visualization and wiedget functionality 
+for NumPy data ingested for this toolkit.
+
+These labels should be used in defining data in a dictionary in the file reading process.
+
+Then is later used when layers are added to the tool in the create_tool() call.
+"""
 from enum import Enum
 
 
@@ -10,13 +18,24 @@ class LayerType(Enum):
 
     Type (Enum) Definitions and Functionality:
         GRAY_BAND       : A single band's radiance or reflectance values. This will be added as imagery
-            so that users can look at specific pixel values and filter imagery based on min/max values.
+                        so that users can look at specific pixel values and filter imagery based on
+                        min/max values.
         CLOUD_MASK      : A cloud mask to indicated clouds vs clear-sky. This layer can be added as a
-            a non-editable layer, or loaded as a starting point for an editable layer.
+                        a non-editable layer, or loaded as a starting point for an editable layer.
         NAN_MASK        : A mask indicating when NaN values are detected for pixels. This will always be
-            added as a non-editable layer.
+                        added as a non-editable layer.
         MANUAL_LABELS   : A layer loaded with prior labels created by a user, such as CLOUD_MASK labels.
-            This layer may be added as a editable or non-editable layer... or both.
+                        This layer may be added as a editable or non-editable layer... or both.
+        DTT             : "Distance to Threshold" (DTT) metric that is used within the MAIA cloud detection
+                        algorithm. This metric describes how for away an observable is from the threshold
+                        found within the decision tree. This will be added as an image layer and can be
+                        connected to DTT widgets to addjust threshold value cut-offs.
+        OBSERVABLE      : An observable used within a cloud detection algorithm. Can be added to the tool
+                        as an image and can be connect to DTT widget functionality, or threshold widget
+                        functionality.
+        SURFACE_ID      : A classifier stating the underlying surface type. Would be added as labels to
+                        the tool that are not-editable. Note that the colormap loaded by the toolkit for
+                        surfave ids should have sufficient colors for the # of ids loaded.
     """
     GRAY_BAND = 1
     CLOUD_MASK = 2
