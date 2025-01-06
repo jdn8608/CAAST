@@ -109,6 +109,19 @@ def get_cloud_mask(hdf_file):
     return cloud_mask
 
 
+def get_dtt(hdf_file):
+    """
+
+    """
+    dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
+    dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
+
+    dtt[dtt < 0] = 0
+    dtt_obs[dtt_obs < 0] = 0
+
+    return dtt, dtt_obs
+
+
 def create_nan_mask(band_data):
     """Create a mask indicating where any nan_values are found across the loaded band data.
     Note this is subjective to the data loaded... if there are nans in bands not loaded, this
@@ -137,6 +150,7 @@ def read(parent_dir,
          bands_to_get='ALL',
          add_cloud_mask=False,
          add_nan_mask=True,
+         add_dtt=True,
          config=None):
     """Finds MAIA files and reads in required data for the tool
 
@@ -171,6 +185,15 @@ def read(parent_dir,
         cloud_masks = np.zeros((Y_DIM, X_DIM, len(views)))
     if add_nan_mask:
         nan_masks = np.zeros((Y_DIM, X_DIM, len(views)))
+    if add_dtt:
+        obs_names = [
+            "R Band 6", "R Band 9", "R Band 13", "NDVI", "NDSI",
+            "Whiteness Index", "SVI"
+        ]
+        num_of_observables = len(obs_names)
+
+        dtt = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
+        dtt_obs = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
 
     # Loop through all views
     for i, view in enumerate(views):
@@ -179,6 +202,15 @@ def read(parent_dir,
 
         # Open file
         hdf_file = h5.File(filepath, 'r')
+
+        #print(len(views))
+        #print(hdf_file.keys())
+        #print('Ancillary')
+        #print(hdf_file['Ancillary'].keys())
+        #print(hdf_file['Ancillary']['scene_type_identifier'])
+
+        #print('\n\nGeomet')
+        #print(hdf_file['sun_view_geometry'].keys())
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
         if band_names is None:
@@ -191,6 +223,9 @@ def read(parent_dir,
             nan_masks[..., i], band_data[...,
                                          i] = create_nan_mask(band_data[...,
                                                                         i])
+
+        if add_dtt:
+            dtt[..., i], dtt_obs[..., i] = get_dtt(hdf_file)
 
         # Get the cloud mask
         if add_cloud_mask:
@@ -206,6 +241,18 @@ def read(parent_dir,
     for i, name in enumerate(band_names):
         data_layer_dict[str(name)] = (LayerType.GRAY_BAND, band_data[...,
                                                                      i, :])
+    shape = band_data.shape
+
+    if add_dtt:
+        shape = list(shape)
+        shape[2] += 2 * len(obs_names)
+        shape = tuple(shape)
+        for i, name in enumerate(obs_names):
+            data_layer_dict[str(name)] = (LayerType.OBSERVABLE, dtt_obs[...,
+                                                                        i, :])
+            data_layer_dict['DTT ' + str(name)] = (LayerType.DTT, dtt[...,
+                                                                      i, :])
+
     # Add the nan mask to the dict
     if add_nan_mask:
         data_layer_dict["NaN Mask"] = (LayerType.NAN_MASK, nan_masks)
@@ -214,4 +261,7 @@ def read(parent_dir,
     if add_cloud_mask:
         data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
 
-    return data_layer_dict, filepath.replace(view, '<view>'), band_data.shape
+    print(data_layer_dict.keys())
+    print(shape)
+
+    return data_layer_dict, filepath.replace(view, '<view>'), shape

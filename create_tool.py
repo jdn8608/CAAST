@@ -28,7 +28,7 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
     # Check if the fill value is an int, if now, set-up for checking if layer to be
     # filled by a instrument layer
     try:
-        edit_data = np.zeros(data.shape, dtype=int) + int(load_labels_name)
+        edit_data = np.zeros(shape, dtype=int) + int(load_labels_name)
         edit_data_override = True
     except:
         editing_data = None
@@ -67,6 +67,21 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             im_data[..., im_iter, :] = data
             im_iter += 1
 
+        elif layer_type is LayerType.DTT:
+            current_layer = viewer.add_image(data[..., 0],
+                                             name=layer_name,
+                                             colormap=band_colormap)
+            im_layers[im_iter] = current_layer
+            im_data[..., im_iter, :] = data
+            im_iter += 1
+        elif layer_type is LayerType.OBSERVABLE:
+            current_layer = viewer.add_image(data[..., 0],
+                                             name=layer_name,
+                                             colormap=band_colormap)
+            im_layers[im_iter] = current_layer
+            im_data[..., im_iter, :] = data
+            im_iter += 1
+
         # If not an image-type layer, process as labels
         else:
             data = data.astype(int)
@@ -78,20 +93,21 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             elif layer_type is LayerType.NAN_MASK:
                 current_colormap = nan_colormap
 
-            # Add labels layer to viewer
-            current_layer = viewer.add_labels(data[..., 0],
-                                              name=layer_name,
-                                              colormap=current_colormap)
-            current_layer.editable = False  # do not allow for editing
+            if current_colormap is not None:
+                # Add labels layer to viewer
+                current_layer = viewer.add_labels(data[..., 0],
+                                                  name=layer_name,
+                                                  colormap=current_colormap)
+                current_layer.editable = False  # do not allow for editing
 
-            # Append the layer and np data arrays to the corresponding lists
-            label_layers.append(current_layer)
-            label_list.append(data)
+                # Append the layer and np data arrays to the corresponding lists
+                label_layers.append(current_layer)
+                label_list.append(data)
 
-            # Check to see if current layer is initial editing labels set by user
-            if (not edit_data_override) and \
-                (layer_name.upper() == load_labels_name.upper()):
-                editing_data = data.copy()
+                # Check to see if current layer is initial editing labels set by user
+                if (not edit_data_override) and \
+                    (layer_name.upper() == load_labels_name.upper()):
+                    editing_data = data.copy()
 
     # Check to see if editing data was found... if not, store as zeros
     if editing_data is None and load_labels_name:
