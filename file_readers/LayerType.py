@@ -36,6 +36,8 @@ class LayerType(Enum):
         SURFACE_ID      : A classifier stating the underlying surface type. Would be added as labels to
                         the tool that are not-editable. Note that the colormap loaded by the toolkit for
                         surfave ids should have sufficient colors for the # of ids loaded.
+        VIEW_GEO        : Viewing Geometery (i.e., Viewing Zentih Angle, Solar Zenith Angle, etc.). Can
+                        be added as a image layer. No other functionality yet.
     """
     GRAY_BAND = 1
     CLOUD_MASK = 2
@@ -44,5 +46,4 @@ class LayerType(Enum):
     DTT = 5
     OBSERVABLE = 6
     SURFACE_ID = 7
-    SZA = 8
-    VZA = 9
+    VIEW_GEO = 8
