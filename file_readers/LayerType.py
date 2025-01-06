@@ -22,3 +22,8 @@ class LayerType(Enum):
     CLOUD_MASK = 2
     NAN_MASK = 3
     MANUAL_LABELS = 4
+    DTT = 5
+    OBSERVABLE = 6
+    SURFACE_ID = 7
+    SZA = 8
+    VZA = 9
