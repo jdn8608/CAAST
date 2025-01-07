@@ -147,15 +147,15 @@ def get_sids(hdf_file):
     return sid
 
 
-def get_view_geometery(hdf_file, attributes=[]):
-    """Get the viewing geometery data from the the MAIA file
+def get_view_geometry(hdf_file, attributes=[]):
+    """Get the viewing geometry data from the the MAIA file
 
     Args:
         hdf_file: h5 File object for the current file
         attributes : a list of attribute names in the MAIA file
 
     Returns:
-        the MAIA viewing geometery NumPy array of shape (HEIGHT, WIDTH, len(attributes))
+        the MAIA viewing geometry NumPy array of shape (HEIGHT, WIDTH, len(attributes))
     """
 
     vg = np.zeros((Y_DIM, X_DIM, len(attributes)))
@@ -243,12 +243,12 @@ def read(parent_dir,
     if add_sid:
         sid = np.zeros((Y_DIM, X_DIM, len(views)))
     if add_geom:
-        view_geometery_names = [
+        view_geometry_names = [
             'solar_azimuth_angle', 'solar_zenith_angle',
             'viewing_azimuth_angle', 'viewing_zenith_angle'
         ]
-        view_geometery = np.zeros(
-            (Y_DIM, X_DIM, len(view_geometery_names), len(views)))
+        view_geometry = np.zeros(
+            (Y_DIM, X_DIM, len(view_geometry_names), len(views)))
 
     # Loop through all views
     for i, view in enumerate(views):
@@ -279,9 +279,8 @@ def read(parent_dir,
 
         # Get the Sun-View Geometery from the MAIA file
         if add_geom:
-            view_geometery[...,
-                           i] = get_view_geometery(hdf_file,
-                                                   view_geometery_names)
+            view_geometry[..., i] = get_view_geometry(hdf_file,
+                                                      view_geometry_names)
 
         # Get the cloud mask
         if add_cloud_mask:
@@ -309,10 +308,10 @@ def read(parent_dir,
                                                                       i, :])
 
     if add_geom:
-        shape[2] += len(view_geometery_names)
-        for a, attr in enumerate(view_geometery_names):
-            data_layer_dict[attr] = (LayerType.VIEW_GEO, view_geometery[...,
-                                                                        a, :])
+        shape[2] += len(view_geometry_names)
+        for a, attr in enumerate(view_geometry_names):
+            data_layer_dict[attr] = (LayerType.VIEW_GEO, view_geometry[...,
+                                                                       a, :])
 
     # Add the nan mask to the dict
     if add_nan_mask:
