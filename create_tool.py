@@ -32,9 +32,23 @@ def add_layers(data_layer_dict,
     for down-stream widgets based on the LayerType attributes.
 
     Args:
+        data_layer_dict : a dictionary where keys are the name of the layers, and
+                        the values are tuples -> value [0] is a LayerType and value
+                        [1] is a NumPy array of the data.
+        manager         : a LayerManager widget to organize layers that are added
+                        based on namking for LayerType.
+        shape           : shape of the image type layers to visualize
+        viewer          : the napari viewer
+        config          : vis config dictionary to get visualization options like
+                        colormaps etc.
+        load_labels_name: the name of the layer to add as intial labels set by the
+                        user.
 
     Returns:
-
+        3 tuples:
+            tuple[0] -> the editing data and layer
+            tuple[1] -> a NumPy array and a list of layers for image data 
+            tuple[2] -> a list of label NumPy arrays and a list of label layers
     """
 
     (band_colormap, label_colormap, mask_colormap, nan_colormap,
