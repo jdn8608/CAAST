@@ -226,10 +226,10 @@ To support a new satellite instrument, follow these steps to create a file reade
 - [x] Review-only Mode
     - [x] Approve/Deny Labeling
     - [x] Notes Widget Development 
-- [ ] Reading in & Visualizing Meta-data
+- [x] Reading in & Visualizing Meta-data
     - [x] Re-work `read()` for file readers 
     - [x] Adjustments to `visualize.py`
-    - [ ] Add metadata attributes to pipeline
+    - [x] Add metadata attributes to pipeline
 - [ ] Visual Additions & Fixes 
     - [ ] RGB Visualization
     - [ ] Grid View Indicators
