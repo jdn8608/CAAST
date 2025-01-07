@@ -37,7 +37,6 @@ def find_file(parent_dir, search, view=''):
         r for r in glob.glob(f'{parent_dir}/{search}') if view in r
     ]
 
-    print(view)
     # If there is more than one file found, throw an Exception
     if len(search_result_files) != 1:
         raise Exception(
@@ -268,8 +267,5 @@ def read(parent_dir,
     # Add the MAIA cloud mask to the dict
     if add_cloud_mask:
         data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
-
-    print(data_layer_dict.keys())
-    print(shape)
 
     return data_layer_dict, filepath.replace(view, '<view>'), shape
