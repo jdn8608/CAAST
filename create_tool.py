@@ -508,12 +508,14 @@ def create_tool(label_mode,
     # NOTE: this will be depreciated in napari 0.6.0
     # TODO: Open up an issue on GitHub and update for future napari versions
     dock_layer_controls = viewer.window.qt_viewer.dockLayerControls
-    dock_layer_controls.setMaximumWidth(300)
+    dock_layer_controls.setMaximumHeight(300)
     # Create a scroll area for the dock layer controls and add it to this widget
-    layer_controls_scroll_area = QScrollArea()
-    layer_controls_scroll_area.setMaximumWidth(300)
-    layer_controls_scroll_area.setWidgetResizable(True)
-    layer_controls_scroll_area.setWidget(dock_layer_controls)
+    #layer_controls_scroll_area = QScrollArea()
+    #layer_controls_scroll_area.setMaximumWidth(300)
+    #layer_controls_scroll_area.setWidgetResizable(True)
+    #layer_controls_scroll_area.setWidget(dock_layer_controls)
+    layer_controls_scroll_area = None
+
     # If Label/Editing Mode, load the Labeling Tool tab
     if label_mode:
         bottom_tabs.addTab(
