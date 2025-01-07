@@ -89,6 +89,7 @@ if __name__ == "__main__":
             label_mode=args.label_mode,
             load_prior_manual_labels=args.check_manual_labels)
 
+    # Call create_tool to create and open the application
     create_tool(args.label_mode,
                 data_layer_dict,
                 shape,
@@ -101,15 +102,3 @@ if __name__ == "__main__":
                 notes,
                 load_labels_name=args.load_labels if args.label_mode else '',
                 config_filepath=args.vis_config)
-
-    # Forward read-in data and pass-in variable to the visualization script that will generate the GUI + necessary widgets
-    #visualize(data=data_layer_dict,
-    #          output_filepath=output_filename,
-    #          label_mode=args.label_mode,
-    #          review_mode_csv_filepath=review_mode_csv_filepath,
-    #          prior_manual_labels=args.check_manual_labels,
-    #          load_labels=args.load_labels,
-    #          dataset_name=dataset_name,
-    #          vis_config_file=args.vis_config,
-    #          views=views,
-    #          angles=angles)
