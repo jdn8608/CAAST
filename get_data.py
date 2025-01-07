@@ -15,7 +15,8 @@ def create_instrument_dict():
     """Function to define a dictionary of instrument file reader modules
 
     Returns:
-        a dicrtionary, where the keys are strings of instrument names and the values are the modules used to ingest that instrument's data
+        a dicrtionary, where the keys are strings of instrument names and the values are the modules 
+        used to ingest that instrument's data
     """
     reader_dict = {
         'MAIA': file_readers.MAIA.read,
@@ -47,13 +48,10 @@ def get_instrument_layer_data(parent_dir, instrument_name, config=None):
     # Select and call the file reader based on the str name
     file_reader = reader_dict.get(instrument_name, None)
     if file_reader:
-        return file_reader(
-            parent_dir,
-            search=config["filename_search_string"],
-            views=config["view"],
-            bands_to_get=config["bands"],
-            add_cloud_mask=config["load_labels"].upper() == "CLOUD MASK",
-            add_nan_mask=config["create_nan_mask"])
+        return file_reader(parent_dir,
+                           search=config["filename_search_string"],
+                           views=config["view"],
+                           config=config)
 
     else:
         # Raise an exception if no file reader is found for the given name

@@ -6,5 +6,9 @@
 	"bands" : ["ALL"],
 	"aprioi" : "None",
 	"load_labels": "cloud mask",
-    "create_nan_mask": 1
+    "create_nan_mask": 1,
+    "add_cloud_mask": 1,
+    "add_dtt" : 1,
+    "add_surface_id":1,
+    "add_sun_view_geometry":1
 }
