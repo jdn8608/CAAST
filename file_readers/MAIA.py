@@ -163,6 +163,9 @@ def get_view_geometry(hdf_file, attributes=[]):
     for a, attr in enumerate(attributes):
         vg[..., a] = np.array(hdf_file['sun_view_geometry'][attr])
 
+    # replace NaN values
+    vg[vg < 0] = 0
+
     return vg
 
 
