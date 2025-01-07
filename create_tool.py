@@ -436,6 +436,9 @@ def create_tool(label_mode,
     bottom_tabs.setTabPosition(QTabWidget.North)
     viewer.window.add_dock_widget(bottom_tabs, area="bottom")
 
+    # Set-up custom Layer Manager and remove the default dock layer list from napari
+    default_dock_layer_list = viewer.window.qt_viewer.dockLayerList
+    default_dock_layer_list.setVisible(False)
     layer_manager = LayerManager(
         napari_viewer=viewer, init_groups=[layer.value for layer in LayerType])
     viewer.window.add_dock_widget(layer_manager, area='left')
