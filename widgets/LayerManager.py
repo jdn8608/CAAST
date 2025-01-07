@@ -1,8 +1,10 @@
 from PyQt5.QtWidgets import (
     QVBoxLayout,
+    QHBoxLayout,
     QTreeWidget,
     QTreeWidgetItem,
     QCheckBox,
+    QPushButton,
     QDockWidget,
     QWidget,
 )
@@ -17,12 +19,29 @@ class LayerManager(QWidget):
         self.viewer = napari_viewer
         self.groups = {}  # Dictionary to store groups and their layers
 
-        # Create a layout and tree widget to manage groups
-        layout = QVBoxLayout()
+        # Main layout for the widget
+        main_layout = QVBoxLayout()
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderLabel("Layer Groups")
-        layout.addWidget(self.tree_widget)
-        self.setLayout(layout)
+        main_layout.addWidget(self.tree_widget)
+
+        # Buttons for controlling viewer settings
+        button_layout = QHBoxLayout()
+
+        # Toggle Grid Mode Button
+        self.grid_button = QPushButton("Toggle Grid View")
+        self.grid_button.clicked.connect(self.toggle_grid_mode)
+        button_layout.addWidget(self.grid_button)
+
+        # Reset View Button
+        self.reset_view_button = QPushButton("Reset View")
+        self.reset_view_button.clicked.connect(self.reset_view)
+        button_layout.addWidget(self.reset_view_button)
+
+        main_layout.addLayout(button_layout)
+
+        # Set the main layout
+        self.setLayout(main_layout)
 
         # Connect tree widget events
         self.tree_widget.itemChanged.connect(self.on_item_changed)
@@ -80,3 +99,11 @@ class LayerManager(QWidget):
             for layer in self.viewer.layers:
                 if layer.name == layer_name:
                     self.viewer.layers.selection = [layer]  # Select the layer
+
+    def toggle_grid_mode(self):
+        """Toggle grid mode in the viewer."""
+        self.viewer.grid.enabled = not self.viewer.grid.enabled
+
+    def reset_view(self):
+        """Reset the view to the original state."""
+        self.viewer.reset_view()
