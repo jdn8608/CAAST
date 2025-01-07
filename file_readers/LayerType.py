@@ -39,11 +39,11 @@ class LayerType(Enum):
         VIEW_GEO        : Viewing Geometery (i.e., Viewing Zentih Angle, Solar Zenith Angle, etc.). Can
                         be added as a image layer. No other functionality yet.
     """
-    GRAY_BAND = 1
-    CLOUD_MASK = 2
-    NAN_MASK = 3
-    MANUAL_LABELS = 4
-    DTT = 5
-    OBSERVABLE = 6
-    SURFACE_ID = 7
-    VIEW_GEO = 8
+    GRAY_BAND = "Band Data"
+    CLOUD_MASK = "Cloud Mask(s)"
+    NAN_MASK = "NaN Values"
+    MANUAL_LABELS = "Editing Labels"
+    DTT = "Distance to Thresholds"
+    OBSERVABLE = "Observables"
+    SURFACE_ID = "Surface Ids"
+    VIEW_GEO = "Viewing Geometery"
