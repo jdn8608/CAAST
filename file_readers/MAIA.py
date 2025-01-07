@@ -37,6 +37,7 @@ def find_file(parent_dir, search, view=''):
         r for r in glob.glob(f'{parent_dir}/{search}') if view in r
     ]
 
+    print(view)
     # If there is more than one file found, throw an Exception
     if len(search_result_files) != 1:
         raise Exception(
@@ -110,12 +111,19 @@ def get_cloud_mask(hdf_file):
 
 
 def get_dtt(hdf_file):
-    """
+    """Get the Distance to Threshold (DTT) data from the the MAIA file
 
+    Args:
+        hdf_file: h5 File object for the current file
+
+    Returns:
+        the MAIA observables and their correspondind DTT used within the MAIAcloud mask algorithm,
+        each of shape (HEIGHT, WIDTH, number of OBSERVABLES)
     """
     dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
     dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
 
+    # Filter out NaN values within the MAIA product and set to 0
     dtt[dtt < 0] = 0
     dtt_obs[dtt_obs < 0] = 0
 
