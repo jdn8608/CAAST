@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 
+/data/*
+
 # Ignore Vim swap files
 *.swp
 *.py.swp
