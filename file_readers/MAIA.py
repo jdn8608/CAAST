@@ -129,6 +129,43 @@ def get_dtt(hdf_file):
     return dtt, dtt_obs
 
 
+def get_sids(hdf_file):
+    """Get the Surface Identifier (SID) data from the the MAIA file
+
+    Args:
+        hdf_file: h5 File object for the current file
+
+    Returns:
+        the MAIA SIDs of shape (HEIGHT, WIDTH)
+    """
+
+    sid = np.array(hdf_file['Ancillary']['scene_type_identifier'])
+
+    # Replace NaN values with -1
+    sid[sid < 0] = -1
+
+    return sid
+
+
+def get_view_geometery(hdf_file, attributes=[]):
+    """Get the viewing geometery data from the the MAIA file
+
+    Args:
+        hdf_file: h5 File object for the current file
+        attributes : a list of attribute names in the MAIA file
+
+    Returns:
+        the MAIA viewing geometery NumPy array of shape (HEIGHT, WIDTH, len(attributes))
+    """
+
+    vg = np.zeros((Y_DIM, X_DIM, len(attributes)))
+
+    for a, attr in enumerate(attributes):
+        vg[..., a] = np.array(hdf_file['sun_view_geometry'][attr])
+
+    return vg
+
+
 def create_nan_mask(band_data):
     """Create a mask indicating where any nan_values are found across the loaded band data.
     Note this is subjective to the data loaded... if there are nans in bands not loaded, this
@@ -158,6 +195,8 @@ def read(parent_dir,
          add_cloud_mask=False,
          add_nan_mask=True,
          add_dtt=True,
+         add_sid=True,
+         add_geom=True,
          config=None):
     """Finds MAIA files and reads in required data for the tool
 
@@ -201,6 +240,15 @@ def read(parent_dir,
 
         dtt = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
         dtt_obs = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
+    if add_sid:
+        sid = np.zeros((Y_DIM, X_DIM, len(views)))
+    if add_geom:
+        view_geometery_names = [
+            'solar_azimuth_angle', 'solar_zenith_angle',
+            'viewing_azimuth_angle', 'viewing_zenith_angle'
+        ]
+        view_geometery = np.zeros(
+            (Y_DIM, X_DIM, len(view_geometery_names), len(views)))
 
     # Loop through all views
     for i, view in enumerate(views):
@@ -209,15 +257,6 @@ def read(parent_dir,
 
         # Open file
         hdf_file = h5.File(filepath, 'r')
-
-        #print(len(views))
-        #print(hdf_file.keys())
-        #print('Ancillary')
-        #print(hdf_file['Ancillary'].keys())
-        #print(hdf_file['Ancillary']['scene_type_identifier'])
-
-        #print('\n\nGeomet')
-        #print(hdf_file['sun_view_geometry'].keys())
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
         if band_names is None:
@@ -230,9 +269,19 @@ def read(parent_dir,
             nan_masks[..., i], band_data[...,
                                          i] = create_nan_mask(band_data[...,
                                                                         i])
-
+        # Get DTT and Observables from the MAIA file
         if add_dtt:
             dtt[..., i], dtt_obs[..., i] = get_dtt(hdf_file)
+
+        # Get the Surface IDS from the MAIA file
+        if add_sid:
+            sid[..., i] = get_sids(hdf_file)
+
+        # Get the Sun-View Geometery from the MAIA file
+        if add_geom:
+            view_geometery[...,
+                           i] = get_view_geometery(hdf_file,
+                                                   view_geometery_names)
 
         # Get the cloud mask
         if add_cloud_mask:
@@ -248,24 +297,35 @@ def read(parent_dir,
     for i, name in enumerate(band_names):
         data_layer_dict[str(name)] = (LayerType.GRAY_BAND, band_data[...,
                                                                      i, :])
-    shape = band_data.shape
+    # Get the band_data shape and cast as a list if a dim needs to be edited
+    shape = list(band_data.shape)
 
     if add_dtt:
-        shape = list(shape)
         shape[2] += 2 * len(obs_names)
-        shape = tuple(shape)
         for i, name in enumerate(obs_names):
             data_layer_dict[str(name)] = (LayerType.OBSERVABLE, dtt_obs[...,
                                                                         i, :])
             data_layer_dict['DTT ' + str(name)] = (LayerType.DTT, dtt[...,
                                                                       i, :])
 
+    if add_geom:
+        shape[2] += len(view_geometery_names)
+        for a, attr in enumerate(view_geometery_names):
+            data_layer_dict[attr] = (LayerType.VIEW_GEO, view_geometery[...,
+                                                                        a, :])
+
     # Add the nan mask to the dict
     if add_nan_mask:
         data_layer_dict["NaN Mask"] = (LayerType.NAN_MASK, nan_masks)
 
+    if add_sid:
+        data_layer_dict["Surface IDS"] = (LayerType.SURFACE_ID, sid)
+
     # Add the MAIA cloud mask to the dict
     if add_cloud_mask:
         data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
+
+    # Reset shape to an immutable tuple
+    shape = tuple(shape)
 
     return data_layer_dict, filepath.replace(view, '<view>'), shape

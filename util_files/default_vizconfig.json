@@ -13,6 +13,7 @@
 						"2": "haze",
 						"3": "smoke"
 					},
+    "surf_colormap"     :   "custom_SID1",
 	"button_location"	:	"bottom",
 	"slider_location"	:	"right",
 	"legend_location"	:	"top",

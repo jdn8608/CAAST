@@ -37,8 +37,8 @@ def add_layers(data_layer_dict,
 
     """
 
-    band_colormap, label_colormap, mask_colormap, nan_colormap = get_all_colormaps(
-        config)
+    (band_colormap, label_colormap, mask_colormap, nan_colormap,
+     surf_colormap) = get_all_colormaps(config)
 
     # Check if the fill value is an int, if now, set-up for checking if layer to be
     # filled by a instrument layer
@@ -73,8 +73,9 @@ def add_layers(data_layer_dict,
     for layer_name in data_layer_dict.keys():
         layer_type, data = data_layer_dict[layer_name]
 
-        # If Gray band, add a layer with a gray-scale colormap
-        if layer_type is LayerType.GRAY_BAND:
+        # If regular image layer, add a layer with a gray-scale colormap
+        if layer_type in (LayerType.GRAY_BAND, LayerType.VIEW_GEO,
+                          LayerType.LAT_LON):
             current_layer = viewer.add_image(data[..., 0],
                                              name=layer_name,
                                              colormap=band_colormap)
@@ -85,6 +86,7 @@ def add_layers(data_layer_dict,
             im_data[..., im_iter, :] = data
             im_iter += 1
 
+        # DTT layers will have additional functionality later on
         elif layer_type is LayerType.DTT:
             current_layer = viewer.add_image(data[..., 0],
                                              name=layer_name,
@@ -95,6 +97,7 @@ def add_layers(data_layer_dict,
             im_layers[im_iter] = current_layer
             im_data[..., im_iter, :] = data
             im_iter += 1
+        # OBSERVABLE layers will have additional functionality later on
         elif layer_type is LayerType.OBSERVABLE:
             current_layer = viewer.add_image(data[..., 0],
                                              name=layer_name,
@@ -116,6 +119,8 @@ def add_layers(data_layer_dict,
                 current_colormap = label_colormap
             elif layer_type is LayerType.NAN_MASK:
                 current_colormap = nan_colormap
+            elif layer_type is LayerType.SURFACE_ID:
+                current_colormap = surf_colormap
 
             if current_colormap is not None:
                 # Add labels layer to viewer
