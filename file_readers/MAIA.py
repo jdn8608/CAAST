@@ -302,6 +302,7 @@ def read(parent_dir,
     # Get the band_data shape and cast as a list if a dim needs to be edited
     shape = list(band_data.shape)
 
+    # Add DTT and OBSERVABLES to the dict
     if add_dtt:
         shape[2] += 2 * len(obs_names)
         for i, name in enumerate(obs_names):
@@ -310,6 +311,7 @@ def read(parent_dir,
             data_layer_dict['DTT ' + str(name)] = (LayerType.DTT, dtt[...,
                                                                       i, :])
 
+    # Add Sun-View Geometry to the dict
     if add_geom:
         shape[2] += len(view_geometry_names)
         for a, attr in enumerate(view_geometry_names):
