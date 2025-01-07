@@ -16,12 +16,27 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrol
 from file_readers.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
 from widgets.create_sliders import create_sliders
+from widgets.LayerManager import LayerManager
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 from widgets.SubmitButtons import create_save_button, create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
 
 
-def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
+def add_layers(data_layer_dict,
+               manager,
+               shape,
+               viewer,
+               config,
+               load_labels_name=''):
+    """Add imaage and label layers to the napari viewer, and providing connectors
+    for down-stream widgets based on the LayerType attributes.
+
+    Args:
+
+    Returns:
+
+    """
+
     band_colormap, label_colormap, mask_colormap, nan_colormap = get_all_colormaps(
         config)
 
@@ -63,6 +78,9 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             current_layer = viewer.add_image(data[..., 0],
                                              name=layer_name,
                                              colormap=band_colormap)
+            # Add the layer to the correct group in the layer manager
+            manager.add_layer_to_group(layer_type.value, current_layer)
+
             im_layers[im_iter] = current_layer
             im_data[..., im_iter, :] = data
             im_iter += 1
@@ -71,6 +89,9 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             current_layer = viewer.add_image(data[..., 0],
                                              name=layer_name,
                                              colormap=band_colormap)
+            # Add the layer to the correct group in the layer manager
+            manager.add_layer_to_group(layer_type.value, current_layer)
+
             im_layers[im_iter] = current_layer
             im_data[..., im_iter, :] = data
             im_iter += 1
@@ -78,6 +99,9 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
             current_layer = viewer.add_image(data[..., 0],
                                              name=layer_name,
                                              colormap=band_colormap)
+            # Add the layer to the correct group in the layer manager
+            manager.add_layer_to_group(layer_type.value, current_layer)
+
             im_layers[im_iter] = current_layer
             im_data[..., im_iter, :] = data
             im_iter += 1
@@ -99,6 +123,9 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
                                                   name=layer_name,
                                                   colormap=current_colormap)
                 current_layer.editable = False  # do not allow for editing
+
+                # Add the layer to the correct group in the layer manager
+                manager.add_layer_to_group(layer_type.value, current_layer)
 
                 # Append the layer and np data arrays to the corresponding lists
                 label_layers.append(current_layer)
@@ -126,6 +153,10 @@ def add_layers(data_layer_dict, shape, viewer, config, load_labels_name=''):
         editing_layer = viewer.add_labels(editing_data[..., 0],
                                           name='Editing',
                                           colormap=label_colormap)
+        # Add the layer to the correct group in the layer manager
+        manager.add_layer_to_group(LayerType.MANUAL_LABELS.value,
+                                   editing_layer)
+
         label_layers.append(editing_layer)
         label_list.append(editing_data)
 
@@ -405,10 +436,15 @@ def create_tool(label_mode,
     bottom_tabs.setTabPosition(QTabWidget.North)
     viewer.window.add_dock_widget(bottom_tabs, area="bottom")
 
+    layer_manager = LayerManager(
+        napari_viewer=viewer, init_groups=[layer.value for layer in LayerType])
+    viewer.window.add_dock_widget(layer_manager, area='left')
+
     # Add the instrument layer data to the viewer
     (edit_np, edit_layer), \
         (im_np, im_layers), \
         (label_list, label_layers) = add_layers(data_layer_dict,
+                                               layer_manager,
                                                shape,
                                                viewer,
                                                config,
