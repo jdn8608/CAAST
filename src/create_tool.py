@@ -16,9 +16,11 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrol
 from util.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
 from widgets.create_sliders import create_sliders
+
 from widgets.LayerManager import LayerManager
 from widgets.PointOfViewNavigator import PointOfViewNavigator
-from widgets.SubmitButtons import create_save_button, create_scene_dropdowns
+from widgets.SubmitButtons import create_save_button
+from widgets.SceneLabelGrid import create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
 
 
