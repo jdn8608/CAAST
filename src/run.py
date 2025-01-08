@@ -16,6 +16,16 @@ import os
 from util.get_data import get_data
 from util.create_tool import create_tool
 
+# Meta-data for file
+__author__ = "Joseph Nied"
+__credits__ = ["Joseph Nied"]
+__copyright__ = "Copyright 2007"
+__license__ = "GPL"
+__version__ = "3.0"
+__maintainer__ = "Joseph Nied"
+__email__ = "jdnied2@illinois.edu"
+__status__ = "Production"
+
 if __name__ == "__main__":
 
     # Set-up arge parser
