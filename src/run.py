@@ -12,9 +12,9 @@ import argparse
 import json
 import os
 
-from get_data import get_data
-from create_tool import create_tool
-# from visualize import visualize
+# Import util scripts
+from util.get_data import get_data
+from util.create_tool import create_tool
 
 if __name__ == "__main__":
 
