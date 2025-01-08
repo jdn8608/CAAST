@@ -1,7 +1,9 @@
+import numpy as np
+
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QSlider, QLabel, QScrollArea, QFrame
+
 from widgets.SelectionMinMaxSlider import SelectionMinMaxSlider
 from widgets.LayerMinMaxSlider import LayerMinMaxSlider
-from qtpy.QtWidgets import QVBoxLayout, QWidget, QSlider, QLabel, QScrollArea, QFrame
-import numpy as np
 
 
 def create_sliders(option, viewer, layers, data):
