@@ -48,7 +48,7 @@ if __name__ == "__main__":
         '--output_settings_file',
         help=
         "file containing the output settings to save the labels created by the user. See the README for more details.",
-        default='./util/output_settings_default.json')
+        default='./settings/output_settings_default.json')
     parser.add_argument(
         '-r',
         '--reader_config',
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         '--vis_config',
         help=
         "Path to a JSON file for additional information and options to use by the visualization script/software.",
-        default='./util/default_vizconfig.json')
+        default='./settings/default_vizconfig.json')
     parser.add_argument(
         '-c',
         '--check_manual_labels',

@@ -14,7 +14,7 @@ def _get_custom_colormap(option, plural=False):
     Returns:
         a dictionary of the custom colormap
     """
-    with open('./util_files/custom_colormaps.json', "r") as file:
+    with open('./settings/custom_colormaps.json', "r") as file:
         custom_colormaps = json.load(file)
     return {
         int(key): [float(item) for item in values]

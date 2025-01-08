@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QComboBox, QPushButton, QWidget, QLabel
-from util_files.read_write_outputs import save_labels
+from util.read_write_outputs import save_labels
 
 
 def create_save_button(button_text,
