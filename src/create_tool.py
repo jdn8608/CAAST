@@ -13,7 +13,7 @@ from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QLabel, QTextEdit, QComboBox
 
-from file_readers.LayerType import LayerType
+from util.LayerType import LayerType
 from widgets.colormaps import get_all_colormaps
 from widgets.create_sliders import create_sliders
 from widgets.LayerManager import LayerManager

@@ -5,7 +5,7 @@ import h5py as h5
 import numpy as np
 from tqdm import tqdm
 
-from file_readers.LayerType import LayerType
+from util.LayerType import LayerType
 
 X_DIM = 360
 Y_DIM = 480

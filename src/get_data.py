@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 import file_readers
-from file_readers.LayerType import LayerType
+from util.LayerType import LayerType
 from util.read_write_outputs import read_labels
 
 
