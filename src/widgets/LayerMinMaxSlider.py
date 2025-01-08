@@ -29,7 +29,7 @@ class LayerMinMaxSlider(QWidget):
 
         # Min and Max text boxes
         self.min_textbox = QLineEdit()
-        nself.min_textbox.setPlaceholderText("Min")
+        self.min_textbox.setPlaceholderText("Min")
         self.min_textbox.returnPressed.connect(self.update_contrast_from_text)
         layout.addWidget(self.min_textbox)
 
