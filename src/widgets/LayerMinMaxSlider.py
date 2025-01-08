@@ -1,3 +1,6 @@
+"""
+This module is used to create a min max slider for a specific layer
+"""
 import napari
 import numpy as np
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QLabel, QLineEdit
@@ -26,7 +29,7 @@ class LayerMinMaxSlider(QWidget):
 
         # Min and Max text boxes
         self.min_textbox = QLineEdit()
-        self.min_textbox.setPlaceholderText("Min")
+        nself.min_textbox.setPlaceholderText("Min")
         self.min_textbox.returnPressed.connect(self.update_contrast_from_text)
         layout.addWidget(self.min_textbox)
 

@@ -1,3 +1,8 @@
+"""
+This module creates a grade slider widget.
+
+This widget is used to "Grade" scenes' cloud mask labels on an integer scale (not-continous).
+"""
 from PyQt5.QtGui import QPainter, QFontMetrics
 from PyQt5.QtWidgets import QSlider, QStyleOptionSlider, QStyle, QHBoxLayout, QVBoxLayout, QWidget
 from PyQt5.QtCore import Qt, QPoint
@@ -65,4 +70,3 @@ class GradeSlider(QWidget):
             label_x = x - label_width // 2
             label_y = y - 20  # Position the label above the tick mark
             painter.drawText(QPoint(label_x, label_y), label)
-

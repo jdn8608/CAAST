@@ -1,3 +1,9 @@
+"""
+Module to manage layers for the napari viewer.
+
+This can organize layers into category groups to allow users to quickly select types of layers at a time.
+This replaces the default dockLayerList form napari
+"""
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
