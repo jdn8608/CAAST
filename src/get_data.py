@@ -8,7 +8,7 @@ import numpy as np
 
 import file_readers
 from file_readers.LayerType import LayerType
-from util_files.read_write_outputs import read_labels
+from util.read_write_outputs import read_labels
 
 
 def create_instrument_dict():

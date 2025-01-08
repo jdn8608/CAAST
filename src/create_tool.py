@@ -398,7 +398,7 @@ def create_tool(label_mode,
                 review_data,
                 notes,
                 load_labels_name='',
-                config_filepath='./util_files/default_vizconfig.json'):
+                config_filepath='./util/default_vizconfig.json'):
     """This script creates the tool for the user from calls to sub-functions and widgets
     and connects these accordingly from the provided data.
 
