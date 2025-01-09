@@ -2,7 +2,7 @@
 Author: Joseph Nied (jdnied2@illinois.edu)
 Date: 12-19-2024
 Description:
-    The main run script for the PL-RS visualization tool to be ran from the command line.
+    The main run script for the SALT visualization tool to be ran from the command line.
 
     This script sub-modules with settings from configuration files to read-in, format, & 
     visualize satelitte imager data. 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
         description=
         "Remote Sensing - Pixel Label (RS-PL) tool:\n This tool was developed to have an easy, quick, and accesible tool to label imagery from various remote sensing platforms.",
         epilog=
-        'Tool is currently under developement. For more information, goto https://github.com/jdn8608/PL-RS'
+        'Tool is currently under developement. For more information, goto https://github.com/jdn8608/SALT'
     )
 
     # Required arguments

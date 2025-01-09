@@ -4,7 +4,7 @@
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
 
-# PL-RS: Satellite Data Visualization and Pixel Labeling Toolkit
+# SALT: Satellite-imager Annotation & Labeling Toolkit
 
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -24,7 +24,7 @@
 
 
 ## Overview
-**PL-RS** (Pixel Labeling for Remote Sensing... name is a work in progres) is a versatile Python-based tool designed to make it easier for scientists to process, visualize, and label satellite data. The tool allows for handling data from multiple satellite imagers and provides functionality for visualization and pixel-based labeling, which can be used for creating training datasets for AI models.
+**SALT** (Satellite-imager Annotation & Labeling Toolkit... name is a work in progres) is a versatile Python-based tool designed to make it easier for scientists to process, visualize, and label satellite data. The tool allows for handling data from multiple satellite imagers and provides functionality for visualization and pixel-based labeling, which can be used for creating training datasets for AI models.
 
 ### Key Features:
 - **Universal Satellite Data Compatibility**:
@@ -51,8 +51,8 @@
 ### Steps
 1. Clone the repository:
    ```bash
-   git clone https://github.com/jdn8608/PL-RS.git
-   cd PL-RS
+   git clone https://github.com/jdn8608/SALT.git
+   cd SALT
    ```
 
 2. Install dependencies using Conda:
@@ -254,21 +254,21 @@ This project is licensed under the GNU General Public License v3.0. See the [LIC
 Joseph Nied - jdnied2@illinois.edu - https://climas.illinois.edu/directory/profile/jdnied2 
 
 
-Project Link: [https://github.com/jdn8608/PL-RS](https://github.com/jdn8608/PL-RS)
+Project Link: [https://github.com/jdn8608/SALT](https://github.com/jdn8608/SALT)
 
 ## Acknowledgments
 Acknowledge Napari & NASA Funding
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/jdn8608/PL-RS
-[contributors-url]: https://github.com/jdn8608/PL-RS/contributors 
+[contributors-shield]: https://img.shields.io/github/contributors/jdn8608/SALT
+[contributors-url]: https://github.com/jdn8608/SALT/contributors 
 
-[issues-shield]: https://img.shields.io/github/issues/jdn8608/PL-RS
-[issues-url]: https://github.com/jdn8608/PL-RS/issues
+[issues-shield]: https://img.shields.io/github/issues/jdn8608/SALT
+[issues-url]: https://github.com/jdn8608/SALT/issues
 
 [license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/jdn8608/PL-RS/blob/main/LICENSE 
+[license-url]: https://github.com/jdn8608/SALT/blob/main/LICENSE 
 
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/in/joseph-nied-1621bb1a2
