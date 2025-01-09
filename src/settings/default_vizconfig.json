@@ -1,0 +1,23 @@
+{
+	"band_colormap"	    :	"gray",
+    "nan_colormap"      :   "custom_nan_mask",
+	"mask_colormap"		:	"custom_labeling1",
+	"mask_string_text"	:	{
+						"0": "clouds",
+						"1": "clear-sky"
+					},
+	"label_colormap"	:	"custom_labeling1",
+	"label_string_text"	:	{
+						"0": "clouds",
+						"1": "clear-sky",
+						"2": "haze",
+						"3": "smoke"
+					},
+    "surf_colormap"     :   "custom_SID1",
+	"button_location"	:	"bottom",
+	"slider_location"	:	"right",
+	"legend_location"	:	"top",
+	"min_max_slider_option"	:	2,
+    "grade_slider_min" : 1,
+    "grade_slider_max" : 6
+}

@@ -14,7 +14,7 @@ def _get_custom_colormap(option, plural=False):
     Returns:
         a dictionary of the custom colormap
     """
-    with open('./util_files/custom_colormaps.json', "r") as file:
+    with open('./settings/custom_colormaps.json', "r") as file:
         custom_colormaps = json.load(file)
     return {
         int(key): [float(item) for item in values]
@@ -56,7 +56,7 @@ def get_colormaps_from_config(config, option_name):
         return None
     else:
         raise Exception(
-            "Erro within visualization config file: 'f{option_name}' option is of invalid type 'f{type(config['band_color_maps'])}'"
+            "Error within visualization config file: 'f{option_name}' option is of invalid type 'f{type(config['band_color_maps'])}'"
         )
 
 
@@ -70,6 +70,8 @@ def get_all_colormaps(config):
         colormaps for each colormap use-case
     """
     return tuple([
-        get_colormaps_from_config(config, x)
-        for x in ['band_colormaps', 'label_colormap', 'mask_colormap']
+        get_colormaps_from_config(config, x) for x in [
+            'band_colormap', 'label_colormap', 'mask_colormap', 'nan_colormap',
+            'surf_colormap'
+        ]
     ])

@@ -4,7 +4,7 @@
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
 
-# PL-RS: Satellite Data Visualization and Pixel Labeling Toolkit
+# SALT: Satellite-imager Annotation & Labeling Toolkit
 
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -24,7 +24,7 @@
 
 
 ## Overview
-**PL-RS** (Pixel Labeling for Remote Sensing... name is a work in progres) is a versatile Python-based tool designed to make it easier for scientists to process, visualize, and label satellite data. The tool allows for handling data from multiple satellite imagers and provides functionality for visualization and pixel-based labeling, which can be used for creating training datasets for AI models.
+**SALT** (Satellite-imager Annotation & Labeling Toolkit... name is a work in progres) is a versatile Python-based tool designed to make it easier for scientists to process, visualize, and label satellite data. The tool allows for handling data from multiple satellite imagers and provides functionality for visualization and pixel-based labeling, which can be used for creating training datasets for AI models.
 
 ### Key Features:
 - **Universal Satellite Data Compatibility**:
@@ -51,8 +51,8 @@
 ### Steps
 1. Clone the repository:
    ```bash
-   git clone https://github.com/jdn8608/PL-RS.git
-   cd PL-RS
+   git clone https://github.com/jdn8608/SALT.git
+   cd SALT
    ```
 
 2. Install dependencies using Conda:
@@ -186,21 +186,19 @@ To support a new satellite instrument, follow these steps to create a file reade
 1. **File Structure and Location**:
    - Place the new file reader script in the `file_readers/` directory.
    - Name the file descriptively (e.g., `NEW_INSTRUMENT.py`).
+   - NEW_INSTRUMENT.py needs to have a read() function (see below for more details. The file can of course have other functions but needs a read() function to be called from get_data()
 
 2. **Define `read` Function**:
-   - Implement a `read()` function that processes the instrument's data format and returns the following parameters:
-   - Example Inputs:
-     - `parent_dir`: Base directory containing the data files.
-     - `search`: File search pattern.
-     - `view`: View identifier (e.g. for MISR: AN, DA, CF, etc.). Note this is unneeded if your instrument has a only single-view.
-     - `bands_to_get`: Bands to extract from the data file.
-     - `config`: Additional configuration parameters necessary.
-   - Required Outputs:
-     - `band_data`: A NumPy array with the band data to visualize. In should have shape (\<WIDTH>,\<HEIGHT>,<NUMBER_OF_SPECTRAL_BANDS>,<NUMBER_OF_VIEWS>). The <NUMBER_OF_VIEWS> dimension is for multi-angular instruments, such as NASA MISR or MAIA, if your instrument is a single-view imager (i.e., NASA MODIS), this value should be 1. Disclaimer, if you do not list this dimension as 1 and instead do not provide this 4th dimension, the tool will not work.
-     - `band_names`: a list of length <NUMBER_OF_SPECTRAL_BANDS> of strings representing names for each spectral channel, such as "BAND_5" or "900nm." This is for user preference and will be used to name the channel layers in the tool.
-     - `labels` : Predefined labels from the instrument. This is mainly to pass in the cloud mask from the instrument to the visuals, but could be repurposed for a variety of use-cases, such as providing land type classifications or other pixel label datasets. This should be of shape (<WIDTH>,<HEIGHT>,<NUMBER_OF_VIEWS>)
-     - `filepath` :  the filepath to the file that is being used to open retrieve the data.
+   - Implement a `read()` function that processes the instrument's data format with the following inputs:
+     - parent_dir : the root (parent) directory to search to find files within
+     - search     : a comprehensive string to search for files with a pattern... '*' symbols are wildcards.
+     - views      : a list of strings to represent the views for the instrument. If the instrument is not a multi-angle instrument, the list should be of lenght 1.
+     - config     : a dictionary of config options that may be useful for your data ingestion for a instrument data.
 
+   - Required Outputs:
+     - a "data" dictionary: The keys are the name of the layers to add into the tool. The values are tuple, where entry [0] is a LayerType (see file_readers/LayerType.py) that indicates how this data layer will be used... entry [1] is a NumPy array of the data layer to be added.
+     - a string : that represents the filename of the output file. Should contain sub-string '<view>' if there are multiple views so that each view can be saved out seperately by replacing this sub-string when file writing.
+     - a tuple : that represents the NumPy shape for layers that will be added as image layers (not labels)
        
 3. **Integration**:
    - Add the new file reader to `get_numpy_data.py` in the `reader_dict`:
@@ -226,13 +224,19 @@ To support a new satellite instrument, follow these steps to create a file reade
 - [x] Review-only Mode
     - [x] Approve/Deny Labeling
     - [x] Notes Widget Development 
-- [ ] Reading in & Visualizing Meta-data
-    - [ ] Re-work `read()` for file readers 
-    - [ ] Adjustments to `visualize.py`
+- [x] Reading in & Visualizing Meta-data
+    - [x] Re-work `read()` for file readers 
+    - [x] Adjustments to `visualize.py`
+    - [x] Add metadata attributes to pipeline
 - [ ] Visual Additions & Fixes 
     - [ ] RGB Visualization
     - [ ] Grid View Indicators
     - [ ] Grid View Enhancements
+- [ ] Tutorial & Manuals 
+    - [ ] Outline pictures to describe widgets
+    - [ ] Create a tutorial video
+    - [ ] Create a user guide manual about the tool
+    - [ ] Finish code commenting
 - [ ] MAIA Features
     - Fix Brightness Changes in Multi-views 
     - Distance to Threshold Widget
@@ -250,21 +254,21 @@ This project is licensed under the GNU General Public License v3.0. See the [LIC
 Joseph Nied - jdnied2@illinois.edu - https://climas.illinois.edu/directory/profile/jdnied2 
 
 
-Project Link: [https://github.com/jdn8608/PL-RS](https://github.com/jdn8608/PL-RS)
+Project Link: [https://github.com/jdn8608/SALT](https://github.com/jdn8608/SALT)
 
 ## Acknowledgments
 Acknowledge Napari & NASA Funding
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/jdn8608/PL-RS
-[contributors-url]: https://github.com/jdn8608/PL-RS/contributors 
+[contributors-shield]: https://img.shields.io/github/contributors/jdn8608/SALT
+[contributors-url]: https://github.com/jdn8608/SALT/contributors 
 
-[issues-shield]: https://img.shields.io/github/issues/jdn8608/PL-RS
-[issues-url]: https://github.com/jdn8608/PL-RS/issues
+[issues-shield]: https://img.shields.io/github/issues/jdn8608/SALT
+[issues-url]: https://github.com/jdn8608/SALT/issues
 
 [license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/jdn8608/PL-RS/blob/main/LICENSE 
+[license-url]: https://github.com/jdn8608/SALT/blob/main/LICENSE 
 
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/in/joseph-nied-1621bb1a2

@@ -1,0 +1,8 @@
+{
+	"override_filename":	0,
+	"override_dirpath":	"../labels/",
+	"append_name":		"_labels",
+	"file_type":		".hdf",
+	"dataset_name":		"Manual Labels",
+    "review-mode_csv_filepath" : "../labels/csv/cloud_mask_review.csv"
+}

@@ -1,3 +1,6 @@
+"""
+This module is used to create a min max slider for a specific layer
+"""
 import napari
 import numpy as np
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QLabel, QLineEdit
