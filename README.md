@@ -232,6 +232,11 @@ To support a new satellite instrument, follow these steps to create a file reade
     - [ ] RGB Visualization
     - [ ] Grid View Indicators
     - [ ] Grid View Enhancements
+- [ ] Tutorial & Manuals 
+    - [ ] Outline pictures to describe widgets
+    - [ ] Create a tutorial video
+    - [ ] Create a user guide manual about the tool
+    - [ ] Finish code commenting
 - [ ] MAIA Features
     - Fix Brightness Changes in Multi-views 
     - Distance to Threshold Widget
