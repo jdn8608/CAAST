@@ -445,14 +445,14 @@ def create_tool(label_mode,
 
     # Create Area layouts for tool widgets
     # Create top area and add to viewer
-    top_widget = QWidget()
-    top_layout = QVBoxLayout()
-    top_widget.setLayout(top_layout)
-    viewer.window.add_dock_widget(
-        top_widget,
-        #name="Point of View Navigator",
-        area="top")
-    # Create bottom area for tabs and add to viewer
+    #top_widget = QWidget()
+    #top_layout = QVBoxLayout()
+    #top_widget.setLayout(top_layout)
+    #viewer.window.add_dock_widget(
+    #    top_widget,
+    #    #name="Point of View Navigator",
+    #    area="top")
+    ## Create bottom area for tabs and add to viewer
     bottom_tabs = QTabWidget()
     bottom_tabs.setTabPosition(QTabWidget.North)
     viewer.window.add_dock_widget(bottom_tabs, area="bottom")
