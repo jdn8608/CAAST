@@ -20,7 +20,7 @@ def create_instrument_dict():
     """
     reader_dict = {
         'MAIA': file_readers.MAIA.read,
-        'MISR': file_readers.MISR.get_multiangle,
+        'MISR': file_readers.MISR.read,
     }
     return reader_dict
 
@@ -175,6 +175,9 @@ def get_data(
         review_grade = None
         review_status = None
         notes = None
+        manual_labels = np.zeros((shape[0],shape[1],shape[-1]))
+        data_layer_dict["Manual Labels"] = (LayerType.MANUAL_LABELS,
+                                            manual_labels)
 
     return (output_filepath_convention, dataset_name), config["view"], config["angle"], data_layer_dict, \
         shape, scene_attrs, review_csv_filepath, (review_grade, review_status), notes

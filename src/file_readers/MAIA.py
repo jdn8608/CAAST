@@ -34,7 +34,8 @@ def find_file(parent_dir, search, view=''):
 
     # Search for a file based on the search string and filter by the view string
     search_result_files = [
-        r for r in glob.glob(f'{parent_dir}/{search}') if view in r
+        r for r in glob.glob(f'{parent_dir}/{search}')
+        if view in os.path.basename(r)
     ]
 
     # If there is more than one file found, throw an Exception
