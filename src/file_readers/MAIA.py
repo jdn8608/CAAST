@@ -90,6 +90,7 @@ def get_bands(hdf_file, band_names, num_of_channels):
 
     for i, name in enumerate(band_names):
         band_data[:, :, i] = np.array(hdf_file['Reflectance'][name])
+    band_data[band_data < 0] = 0
 
     return band_data
 
