@@ -29,7 +29,8 @@ def add_layers(data_layer_dict,
                shape,
                viewer,
                config,
-               load_labels_name=''):
+               load_labels_name='',
+               label_mode=True):
     """Add imaage and label layers to the napari viewer, and providing connectors
     for down-stream widgets based on the LayerType attributes.
 
@@ -56,10 +57,19 @@ def add_layers(data_layer_dict,
     (band_colormap, label_colormap, mask_colormap, nan_colormap,
      surf_colormap) = get_all_colormaps(config)
 
+    if not label_mode:
+        editing_data = None
+        editing_layer = None
+        edit_data_override = True
+    # check if load_labels is defined, if not, set to 0
+    elif load_labels_name is None or load_labels_name == '':
+        load_labels_name = '0'
+
     # Check if the fill value is an int, if now, set-up for checking if layer to be
     # filled by a instrument layer
     try:
-        edit_data = np.zeros(shape, dtype=int) + int(load_labels_name)
+        editing_data = np.zeros(
+            (shape[0], shape[1], shape[-1]), dtype=int) + int(load_labels_name)
         edit_data_override = True
     except:
         editing_data = None
@@ -158,7 +168,7 @@ def add_layers(data_layer_dict,
                     editing_data = data.copy()
 
     # Check to see if editing data was found... if not, store as zeros
-    if editing_data is None and load_labels_name:
+    if label_mode and editing_data is None and load_labels_name:
         # ambigous name was provided (not found)
         warnings.warn(
             "load_labels settings string was not found in the naming convetions"
@@ -170,7 +180,7 @@ def add_layers(data_layer_dict,
         edit_data = np.zeros(data.shape, dtype=int)
 
     # Add editing_data as an editing layer to the viewer
-    if load_labels_name:
+    if label_mode and load_labels_name:
         editing_layer = viewer.add_labels(editing_data[..., 0],
                                           name='Editing',
                                           colormap=label_colormap)
@@ -472,7 +482,8 @@ def create_tool(label_mode,
                                                shape,
                                                viewer,
                                                config,
-                                               load_labels_name=load_labels_name if label_mode else '')
+                                               load_labels_name=load_labels_name if label_mode else '',
+                                               label_mode=label_mode)
 
     # Add Min/Max Slider for Image Layers
     min_max_slider, min_max_layout = create_sliders(

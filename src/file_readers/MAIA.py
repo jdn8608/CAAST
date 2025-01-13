@@ -34,7 +34,7 @@ def find_file(parent_dir, search, view=''):
 
     # Search for a file based on the search string and filter by the view string
     search_result_files = [
-        r for r in glob.glob(f'{parent_dir}/{search}')
+        r for r in glob.glob(os.path.join(parent_dir, search))
         if view in os.path.basename(r)
     ]
 

@@ -62,9 +62,11 @@ class PointOfViewNavigator(QWidget):
 
     def update_labels(self, current_view=1):
         for label_layer, l_data in zip(self.label_layers, self.label_data):
+            edit_status = label_layer.editable
             if isinstance(label_layer, napari.layers.Labels):
                 # Update Image layer with the appropriate channel and current view slice
                 label_layer.data = l_data[:, :, current_view]
+                label_layer.editable = edit_status
 
     def go_left(self, _event=None):
         """Navigate to the previous view if possible."""
