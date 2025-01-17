@@ -535,7 +535,7 @@ def create_tool(label_mode,
         slider_widget.layout().insertWidget(0, view_indicator_label)
 
         # Define a callback function to update the label dynamically
-        def update_custom_label(view_dim):
+        def update_view_label(view_dim):
             """Update the custom text next to the view dim slider
 
             Args:
@@ -549,7 +549,7 @@ def create_tool(label_mode,
                                                  angles[view_dim]))
 
         # Connect the slider's valueChanged signal to the callback
-        slider_widget.slider.valueChanged.connect(update_custom_label)
+        slider_widget.slider.valueChanged.connect(update_view_label)
 
         # Configure the slider default settings
         slider_widget.axis = 0
