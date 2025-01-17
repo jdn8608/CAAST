@@ -543,7 +543,7 @@ def create_tool(label_mode,
                           are currently presenting in the view panel from
                           the slider.
             """
-            if 0 <= value < len(views):  # Ensure within bounds
+            if 0 <= view_dim < len(views):  # Ensure within bounds
                 view_indicator_label.setText(
                     view_indicator_string.format(views[view_dim],
                                                  angles[view_dim]))
