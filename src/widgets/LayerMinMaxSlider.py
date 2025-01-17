@@ -110,3 +110,8 @@ class LayerMinMaxSlider(QWidget):
                 self.range_slider.setValue((scaled_min, scaled_max))
         except ValueError:
             pass  # Ignore invalid input
+
+    def update_layer_name(self):
+        """Update the layer name displayed on the slider."""
+        self.name = self.layer.name
+        self.layer_name_label.setText(f"Layer: {self.name}")

@@ -14,11 +14,14 @@ from PyQt5.QtWidgets import (
     QAction,
     QWidget,
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 
 
 class LayerManager(QWidget):
     """Widget to replace Napari's default layer list with a group-organized layer manager"""
+
+    # PyQt signal for other widgets when layer name changes
+    layer_renamed = pyqtSignal(str, str)
 
     def __init__(self, napari_viewer, init_groups=None):
         super().__init__()
@@ -110,7 +113,10 @@ class LayerManager(QWidget):
 
                     # Update layer name if it was renamed
                     if layer.name != layer_name:
+                        old_name = layer.name
                         layer.name = layer_name
+                        # Emit signal for layer renaming
+                        self.layer_renamed.emit(old_name, layer_name)
 
     def on_item_clicked(self, item, column):
         """Handle layer selection."""

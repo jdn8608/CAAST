@@ -500,6 +500,22 @@ def create_tool(label_mode,
                                   name="Min-Max Range Slider",
                                   area='right')
 
+    # Create a function to search for a layer to rename from LayerManager event
+    def update_sliders_name(old_name, new_name):
+        """Loops through alll Min/Max Sliders to check for if they have the name
+        of old_name. If so, call their update_layer_name() with the new_name
+
+        Args:
+            old_name: a string representing the old name of a renamed layer
+            new_name: a string representing the new name of a renamed layer
+        """
+        for mms in min_max_slider:
+            if old_name == mms.name:
+                mms.update_layer_name()
+
+    # Connect the renaming event call to this function
+    layer_manager.layer_renamed.connect(update_sliders_name)
+
     # If there are multiple view-angles found, add a POV Slider to navigate them
     if im_np.shape[-1] > 1:
 
