@@ -9,16 +9,16 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QTreeWidget,
     QTreeWidgetItem,
-    QCheckBox,
     QPushButton,
-    QDockWidget,
+    QMenu,
+    QAction,
     QWidget,
 )
 from PyQt5.QtCore import Qt
 
 
 class LayerManager(QWidget):
-    """Widget to replace Napari's defualt layer list with a group organized layer manager"""
+    """Widget to replace Napari's default layer list with a group-organized layer manager"""
 
     def __init__(self, napari_viewer, init_groups=None):
         super().__init__()
@@ -29,6 +29,8 @@ class LayerManager(QWidget):
         main_layout = QVBoxLayout()
         self.tree_widget = QTreeWidget()
         self.tree_widget.setHeaderLabel("Layer Groups")
+        self.tree_widget.setEditTriggers(
+            QTreeWidget.NoEditTriggers)  # Disable editing by default
         main_layout.addWidget(self.tree_widget)
 
         # Buttons for controlling viewer settings
@@ -52,6 +54,9 @@ class LayerManager(QWidget):
         # Connect tree widget events
         self.tree_widget.itemChanged.connect(self.on_item_changed)
         self.tree_widget.itemClicked.connect(self.on_item_clicked)
+        self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree_widget.customContextMenuRequested.connect(
+            self.show_context_menu)
 
         # Add initial groups
         if init_groups is not None:
@@ -63,27 +68,29 @@ class LayerManager(QWidget):
 
     def add_group(self, group_name):
         """Add a new group to the tree."""
-        # print(f"Adding new group: '{group_name}'")
         if group_name not in self.groups:
             group_item = QTreeWidgetItem([group_name])
             group_item.setFlags(group_item.flags() | Qt.ItemIsUserCheckable)
             group_item.setCheckState(0, Qt.Checked)  # Checked by default
+            group_item.setFlags(group_item.flags()
+                                & ~Qt.ItemIsEditable)  # Disable editing
             self.tree_widget.addTopLevelItem(group_item)
             self.groups[group_name] = {"item": group_item, "layers": []}
 
     def add_layer_to_group(self, group_name, layer):
         """Add a layer to a group."""
-        # print(f"Adding Layer: '{layer}' to Group: {group_name}")
         if group_name in self.groups:
             group_item = self.groups[group_name]["item"]
             layer_item = QTreeWidgetItem([layer.name])
-            layer_item.setFlags(layer_item.flags() | Qt.ItemIsUserCheckable)
+            layer_item.setFlags(
+                layer_item.flags()
+                | Qt.ItemIsUserCheckable)  # Enable context menu for layers
             layer_item.setCheckState(0, Qt.Checked)  # Checked by default
             group_item.addChild(layer_item)
             self.groups[group_name]["layers"].append((layer, layer_item))
 
     def on_item_changed(self, item):
-        """Handle visibility toggle for groups and layers."""
+        """Handle visibility toggle for groups and layers, and renaming of layers."""
         if item.parent() is None:  # Group visibility toggle
             group_name = item.text(0)
             visible = item.checkState(0) == Qt.Checked
@@ -91,12 +98,19 @@ class LayerManager(QWidget):
                 layer.visible = visible
                 layer_item.setCheckState(
                     0, Qt.Checked if visible else Qt.Unchecked)
-        else:  # Layer visibility toggle
+        else:  # Layer visibility toggle or rename
             layer_name = item.text(0)
-            for group in self.groups.values():
-                for layer, layer_item in group["layers"]:
-                    if layer.name == layer_name:
-                        layer.visible = item.checkState(0) == Qt.Checked
+            parent_item = item.parent()
+            group_name = parent_item.text(0)
+
+            for layer, layer_item in self.groups[group_name]["layers"]:
+                if layer_item == item:
+                    # Update visibility
+                    layer.visible = item.checkState(0) == Qt.Checked
+
+                    # Update layer name if it was renamed
+                    if layer.name != layer_name:
+                        layer.name = layer_name
 
     def on_item_clicked(self, item, column):
         """Handle layer selection."""
@@ -113,3 +127,24 @@ class LayerManager(QWidget):
     def reset_view(self):
         """Reset the view to the original state."""
         self.viewer.reset_view()
+
+    def show_context_menu(self, position):
+        item = self.tree_widget.itemAt(position)
+        if item and item.parent():  # Only show context menu for layers
+            menu = QMenu()
+            rename_action = QAction("Rename", self)
+            rename_action.triggered.connect(lambda: self.rename_layer(item))
+            menu.addAction(rename_action)
+            menu.exec_(self.tree_widget.viewport().mapToGlobal(position))
+
+    def rename_layer(self, item):
+        # Temporarily enable editing and ensure item is editable
+        previous_triggers = self.tree_widget.editTriggers()
+        self.tree_widget.setEditTriggers(QTreeWidget.AllEditTriggers)
+        item.setFlags(item.flags()
+                      | Qt.ItemIsEditable)  # Ensure item is editable
+        self.tree_widget.editItem(item)
+        item.setFlags(
+            item.flags()
+            & ~Qt.ItemIsEditable)  # Revert to non-editable after editing
+        self.tree_widget.setEditTriggers(previous_triggers)
