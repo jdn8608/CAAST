@@ -4,6 +4,7 @@ Module to manage layers for the napari viewer.
 This can organize layers into category groups to allow users to quickly select types of layers at a time.
 This replaces the default dockLayerList form napari
 """
+
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -34,6 +35,8 @@ class LayerManager(QWidget):
         self.tree_widget.setHeaderLabel("Layer Groups")
         self.tree_widget.setEditTriggers(
             QTreeWidget.NoEditTriggers)  # Disable editing by default
+        self.tree_widget.setDragEnabled(True)
+        self.tree_widget.setDragDropMode(QTreeWidget.InternalMove)
         main_layout.addWidget(self.tree_widget)
 
         # Buttons for controlling viewer settings
@@ -60,6 +63,11 @@ class LayerManager(QWidget):
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(
             self.show_context_menu)
+
+        self.tree_widget.dropEvent = self.on_drop_event  # Override drop event
+        self.tree_widget.setDefaultDropAction(Qt.MoveAction)
+        self.tree_widget.viewport().setAcceptDrops(True)
+        #help(self.tree_widget)
 
         # Add initial groups
         if init_groups is not None:
@@ -91,32 +99,6 @@ class LayerManager(QWidget):
             layer_item.setCheckState(0, Qt.Checked)  # Checked by default
             group_item.addChild(layer_item)
             self.groups[group_name]["layers"].append((layer, layer_item))
-
-    def on_item_changed(self, item):
-        """Handle visibility toggle for groups and layers, and renaming of layers."""
-        if item.parent() is None:  # Group visibility toggle
-            group_name = item.text(0)
-            visible = item.checkState(0) == Qt.Checked
-            for layer, layer_item in self.groups[group_name]["layers"]:
-                layer.visible = visible
-                layer_item.setCheckState(
-                    0, Qt.Checked if visible else Qt.Unchecked)
-        else:  # Layer visibility toggle or rename
-            layer_name = item.text(0)
-            parent_item = item.parent()
-            group_name = parent_item.text(0)
-
-            for layer, layer_item in self.groups[group_name]["layers"]:
-                if layer_item == item:
-                    # Update visibility
-                    layer.visible = item.checkState(0) == Qt.Checked
-
-                    # Update layer name if it was renamed
-                    if layer.name != layer_name:
-                        old_name = layer.name
-                        layer.name = layer_name
-                        # Emit signal for layer renaming
-                        self.layer_renamed.emit(old_name, layer_name)
 
     def on_item_clicked(self, item, column):
         """Handle layer selection."""
@@ -154,3 +136,67 @@ class LayerManager(QWidget):
             item.flags()
             & ~Qt.ItemIsEditable)  # Revert to non-editable after editing
         self.tree_widget.setEditTriggers(previous_triggers)
+
+    def on_drop_event(self, event):
+        """Handle drag-and-drop functionality to move layers between groups."""
+        # dragged_item = self.tree_widget.itemAt(event.pos())
+        dragged_item = self.tree_widget.currentItem()
+        target_item = self.tree_widget.itemAt(event.pos())
+
+        if not dragged_item or not dragged_item.parent():
+            event.ignore()
+            return  # Prevent dropping outside of groups or onto other layers
+
+        if target_item and target_item.parent(
+        ) is None:  # Only allow dropping into groups
+            group_name = target_item.text(0)
+            source_group_name = dragged_item.parent().text(0)
+            layer_name = dragged_item.text(0)
+
+            print(
+                f"Moving {layer_name} from {source_group_name} to {group_name}"
+            )
+
+            # Remove the layer from the old group
+            old_group = self.groups[source_group_name]
+            old_group["layers"] = [
+                l for l in old_group["layers"] if l[1] != dragged_item
+            ]
+
+            # Add the layer to the new group
+            for layer in self.viewer.layers:
+                if layer.name == layer_name:
+                    print(f"Adding {layer.name} to {group_name}")
+                    self.add_layer_to_group(group_name, layer)
+                    break
+
+            event.accept()
+        else:
+            event.ignore()
+
+    def on_item_changed(self, item):
+        """Handle visibility toggle for groups and layers, and renaming of layers."""
+        if item.parent() is None:  # Group visibility toggle
+            group_name = item.text(0)
+            visible = item.checkState(0) == Qt.Checked
+            for layer, layer_item in self.groups[group_name]["layers"]:
+                if layer_item:
+                    layer.visible = visible
+                    layer_item.setCheckState(
+                        0, Qt.Checked if visible else Qt.Unchecked)
+        else:  # Layer visibility toggle or rename
+            layer_name = item.text(0)
+            parent_item = item.parent()
+            group_name = parent_item.text(0)
+
+            for layer, layer_item in self.groups[group_name]["layers"]:
+                if layer_item == item:
+                    # Update visibility
+                    layer.visible = item.checkState(0) == Qt.Checked
+
+                    # Update layer name if it was renamed
+                    if layer.name != layer_name:
+                        old_name = layer.name
+                        layer.name = layer_name
+                        # Emit signal for layer renaming
+                        self.layer_renamed.emit(old_name, layer_name)
