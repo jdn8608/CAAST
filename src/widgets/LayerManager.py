@@ -139,7 +139,6 @@ class LayerManager(QWidget):
 
     def on_drop_event(self, event):
         """Handle drag-and-drop functionality to move layers between groups."""
-        # dragged_item = self.tree_widget.itemAt(event.pos())
         dragged_item = self.tree_widget.currentItem()
         target_item = self.tree_widget.itemAt(event.pos())
 
@@ -147,9 +146,12 @@ class LayerManager(QWidget):
             event.ignore()
             return  # Prevent dropping outside of groups or onto other layers
 
-        if target_item and target_item.parent(
-        ) is None:  # Only allow dropping into groups
-            group_name = target_item.text(0)
+        if target_item:
+            if target_item.parent() is None:  # Only allow dropping into groups
+                group_name = target_item.text(0)
+            else:
+                group_name = target_item.parent().text(0)
+
             source_group_name = dragged_item.parent().text(0)
             layer_name = dragged_item.text(0)
 
@@ -170,6 +172,7 @@ class LayerManager(QWidget):
                     self.add_layer_to_group(group_name, layer)
                     break
 
+            # accept event changes
             event.accept()
         else:
             event.ignore()
