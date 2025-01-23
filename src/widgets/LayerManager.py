@@ -88,17 +88,40 @@ class LayerManager(QWidget):
             self.tree_widget.addTopLevelItem(group_item)
             self.groups[group_name] = {"item": group_item, "layers": []}
 
-    def add_layer_to_group(self, group_name, layer):
-        """Add a layer to a group."""
-        if group_name in self.groups:
-            group_item = self.groups[group_name]["item"]
-            layer_item = QTreeWidgetItem([layer.name])
-            layer_item.setFlags(
-                layer_item.flags()
-                | Qt.ItemIsUserCheckable)  # Enable context menu for layers
-            layer_item.setCheckState(0, Qt.Checked)  # Checked by default
-            group_item.addChild(layer_item)
-            self.groups[group_name]["layers"].append((layer, layer_item))
+    def add_layer_to_group(self, group_name, layer, target_layer_name=None):
+        """Add a layer to a group. If target_layer_name is None, append
+            the new item... else, insert after where this item is found"""
+        if group_name not in self.groups:
+            # Add group_name to the groups if not found...
+            self.add_group(group_name)
+        group_item = self.groups[group_name]["item"]
+        layer_item = QTreeWidgetItem([layer.name])
+        layer_item.setFlags(
+            layer_item.flags()
+            | Qt.ItemIsUserCheckable)  # Enable context menu for layers
+        layer_item.setCheckState(0, Qt.Checked)  # Checked by default
+
+        # If there is a target layer for the drag event... insert the dragged
+        # layer where the target is
+        if target_layer_name is not None:
+            insert_pos = None
+            # Search for the target name
+            for index, group_child in enumerate(
+                    self.groups[group_name]["layers"]):
+                if group_child[0].name == target_layer_name:
+                    insert_pos = index
+                    break  # target found, exit for
+
+            # If the target was found, insert it
+            if insert_pos is not None:
+                group_item.insertChild(insert_pos, layer_item)
+                self.groups[group_name]["layers"].insert(
+                    insert_pos, (layer, layer_item))
+                return
+
+        # If there is no target layer or if it is not found.. append the layer
+        group_item.addChild(layer_item)
+        self.groups[group_name]["layers"].append((layer, layer_item))
 
     def on_item_clicked(self, item, column):
         """Handle layer selection."""
@@ -149,8 +172,10 @@ class LayerManager(QWidget):
         if target_item:
             if target_item.parent() is None:  # Only allow dropping into groups
                 group_name = target_item.text(0)
+                target_layer_name = None
             else:
                 group_name = target_item.parent().text(0)
+                target_layer_name = target_item.text(0)
 
             source_group_name = dragged_item.parent().text(0)
             layer_name = dragged_item.text(0)
@@ -169,7 +194,8 @@ class LayerManager(QWidget):
             for layer in self.viewer.layers:
                 if layer.name == layer_name:
                     print(f"Adding {layer.name} to {group_name}")
-                    self.add_layer_to_group(group_name, layer)
+                    self.add_layer_to_group(
+                        group_name, layer, target_layer_name=target_layer_name)
                     break
 
             # accept event changes
