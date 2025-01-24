@@ -165,14 +165,49 @@ class LayerManager(QWidget):
         dragged_item = self.tree_widget.currentItem()
         target_item = self.tree_widget.itemAt(event.pos())
 
-        if not dragged_item or not dragged_item.parent():
+        # Prevent dropping outside of groups or onto other layers
+        if not dragged_item:
             event.ignore()
-            return  # Prevent dropping outside of groups or onto other layers
+            return
+        # Group re-ordering: drag groups only to positions of other groups
+        elif dragged_item.parent() is None:
+            if target_item and target_item.parent() is None:
+                # Get indexes of dragged and target items for shifting
+                dragged_index = self.tree_widget.indexOfTopLevelItem(
+                    dragged_item)
+                target_index = self.tree_widget.indexOfTopLevelItem(
+                    target_item)
 
-        if target_item:
+                # Ensure indexs of swap are in-bounds
+                if dragged_index != -1 and target_index != -1:
+                    # Reorder the top-level items
+                    self.tree_widget.takeTopLevelItem(dragged_index)
+                    self.tree_widget.insertTopLevelItem(
+                        target_index, dragged_item)
+
+                    # Update the group order in the internal dictionary
+                    dragged_group_name = dragged_item.text(0)
+                    reordered_groups = list(self.groups.keys())
+                    reordered_groups.insert(
+                        target_index, reordered_groups.pop(dragged_index))
+                    self.groups = {
+                        key: self.groups[key]
+                        for key in reordered_groups
+                    }
+
+                    event.accept()
+                else:  # indexes out of bounds... ignore event
+                    event.ignore()
+            else:  # either target does not exist or is not a group
+                event.ignore()
+
+        # Layer dragging to or within groups
+        elif target_item:
+            # Dragging to a group directly
             if target_item.parent() is None:  # Only allow dropping into groups
                 group_name = target_item.text(0)
                 target_layer_name = None
+            # Dragging to another layer (re-order or adding to a new group) in-place
             else:
                 group_name = target_item.parent().text(0)
                 target_layer_name = target_item.text(0)
