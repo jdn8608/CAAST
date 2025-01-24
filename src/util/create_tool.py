@@ -125,7 +125,7 @@ def add_layers(data_layer_dict,
             manager.add_layer_to_group(layer_type.value, current_layer)
 
             im_layers[im_iter] = current_layer
-            im_data[..., im_iter, :] = data
+            im_data[..., im_iter] = data
             im_iter += 1
         # OBSERVABLE layers will have additional functionality later on
         elif layer_type is LayerType.OBSERVABLE:
@@ -136,7 +136,7 @@ def add_layers(data_layer_dict,
             manager.add_layer_to_group(layer_type.value, current_layer)
 
             im_layers[im_iter] = current_layer
-            im_data[..., im_iter, :] = data
+            im_data[..., im_iter] = data
             im_iter += 1
 
         # If not an image-type layer, process as labels
