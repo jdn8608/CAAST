@@ -35,6 +35,9 @@ class LayerType(Enum):
                         functionality.
         THRESHOLDS      : Layers that are created from manual threshold operations. See ThresholdPanel.py
                         for more details on how users can create threshold label layers.
+        COMBINED        : Layers that have been created by joining two other label layers from the napari
+                        viewer. These joined operations are defined by logic gate operations, for more
+                        details, see LogicGatesPanel.py.
         SURFACE_ID      : A classifier stating the underlying surface type. Would be added as labels to
                         the tool that are not-editable. Note that the colormap loaded by the toolkit for
                         surfave ids should have sufficient colors for the # of ids loaded.
@@ -49,6 +52,7 @@ class LayerType(Enum):
     DTT = "Distance to Thresholds"
     OBSERVABLE = "Observables"
     THRESHOLDS = "Thresholds"
+    COMBINED = "Combined Labels"
     SURFACE_ID = "Surface Ids"
     VIEW_GEO = "Viewing Geometery"
     LAT_LON = "Latitude/Longitude"

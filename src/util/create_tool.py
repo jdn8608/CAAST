@@ -11,7 +11,7 @@ import numpy as np
 import napari
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QLabel, QTextEdit, QComboBox
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QLabel, QTextEdit, QComboBox, QSizePolicy, QFrame
 
 from util.LayerType import LayerType
 from util.colormaps import get_all_colormaps
@@ -23,6 +23,7 @@ from widgets.SubmitButtons import create_save_button
 from widgets.SceneLabelGrid import create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
 from widgets.ThresholdPanel import ThresholdWidget
+from widgets.LogicGatesPanel import LogicGatesWidget
 
 
 def add_layers(data_layer_dict,
@@ -618,8 +619,36 @@ def create_tool(label_mode,
             "Pixel Tools")
 
         # Create and add a tab for the ThresholdWidget
+        threshold_gate_widget = QWidget()
+        threshold_gate_layout = QHBoxLayout()
+        # Remove extra spacing and margins from the layout
+        threshold_gate_layout.setSpacing(0)
+        threshold_gate_layout.setContentsMargins(0, 0, 0, 0)
+        # Create the ThresholdWidget and LogicGatesWidget
         thresh_widget = ThresholdWidget(viewer, layer_manager)
-        bottom_tabs.addTab(thresh_widget, "Thresholding")
+        logic_gate_widget = LogicGatesWidget(viewer, layer_manager)
+        # Set size policies to allow both widgets to share space equally
+        thresh_widget.setSizePolicy(QSizePolicy.Expanding,
+                                    QSizePolicy.Preferred)
+        logic_gate_widget.setSizePolicy(QSizePolicy.Expanding,
+                                        QSizePolicy.Preferred)
+        # Create a vertical line
+        vertical_line = QFrame()
+        vertical_line.setFrameShape(QFrame.VLine)
+        vertical_line.setFrameShadow(QFrame.Sunken)
+        vertical_line.setLineWidth(
+            10)  # Set the width of the line for visibility
+        vertical_line.setStyleSheet("background-color: #414851;")
+
+        # Add widgets to the layout
+        threshold_gate_layout.addWidget(
+            thresh_widget, stretch=1)  # Assign equal stretch factor
+        threshold_gate_layout.addWidget(vertical_line)  # Add vertical line
+        threshold_gate_layout.addWidget(logic_gate_widget, stretch=1)
+        # Set the layout for the container widget
+        threshold_gate_widget.setLayout(threshold_gate_layout)
+        # Add the tab to the bottom_tabs
+        bottom_tabs.addTab(threshold_gate_widget, "Thresholding & Logic Gates")
 
     # Otherwise, load the Review Mode tab
     else:
