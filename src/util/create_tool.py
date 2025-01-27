@@ -22,6 +22,7 @@ from widgets.PointOfViewNavigator import PointOfViewNavigator
 from widgets.SubmitButtons import create_save_button
 from widgets.SceneLabelGrid import create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
+from widgets.ThresholdPanel import ThresholdWidget
 
 
 def add_layers(data_layer_dict,
@@ -615,6 +616,11 @@ def create_tool(label_mode,
                                     dataset_name,
                                     controls=layer_controls_scroll_area),
             "Pixel Tools")
+
+        # Create and add a tab for the ThresholdWidget
+        thresh_widget = ThresholdWidget(viewer, layer_manager)
+        bottom_tabs.addTab(thresh_widget, "Thresholding")
+
     # Otherwise, load the Review Mode tab
     else:
         if isinstance(config["grade_slider_min"], int) and \

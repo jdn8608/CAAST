@@ -33,6 +33,8 @@ class LayerType(Enum):
         OBSERVABLE      : An observable used within a cloud detection algorithm. Can be added to the tool
                         as an image and can be connect to DTT widget functionality, or threshold widget
                         functionality.
+        THRESHOLDS      : Layers that are created from manual threshold operations. See ThresholdPanel.py
+                        for more details on how users can create threshold label layers.
         SURFACE_ID      : A classifier stating the underlying surface type. Would be added as labels to
                         the tool that are not-editable. Note that the colormap loaded by the toolkit for
                         surfave ids should have sufficient colors for the # of ids loaded.
@@ -46,6 +48,7 @@ class LayerType(Enum):
     NAN_MASK = "NaN Values"
     DTT = "Distance to Thresholds"
     OBSERVABLE = "Observables"
+    THRESHOLDS = "Thresholds"
     SURFACE_ID = "Surface Ids"
     VIEW_GEO = "Viewing Geometery"
     LAT_LON = "Latitude/Longitude"

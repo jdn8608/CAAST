@@ -198,7 +198,7 @@ class LayerManager(QWidget):
                     event.accept()
                 else:  # indexes out of bounds... ignore event
                     event.ignore()
-            else:  # either target does not exist or is not a group
+            else:  # either target does not exist or is not a group... ignore event
                 event.ignore()
 
         # Layer dragging to or within groups
