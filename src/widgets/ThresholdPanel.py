@@ -27,30 +27,38 @@ class ThresholdWidget(QWidget):
         self.setLayout(self.layout)
 
         # Horizontal layout for layer, operation, and value
-        self.horizontal_layout = QHBoxLayout()
+        self.horizontal_layout_1 = QHBoxLayout()
+        # Create next horizontal row for widgets
+        self.horizontal_layout_2 = QHBoxLayout()
 
         # Dropdown to select image layer
         self.layer_dropdown = QComboBox()
-        self.horizontal_layout.addWidget(self.layer_dropdown)
+        self.horizontal_layout_1.addWidget(self.layer_dropdown)
 
         # Dropdown to select operation
         self.operation_dropdown = QComboBox()
         self.operation_dropdown.addItems([">", "<", "<=", ">=", "==", "!="])
-        self.horizontal_layout.addWidget(self.operation_dropdown)
+        self.horizontal_layout_1.addWidget(self.operation_dropdown)
 
         # Input field for threshold value
         self.value_input = QLineEdit()
         self.value_input.setPlaceholderText("Threshold Value")
-        self.horizontal_layout.addWidget(self.value_input)
+        self.horizontal_layout_1.addWidget(self.value_input)
 
         # Editable checkbox and descriptive label
         self.editable_checkbox = QCheckBox(
             "Enable editing of the new labels layer")
         self.editable_checkbox.setChecked(False)  # Default: not editable
-        self.horizontal_layout.addWidget(self.editable_checkbox)
+        self.horizontal_layout_2.addWidget(self.editable_checkbox)
 
-        # Add horizontal layout to main layout
-        self.layout.addLayout(self.horizontal_layout)
+        # Dropdown for selecting All or Current view(s) to threshold
+        self.view_dropdown = QComboBox()
+        self.view_dropdown.addItems(["All", "Current"])
+        self.horizontal_layout_2.addWidget(self.view_dropdown)
+
+        # Add horizontal layouts to main layout
+        self.layout.addLayout(self.horizontal_layout_1)
+        self.layout.addLayout(self.horizontal_layout_2)
 
         # Button to create thresholded labels layer
         self.create_button = QPushButton("Create")
@@ -131,6 +139,15 @@ class ThresholdWidget(QWidget):
         threshold_func = operation_map[operation]
         labels_data = threshold_func(image_data, threshold_value).astype(int)
 
+        # Check to see if threshold is applied to all or current view
+        if self.view_dropdown.currentText() == "Current":
+            # Replace labels with zeros filled in all other views
+            empty = np.zeros((labels_data.shape), dtype=int) - 1
+            ind = self.viewer.window._qt_viewer.dims.slider_widgets[
+                0].slider.value()
+            empty[ind] = labels_data[ind]
+            labels_data = empty
+
         # Generate layer name ignoring the prefix for duplication check
         base_name = f"{selected_layer_name} {operation} {threshold_value}"
         existing_names = [
@@ -146,7 +163,6 @@ class ThresholdWidget(QWidget):
         self.threshold_counter += 1
         new_layer_name = f"Th{self.threshold_counter}: {base_name}"
 
-        # Add the new labels layer
         im_temp = self.viewer.add_labels(labels_data, name=new_layer_name)
         im_temp.editable = self.editable_checkbox.isChecked()
         self.layer_manager.add_layer_to_group(LayerType.THRESHOLDS.value,
