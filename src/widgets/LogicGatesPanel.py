@@ -4,7 +4,7 @@ This module is used to create a widget to allow users to combine label layers wi
 import numpy as np
 
 import napari
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLineEdit, QPushButton, QLabel
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QCheckBox, QLineEdit, QPushButton, QLabel
 
 from util.LayerType import LayerType
 
@@ -35,6 +35,12 @@ class LogicGatesWidget(QWidget):
         # Dropdown to select second labels layer
         self.layer2_dropdown = QComboBox()
         self.horizontal_layout.addWidget(self.layer2_dropdown)
+
+        # Editable checkbox and descriptive label
+        self.editable_checkbox = QCheckBox(
+            "Enable editing of the new labels layer")
+        self.editable_checkbox.setChecked(False)  # Default: not editable
+        self.horizontal_layout.addWidget(self.editable_checkbox)
 
         # Add horizontal layout to main layout
         self.layout.addLayout(self.horizontal_layout)
@@ -120,6 +126,7 @@ class LogicGatesWidget(QWidget):
 
         # Add combined labels layer
         im_temp = self.viewer.add_labels(combined_data, name=new_layer_name)
+        im_temp.editable = self.editable_checkbox.isChecked()
         self.layer_manager.add_layer_to_group(LayerType.COMBINED.value,
                                               im_temp)
         print(f"Added combined labels layer: {new_layer_name}")
