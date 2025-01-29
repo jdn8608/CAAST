@@ -40,18 +40,27 @@ class LayerManager(QWidget):
         main_layout.addWidget(self.tree_widget)
 
         # Buttons for controlling viewer settings
-        button_layout = QHBoxLayout()
+        button_layout = QVBoxLayout()
+        button_top_layout = QHBoxLayout()
+        button_bot_layout = QHBoxLayout()
+
+        # Toggle All Groups
+        self.togg_button = QPushButton("Toggle All Groups")
+        self.togg_button.clicked.connect(self.toggle_all_groups)
+        button_top_layout.addWidget(self.togg_button)
 
         # Toggle Grid Mode Button
         self.grid_button = QPushButton("Toggle Grid View")
         self.grid_button.clicked.connect(self.toggle_grid_mode)
-        button_layout.addWidget(self.grid_button)
+        button_bot_layout.addWidget(self.grid_button)
 
         # Reset View Button
         self.reset_view_button = QPushButton("Reset View")
         self.reset_view_button.clicked.connect(self.reset_view)
-        button_layout.addWidget(self.reset_view_button)
+        button_bot_layout.addWidget(self.reset_view_button)
 
+        button_layout.addLayout(button_top_layout)
+        button_layout.addLayout(button_bot_layout)
         main_layout.addLayout(button_layout)
 
         # Set the main layout
@@ -264,3 +273,15 @@ class LayerManager(QWidget):
                         layer.name = layer_name
                         # Emit signal for layer renaming
                         self.layer_renamed.emit(old_name, layer_name)
+
+    def toggle_all_groups(self):
+        """Toggle visibility of all groups."""
+        all_checked = all(group["item"].checkState(0) == Qt.Checked
+                          for group in self.groups.values())
+
+        # Determine new state: If all are checked, uncheck all. Otherwise, check all.
+        new_state = Qt.Unchecked if all_checked else Qt.Checked
+
+        for group in self.groups.values():
+            group_item = group["item"]
+            group_item.setCheckState(0, new_state)  # Toggle group checkbox
