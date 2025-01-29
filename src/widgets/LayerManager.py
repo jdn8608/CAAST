@@ -5,6 +5,8 @@ This can organize layers into category groups to allow users to quickly select t
 This replaces the default dockLayerList form napari
 """
 
+import numpy as np
+
 from PyQt5.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -16,6 +18,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
+from util.LayerType import LayerType
 
 
 class LayerManager(QWidget):
@@ -24,9 +27,10 @@ class LayerManager(QWidget):
     # PyQt signal for other widgets when layer name changes
     layer_renamed = pyqtSignal(str, str)
 
-    def __init__(self, napari_viewer, init_groups=None):
+    def __init__(self, napari_viewer, shape, init_groups=None):
         super().__init__()
         self.viewer = napari_viewer
+        self.image_shape = shape
         self.groups = {}  # Dictionary to store groups and their layers
 
         # Main layout for the widget
@@ -48,6 +52,12 @@ class LayerManager(QWidget):
         self.togg_button = QPushButton("Toggle All Groups")
         self.togg_button.clicked.connect(self.toggle_all_groups)
         button_top_layout.addWidget(self.togg_button)
+
+        # Add a new layer
+        self.new_labels_button = QPushButton("New Labels Layer")
+        self.new_labels_count = 1
+        self.new_labels_button.clicked.connect(self.add_blank_labels)
+        button_top_layout.addWidget(self.new_labels_button)
 
         # Toggle Grid Mode Button
         self.grid_button = QPushButton("Toggle Grid View")
@@ -85,6 +95,15 @@ class LayerManager(QWidget):
                     self.add_group(group_name=g)
             elif isinstance(init_groups, str):
                 self.add_groups(group_name=init_groups)
+
+    def add_blank_labels(self):
+        """Add a new blank labels layer to the viewer and MANUAL LABELS group."""
+        im_temp = self.viewer.add_labels(
+            np.zeros(self.image_shape, dtype=int),
+            name=f"New Labels {self.new_labels_count}")
+        self.new_labels_count += 1
+        self.add_layer_to_group(LayerType.MANUAL_LABELS.value, im_temp)
+        return
 
     def add_group(self, group_name):
         """Add a new group to the tree."""
@@ -285,3 +304,4 @@ class LayerManager(QWidget):
         for group in self.groups.values():
             group_item = group["item"]
             group_item.setCheckState(0, new_state)  # Toggle group checkbox
+            # Layer toggles will be auto caught by on_item_changed() with event handling

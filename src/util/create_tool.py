@@ -477,7 +477,9 @@ def create_tool(label_mode,
     default_dock_layer_list = viewer.window.qt_viewer.dockLayerList
     default_dock_layer_list.setVisible(False)
     layer_manager = LayerManager(
-        napari_viewer=viewer, init_groups=[layer.value for layer in LayerType])
+        napari_viewer=viewer,
+        shape=(shape[-1], shape[0], shape[1]),
+        init_groups=[layer.value for layer in LayerType])
     viewer.window.add_dock_widget(layer_manager, area='left')
 
     # Add the instrument layer data to the viewer
