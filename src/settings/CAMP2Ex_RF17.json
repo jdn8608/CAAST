@@ -1,0 +1,10 @@
+{
+	"filename_search_string" :	"CAMP2Ex_RF17_001.nc",
+	"view" : ["DF","CF","BF","AF","AN","AA","BA","CA","DA"],
+	"angle" : ["+70.4","+60.4","+46.2","+27.3","+7.7","-26.7","-45.7","-60.1","-70.4"],
+	"thresholds" : [0.133, 0.097, 0.072, 0.064, 0.061, 0.068, 0.075, 0.090, 0.111],
+	"scene_labels" : 0,
+	"bands" : ["ALL"],
+	"load_labels": "cloud mask",
+    "add_cloud_mask": 1
+}

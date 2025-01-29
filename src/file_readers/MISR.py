@@ -53,6 +53,7 @@ def read(parent_dir, search, views, config=None):
     # Get additional attributes from config file
     bands_to_get = config["bands"]
     add_cloud_mask = config["add_cloud_mask"]
+    thresholds = config["thresholds"]
 
     num_of_channels = 1
     band_names = ['red']
@@ -73,9 +74,9 @@ def read(parent_dir, search, views, config=None):
 
         # Generate a rough cloud mask
         if add_cloud_mask:
-            threshold = np.percentile(brf, 50)
+            threshold = thresholds[i]
             mask = np.zeros((Y_DIM, X_DIM))
-            mask[brf < threshold] = 1
+            mask[brf > threshold] = 1
             cloud_masks[:,:,i] = mask
 
     # Create the returnable dictionary
@@ -94,5 +95,5 @@ def read(parent_dir, search, views, config=None):
     # Reset shape to an immutable tuple
     shape = tuple(shape)
 
-    output_file = '/test_cloud_mask_<view>.hdf'
+    output_file = '/cloud_mask_<view>.hdf'
     return data_layer_dict, output_file, shape
