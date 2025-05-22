@@ -18,8 +18,10 @@ class LayerMinMaxSlider(QWidget):
         super().__init__()
         self.layer = layer  # Specific layer for this slider
         self.slider_scale = slider_scale
-        self.data_max = override_max if override_max else np.nanmax(layer.data)
-        self.data_min = override_min if override_min else np.nanmin(layer.data)
+        self.data_max = override_max if override_max is not None else np.nanmax(
+            layer.data)
+        self.data_min = override_min if override_min is not None else np.nanmin(
+            layer.data)
         self.layer_name_label = QLabel(f"Layer: {self.layer.name}")
         self.name = self.layer.name
 

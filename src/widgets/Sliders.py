@@ -29,11 +29,11 @@ def create_sliders(option, viewer, layers, data):
         sliders = []
         layout = QVBoxLayout()
         for i, layer in enumerate(layers):
-            slider_widget = LayerMinMaxSlider(layer,
-                                              override_max=np.nanmax(data[...,
-                                                                          i]),
-                                              override_min=np.nanmin(data[...,
-                                                                          i]))
+            slider_widget = LayerMinMaxSlider(
+                layer,
+                override_max=np.nanmax(data[..., i]),
+                override_min=0,
+            )
             layout.addWidget(slider_widget)
             sliders.append(slider_widget)
 
