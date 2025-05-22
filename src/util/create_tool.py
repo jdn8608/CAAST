@@ -102,76 +102,96 @@ def add_layers(data_layer_dict,
     for layer_name in data_layer_dict.keys():
         layer_type, data_temp = data_layer_dict[layer_name]
 
-        data = np.transpose(data_temp, (2, 0, 1))
-
-        # If regular image layer, add a layer with a gray-scale colormap
-        if layer_type in (LayerType.GRAY_BAND, LayerType.VIEW_GEO,
-                          LayerType.LAT_LON):
-
-            current_layer = viewer.add_image(data[...],
+        if layer_type is LayerType.SHAPE:
+            current_layer = viewer.add_shapes(
+                data_temp,
+                shape_type="polygon",
+                face_color="transparent",
+                edge_width=5,
+                edge_color="red",
+                opacity=0.5,  # 50% transparency
+                name=layer_name)
+            manager.add_layer_to_group(layer_type.value, current_layer)
+        elif layer_type is LayerType.RGB:
+            print(data_temp.shape)
+            data_temp = np.transpose(data_temp, (3, 0, 1, 2))
+            current_layer = viewer.add_image(data_temp,
                                              name=layer_name,
-                                             colormap=band_colormap)
+                                             rgb=True)
             # Add the layer to the correct group in the layer manager
             manager.add_layer_to_group(layer_type.value, current_layer)
 
-            im_layers[im_iter] = current_layer
-            im_data[..., im_iter] = data
-            im_iter += 1
-
-        # DTT layers will have additional functionality later on
-        elif layer_type is LayerType.DTT:
-            current_layer = viewer.add_image(data[...],
-                                             name=layer_name,
-                                             colormap=band_colormap)
-            # Add the layer to the correct group in the layer manager
-            manager.add_layer_to_group(layer_type.value, current_layer)
-
-            im_layers[im_iter] = current_layer
-            im_data[..., im_iter] = data
-            im_iter += 1
-        # OBSERVABLE layers will have additional functionality later on
-        elif layer_type is LayerType.OBSERVABLE:
-            current_layer = viewer.add_image(data[...],
-                                             name=layer_name,
-                                             colormap=band_colormap)
-            # Add the layer to the correct group in the layer manager
-            manager.add_layer_to_group(layer_type.value, current_layer)
-
-            im_layers[im_iter] = current_layer
-            im_data[..., im_iter] = data
-            im_iter += 1
-
-        # If not an image-type layer, process as labels
         else:
-            data = data.astype(int)
-            # Determine which color map to use for labels
-            if layer_type is LayerType.CLOUD_MASK:
-                current_colormap = mask_colormap
-            elif layer_type is LayerType.MANUAL_LABELS:
-                current_colormap = label_colormap
-            elif layer_type is LayerType.NAN_MASK:
-                current_colormap = nan_colormap
-            elif layer_type is LayerType.SURFACE_ID:
-                current_colormap = surf_colormap
+            data = np.transpose(data_temp, (2, 0, 1))
+            print(data.shape)
 
-            if current_colormap is not None:
-                # Add labels layer to viewer
-                current_layer = viewer.add_labels(data[...],
-                                                  name=layer_name,
-                                                  colormap=current_colormap)
-                current_layer.editable = False  # do not allow for editing
+            # If regular image layer, add a layer with a gray-scale colormap
+            if layer_type in (LayerType.GRAY_BAND, LayerType.VIEW_GEO,
+                              LayerType.LAT_LON):
 
+                current_layer = viewer.add_image(data[...],
+                                                 name=layer_name,
+                                                 colormap=band_colormap)
                 # Add the layer to the correct group in the layer manager
                 manager.add_layer_to_group(layer_type.value, current_layer)
 
-                # Append the layer and np data arrays to the corresponding lists
-                label_layers.append(current_layer)
-                label_list.append(data)
+                im_layers[im_iter] = current_layer
+                im_data[..., im_iter] = data
+                im_iter += 1
 
-                # Check to see if current layer is initial editing labels set by user
-                if (not edit_data_override) and \
-                    (layer_name.upper() == load_labels_name.upper()):
-                    editing_data = data.copy()
+            # DTT layers will have additional functionality later on
+            elif layer_type is LayerType.DTT:
+                current_layer = viewer.add_image(data[...],
+                                                 name=layer_name,
+                                                 colormap=band_colormap)
+                # Add the layer to the correct group in the layer manager
+                manager.add_layer_to_group(layer_type.value, current_layer)
+
+                im_layers[im_iter] = current_layer
+                im_data[..., im_iter] = data
+                im_iter += 1
+            # OBSERVABLE layers will have additional functionality later on
+            elif layer_type is LayerType.OBSERVABLE:
+                current_layer = viewer.add_image(data[...],
+                                                 name=layer_name,
+                                                 colormap=band_colormap)
+                # Add the layer to the correct group in the layer manager
+                manager.add_layer_to_group(layer_type.value, current_layer)
+
+                im_layers[im_iter] = current_layer
+                im_data[..., im_iter] = data
+                im_iter += 1
+
+            # If not an image-type layer, process as labels
+            else:
+                data = data.astype(int)
+                # Determine which color map to use for labels
+                if layer_type is LayerType.CLOUD_MASK:
+                    current_colormap = mask_colormap
+                elif layer_type is LayerType.MANUAL_LABELS:
+                    current_colormap = label_colormap
+                elif layer_type is LayerType.NAN_MASK:
+                    current_colormap = nan_colormap
+                elif layer_type is LayerType.SURFACE_ID:
+                    current_colormap = surf_colormap
+
+                if current_colormap is not None:
+                    # Add labels layer to viewer
+                    current_layer = viewer.add_labels(
+                        data[...], name=layer_name, colormap=current_colormap)
+                    current_layer.editable = False  # do not allow for editing
+
+                    # Add the layer to the correct group in the layer manager
+                    manager.add_layer_to_group(layer_type.value, current_layer)
+
+                    # Append the layer and np data arrays to the corresponding lists
+                    label_layers.append(current_layer)
+                    label_list.append(data)
+
+                    # Check to see if current layer is initial editing labels set by user
+                    if (not edit_data_override) and \
+                        (layer_name.upper() == load_labels_name.upper()):
+                        editing_data = data.copy()
 
     # Check to see if editing data was found... if not, store as zeros
     if label_mode and editing_data is None and load_labels_name:
@@ -474,8 +494,6 @@ def create_tool(label_mode,
     viewer.window.add_dock_widget(bottom_tabs, area="bottom")
 
     # Set-up custom Layer Manager and remove the default dock layer list from napari
-    default_dock_layer_list = viewer.window.qt_viewer.dockLayerList
-    default_dock_layer_list.setVisible(False)
     layer_manager = LayerManager(
         napari_viewer=viewer,
         shape=(shape[-1], shape[0], shape[1]),
@@ -627,7 +645,7 @@ def create_tool(label_mode,
         threshold_gate_layout.setSpacing(0)
         threshold_gate_layout.setContentsMargins(0, 0, 0, 0)
         # Create the ThresholdWidget and LogicGatesWidget
-        thresh_widget = ThresholdWidget(viewer, layer_manager)
+        thresh_widget = ThresholdWidget(viewer, layer_manager, views=views)
         logic_gate_widget = LogicGatesWidget(viewer, layer_manager)
         # Set size policies to allow both widgets to share space equally
         thresh_widget.setSizePolicy(QSizePolicy.Expanding,

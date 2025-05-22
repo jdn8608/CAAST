@@ -56,3 +56,4 @@ class LayerType(Enum):
     SURFACE_ID = "Surface Ids"
     VIEW_GEO = "Viewing Geometery"
     LAT_LON = "Latitude/Longitude"
+    SHAPE = "Shapes"
