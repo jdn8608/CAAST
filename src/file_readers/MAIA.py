@@ -108,6 +108,7 @@ def get_cloud_mask(hdf_file):
     cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
     # Convet NaN mask values (3) to -1 for the purpose of colormap formatting
     cloud_mask[cloud_mask == 3] = -1
+    cloud_mask[cloud_mask == 1] = 3  # temp for 4 color colormap
     return cloud_mask
 
 
