@@ -28,7 +28,7 @@ class LayerManager(QWidget):
     layer_renamed = pyqtSignal(str, str)
 
     def __init__(self, napari_viewer, shape, init_groups=None):
-        super().__init__()
+        super().__init__(None)
         self.viewer = napari_viewer
         self.image_shape = shape
         self.groups = {}  # Dictionary to store groups and their layers
@@ -46,6 +46,7 @@ class LayerManager(QWidget):
         # Buttons for controlling viewer settings
         button_layout = QVBoxLayout()
         button_top_layout = QHBoxLayout()
+        button_mid_layout = QHBoxLayout()
         button_bot_layout = QHBoxLayout()
 
         # Toggle All Groups
@@ -59,6 +60,17 @@ class LayerManager(QWidget):
         self.new_labels_button.clicked.connect(self.add_blank_labels)
         button_top_layout.addWidget(self.new_labels_button)
 
+        # Split View
+        self.split_view_button = QPushButton("Toggle Split View")
+        button_mid_layout.addWidget(self.split_view_button)
+
+        # Re-order Layers
+        self.reorder_layers_button = QPushButton("Re-Order Visual")
+        default_dock_layer_list = self.viewer.window.qt_viewer.dockLayerList  # Override the Dock Layer list
+        default_dock_layer_list.setVisible(False)
+        self.reorder_layers_button.clicked.connect(self.toggle_layer_list)
+        button_mid_layout.addWidget(self.reorder_layers_button)
+
         # Toggle Grid Mode Button
         self.grid_button = QPushButton("Toggle Grid View")
         self.grid_button.clicked.connect(self.toggle_grid_mode)
@@ -70,6 +82,7 @@ class LayerManager(QWidget):
         button_bot_layout.addWidget(self.reset_view_button)
 
         button_layout.addLayout(button_top_layout)
+        button_layout.addLayout(button_mid_layout)
         button_layout.addLayout(button_bot_layout)
         main_layout.addLayout(button_layout)
 
@@ -95,6 +108,11 @@ class LayerManager(QWidget):
                     self.add_group(group_name=g)
             elif isinstance(init_groups, str):
                 self.add_groups(group_name=init_groups)
+
+    def toggle_layer_list(self):
+        dock = self.viewer.window.qt_viewer.dockLayerList
+        dock.setFloating(True)
+        dock.setVisible(True)
 
     def add_blank_labels(self):
         """Add a new blank labels layer to the viewer and MANUAL LABELS group."""
@@ -188,6 +206,10 @@ class LayerManager(QWidget):
             & ~Qt.ItemIsEditable)  # Revert to non-editable after editing
         self.tree_widget.setEditTriggers(previous_triggers)
 
+    def dragMoveEvent(self, event):
+        """Override dragMoveEvent to suppress built-in Qt animations."""
+        event.accept()  # Prevents Qt from thinking the drop is invalid
+
     def on_drop_event(self, event):
         """Handle drag-and-drop functionality to move layers between groups."""
         dragged_item = self.tree_widget.currentItem()
@@ -215,15 +237,27 @@ class LayerManager(QWidget):
 
                     # Update the group order in the internal dictionary
                     dragged_group_name = dragged_item.text(0)
+                    #reordered_groups = [self.tree_widget.topLevelItem(i).text(0) for i in range(self.tree_widget.topLevelItemCount())]
+                    #self.groups = {key: self.groups[key] for key in reordered_groups if key in self.groups}
+
                     reordered_groups = list(self.groups.keys())
-                    reordered_groups.insert(
-                        target_index, reordered_groups.pop(dragged_index))
-                    self.groups = {
+                    removed = reordered_groups.pop(dragged_index)
+                    reordered_groups.insert(target_index, removed)
+                    new_order = {
                         key: self.groups[key]
                         for key in reordered_groups
                     }
 
-                    event.accept()
+                    self.groups = new_order
+
+                    #event.acceptProposedAction()
+                    # Current bug: If event is accepted, a top child is deleted
+                    # if the event is ignore, proper drag drop handling is allowed
+                    # but then a snap back animation is played... needs further
+                    # investigation in the future for correction. Current implementation
+                    # works and only has a visual bug.
+                    event.ignore()
+
                 else:  # indexes out of bounds... ignore event
                     event.ignore()
             else:  # either target does not exist or is not a group... ignore event
@@ -292,6 +326,18 @@ class LayerManager(QWidget):
                         layer.name = layer_name
                         # Emit signal for layer renaming
                         self.layer_renamed.emit(old_name, layer_name)
+
+    def print_top_level_items(self):
+        print('----------------------------------')
+        print("Current Groups in QTreeWidget:")
+        for i in range(self.tree_widget.topLevelItemCount()):
+            item = self.tree_widget.topLevelItem(i)
+            print(f"{i}: {item.text(0)}")
+
+    def print_groups(self):
+        print("--Current Groups--")
+        for i, k in enumerate(self.groups.keys()):
+            print(f"{i}: {k}")
 
     def toggle_all_groups(self):
         """Toggle visibility of all groups."""
