@@ -1,0 +1,14 @@
+{
+	"filename_search_string" :	"ML_OUT*.h5",
+	"view" : ["Nadir"],
+	"angle" : ["0.0"],
+   	"scene_labels" : ["cirrus","cumulus","sub-pixel_cumulus","smoke","aerosols","dark cloud","snow", "glint"],
+	"bands" : ["ALL"],
+	"aprioi" : "None",
+	"load_labels": "cloud mask",
+    "create_nan_mask": 0,
+    "add_cloud_mask": 1,
+    "add_dtt" : 0,
+    "add_surface_id":0,
+    "add_sun_view_geometry":0
+}
