@@ -13,7 +13,7 @@ from util.LayerType import LayerType
 
 class ThresholdWidget(QWidget):
 
-    def __init__(self, viewer, layer_manager):
+    def __init__(self, viewer, layer_manager, views=[]):
         super().__init__()
         self.viewer = viewer
         self.layer_manager = layer_manager
@@ -27,38 +27,32 @@ class ThresholdWidget(QWidget):
         self.setLayout(self.layout)
 
         # Horizontal layout for layer, operation, and value
-        self.horizontal_layout_1 = QHBoxLayout()
-        # Create next horizontal row for widgets
-        self.horizontal_layout_2 = QHBoxLayout()
+        self.horizontal_selection_layout = QHBoxLayout()
+        # Dropdown to select output labels layer
+        self.labels_layer_dropdown = QComboBox()
+        self.horizontal_selection_layout.addWidget(self.labels_layer_dropdown)
+        # Dropdown to select which view dim to threshold and output to the labels layer
+        self.view_dropdown = QComboBox()
+        self.view_dropdown.addItems(views)
+        self.horizontal_selection_layout.addWidget(self.view_dropdown)
+        # Add this hozirontal layout to the widget layout
+        self.layout.addLayout(self.horizontal_selection_layout)
 
+        # Horizontal layout for layer, operation, and value
+        self.horizontal_threshold_layout = QHBoxLayout()
         # Dropdown to select image layer
         self.layer_dropdown = QComboBox()
-        self.horizontal_layout_1.addWidget(self.layer_dropdown)
-
+        self.horizontal_threshold_layout.addWidget(self.layer_dropdown)
         # Dropdown to select operation
         self.operation_dropdown = QComboBox()
         self.operation_dropdown.addItems([">", "<", "<=", ">=", "==", "!="])
-        self.horizontal_layout_1.addWidget(self.operation_dropdown)
-
+        self.horizontal_threshold_layout.addWidget(self.operation_dropdown)
         # Input field for threshold value
         self.value_input = QLineEdit()
         self.value_input.setPlaceholderText("Threshold Value")
-        self.horizontal_layout_1.addWidget(self.value_input)
-
-        # Editable checkbox and descriptive label
-        self.editable_checkbox = QCheckBox(
-            "Enable editing of the new labels layer")
-        self.editable_checkbox.setChecked(False)  # Default: not editable
-        self.horizontal_layout_2.addWidget(self.editable_checkbox)
-
-        # Dropdown for selecting All or Current view(s) to threshold
-        self.view_dropdown = QComboBox()
-        self.view_dropdown.addItems(["All", "Current"])
-        self.horizontal_layout_2.addWidget(self.view_dropdown)
-
+        self.horizontal_threshold_layout.addWidget(self.value_input)
         # Add horizontal layouts to main layout
-        self.layout.addLayout(self.horizontal_layout_1)
-        self.layout.addLayout(self.horizontal_layout_2)
+        self.layout.addLayout(self.horizontal_threshold_layout)
 
         # Button to create thresholded labels layer
         self.create_button = QPushButton("Create")
@@ -70,14 +64,13 @@ class ThresholdWidget(QWidget):
         # Populate the layer dropdown whenever the viewer layers change
         self.viewer.layers.events.inserted.connect(self.update_layer_list)
         self.viewer.layers.events.removed.connect(self.update_layer_list)
-        self.viewer.layers.selection.events.active.connect(
-            self.update_layer_from_selection)
+        #self.viewer.layers.selection.events.active.connect(
+        #    self.update_layer_from_selection)
         self.update_layer_list()
 
     def update_layer_list(self, event=None):
         """Update the layer dropdown with image layers from the viewer."""
         current_selection = self.layer_dropdown.currentText()
-        print(current_selection)
         self.layer_dropdown.clear()
         self.layer_dropdown.addItems([self.default_text])
         image_layers = [
@@ -87,6 +80,17 @@ class ThresholdWidget(QWidget):
         self.layer_dropdown.addItems(image_layers)
         if current_selection in image_layers:
             self.layer_dropdown.setCurrentText(current_selection)
+
+        current_selection = self.labels_layer_dropdown.currentText()
+        self.labels_layer_dropdown.clear()
+        self.labels_layer_dropdown.addItems([self.default_text])
+        labels_layers = [
+            layer.name for layer in self.viewer.layers
+            if isinstance(layer, napari.layers.Labels) and layer.editable
+        ]
+        self.labels_layer_dropdown.addItems(labels_layers)
+        if current_selection in labels_layers:
+            self.labels_layer_dropdown.setCurrentText(current_selection)
 
     def update_layer_from_selection(self, event=None):
         """Update the dropdown to reflect the currently selected layer in the viewer."""
@@ -115,6 +119,9 @@ class ThresholdWidget(QWidget):
             print("Selected layer is not an image layer.")
             return
 
+        output_layer = self.labels_layer_dropdown.currentText()
+        print(self.view_dropdown.currentIndex())
+
         # Get selected operation
         operation = self.operation_dropdown.currentText()
 
@@ -139,15 +146,6 @@ class ThresholdWidget(QWidget):
         threshold_func = operation_map[operation]
         labels_data = threshold_func(image_data, threshold_value).astype(int)
 
-        # Check to see if threshold is applied to all or current view
-        if self.view_dropdown.currentText() == "Current":
-            # Replace labels with zeros filled in all other views
-            empty = np.zeros((labels_data.shape), dtype=int) - 1
-            ind = self.viewer.window._qt_viewer.dims.slider_widgets[
-                0].slider.value()
-            empty[ind] = labels_data[ind]
-            labels_data = empty
-
         # Generate layer name ignoring the prefix for duplication check
         base_name = f"{selected_layer_name} {operation} {threshold_value}"
         existing_names = [
@@ -164,7 +162,6 @@ class ThresholdWidget(QWidget):
         new_layer_name = f"Th{self.threshold_counter}: {base_name}"
 
         im_temp = self.viewer.add_labels(labels_data, name=new_layer_name)
-        im_temp.editable = self.editable_checkbox.isChecked()
         self.layer_manager.add_layer_to_group(LayerType.THRESHOLDS.value,
                                               im_temp)
 
