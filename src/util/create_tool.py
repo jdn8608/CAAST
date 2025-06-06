@@ -11,7 +11,7 @@ import numpy as np
 import napari
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFont
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QLabel, QTextEdit, QComboBox
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QLabel, QTextEdit, QComboBox, QSizePolicy, QFrame
 
 from util.LayerType import LayerType
 from util.colormaps import get_all_colormaps
@@ -22,6 +22,8 @@ from widgets.PointOfViewNavigator import PointOfViewNavigator
 from widgets.SubmitButtons import create_save_button
 from widgets.SceneLabelGrid import create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
+from widgets.ThresholdPanel import ThresholdWidget
+from widgets.LogicGatesPanel import LogicGatesWidget
 
 
 def add_layers(data_layer_dict,
@@ -29,7 +31,8 @@ def add_layers(data_layer_dict,
                shape,
                viewer,
                config,
-               load_labels_name=''):
+               load_labels_name='',
+               label_mode=True):
     """Add imaage and label layers to the napari viewer, and providing connectors
     for down-stream widgets based on the LayerType attributes.
 
@@ -52,14 +55,24 @@ def add_layers(data_layer_dict,
             tuple[1] -> a NumPy array and a list of layers for image data 
             tuple[2] -> a list of label NumPy arrays and a list of label layers
     """
+    shape = (shape[3], shape[0], shape[1], shape[2])
 
     (band_colormap, label_colormap, mask_colormap, nan_colormap,
      surf_colormap) = get_all_colormaps(config)
 
+    if not label_mode:
+        editing_data = None
+        editing_layer = None
+        edit_data_override = True
+    # check if load_labels is defined, if not, set to 0
+    elif load_labels_name is None or load_labels_name == '':
+        load_labels_name = '0'
+
     # Check if the fill value is an int, if now, set-up for checking if layer to be
     # filled by a instrument layer
     try:
-        edit_data = np.zeros(shape, dtype=int) + int(load_labels_name)
+        editing_data = np.zeros(
+            (shape[0], shape[1], shape[2]), dtype=int) + int(load_labels_name)
         edit_data_override = True
     except:
         editing_data = None
@@ -73,7 +86,7 @@ def add_layers(data_layer_dict,
 
     # Empty list for all image type layers
     # Initial size of the shape provided from data ingestion (spectral dim)
-    im_layers = [None] * shape[2]
+    im_layers = [None] * shape[3]
     # Image data NumPy array
     im_data = np.zeros(shape)
     im_iter = 0
@@ -87,78 +100,101 @@ def add_layers(data_layer_dict,
     # Loop through all layers by their name and add them to the viewer with the correct
     # widget formatting/connections for other widgets
     for layer_name in data_layer_dict.keys():
-        layer_type, data = data_layer_dict[layer_name]
+        layer_type, data_temp = data_layer_dict[layer_name]
 
-        # If regular image layer, add a layer with a gray-scale colormap
-        if layer_type in (LayerType.GRAY_BAND, LayerType.VIEW_GEO,
-                          LayerType.LAT_LON):
-            current_layer = viewer.add_image(data[..., 0],
+        if layer_type is LayerType.SHAPE:
+            current_layer = viewer.add_shapes(
+                data_temp,
+                shape_type="polygon",
+                face_color="transparent",
+                edge_width=5,
+                edge_color="red",
+                opacity=0.5,  # 50% transparency
+                name=layer_name)
+            manager.add_layer_to_group(layer_type.value, current_layer)
+        elif layer_type is LayerType.RGB:
+            print(data_temp.shape)
+            data_temp = np.transpose(data_temp, (3, 0, 1, 2))
+            current_layer = viewer.add_image(data_temp,
                                              name=layer_name,
-                                             colormap=band_colormap)
+                                             rgb=True)
             # Add the layer to the correct group in the layer manager
             manager.add_layer_to_group(layer_type.value, current_layer)
 
-            im_layers[im_iter] = current_layer
-            im_data[..., im_iter, :] = data
-            im_iter += 1
-
-        # DTT layers will have additional functionality later on
-        elif layer_type is LayerType.DTT:
-            current_layer = viewer.add_image(data[..., 0],
-                                             name=layer_name,
-                                             colormap=band_colormap)
-            # Add the layer to the correct group in the layer manager
-            manager.add_layer_to_group(layer_type.value, current_layer)
-
-            im_layers[im_iter] = current_layer
-            im_data[..., im_iter, :] = data
-            im_iter += 1
-        # OBSERVABLE layers will have additional functionality later on
-        elif layer_type is LayerType.OBSERVABLE:
-            current_layer = viewer.add_image(data[..., 0],
-                                             name=layer_name,
-                                             colormap=band_colormap)
-            # Add the layer to the correct group in the layer manager
-            manager.add_layer_to_group(layer_type.value, current_layer)
-
-            im_layers[im_iter] = current_layer
-            im_data[..., im_iter, :] = data
-            im_iter += 1
-
-        # If not an image-type layer, process as labels
         else:
-            data = data.astype(int)
-            # Determine which color map to use for labels
-            if layer_type is LayerType.CLOUD_MASK:
-                current_colormap = mask_colormap
-            elif layer_type is LayerType.MANUAL_LABELS:
-                current_colormap = label_colormap
-            elif layer_type is LayerType.NAN_MASK:
-                current_colormap = nan_colormap
-            elif layer_type is LayerType.SURFACE_ID:
-                current_colormap = surf_colormap
+            data = np.transpose(data_temp, (2, 0, 1))
+            print(data.shape)
 
-            if current_colormap is not None:
-                # Add labels layer to viewer
-                current_layer = viewer.add_labels(data[..., 0],
-                                                  name=layer_name,
-                                                  colormap=current_colormap)
-                current_layer.editable = False  # do not allow for editing
+            # If regular image layer, add a layer with a gray-scale colormap
+            if layer_type in (LayerType.GRAY_BAND, LayerType.VIEW_GEO,
+                              LayerType.LAT_LON):
 
+                current_layer = viewer.add_image(data[...],
+                                                 name=layer_name,
+                                                 colormap=band_colormap)
                 # Add the layer to the correct group in the layer manager
                 manager.add_layer_to_group(layer_type.value, current_layer)
 
-                # Append the layer and np data arrays to the corresponding lists
-                label_layers.append(current_layer)
-                label_list.append(data)
+                im_layers[im_iter] = current_layer
+                im_data[..., im_iter] = data
+                im_iter += 1
 
-                # Check to see if current layer is initial editing labels set by user
-                if (not edit_data_override) and \
-                    (layer_name.upper() == load_labels_name.upper()):
-                    editing_data = data.copy()
+            # DTT layers will have additional functionality later on
+            elif layer_type is LayerType.DTT:
+                current_layer = viewer.add_image(data[...],
+                                                 name=layer_name,
+                                                 colormap=band_colormap)
+                # Add the layer to the correct group in the layer manager
+                manager.add_layer_to_group(layer_type.value, current_layer)
+
+                im_layers[im_iter] = current_layer
+                im_data[..., im_iter] = data
+                im_iter += 1
+            # OBSERVABLE layers will have additional functionality later on
+            elif layer_type is LayerType.OBSERVABLE:
+                current_layer = viewer.add_image(data[...],
+                                                 name=layer_name,
+                                                 colormap=band_colormap)
+                # Add the layer to the correct group in the layer manager
+                manager.add_layer_to_group(layer_type.value, current_layer)
+
+                im_layers[im_iter] = current_layer
+                im_data[..., im_iter] = data
+                im_iter += 1
+
+            # If not an image-type layer, process as labels
+            else:
+                data = data.astype(int)
+                # Determine which color map to use for labels
+                if layer_type is LayerType.CLOUD_MASK:
+                    current_colormap = mask_colormap
+                elif layer_type is LayerType.MANUAL_LABELS:
+                    current_colormap = label_colormap
+                elif layer_type is LayerType.NAN_MASK:
+                    current_colormap = nan_colormap
+                elif layer_type is LayerType.SURFACE_ID:
+                    current_colormap = surf_colormap
+
+                if current_colormap is not None:
+                    # Add labels layer to viewer
+                    current_layer = viewer.add_labels(
+                        data[...], name=layer_name, colormap=current_colormap)
+                    current_layer.editable = False  # do not allow for editing
+
+                    # Add the layer to the correct group in the layer manager
+                    manager.add_layer_to_group(layer_type.value, current_layer)
+
+                    # Append the layer and np data arrays to the corresponding lists
+                    label_layers.append(current_layer)
+                    label_list.append(data)
+
+                    # Check to see if current layer is initial editing labels set by user
+                    if (not edit_data_override) and \
+                        (layer_name.upper() == load_labels_name.upper()):
+                        editing_data = data.copy()
 
     # Check to see if editing data was found... if not, store as zeros
-    if editing_data is None and load_labels_name:
+    if label_mode and editing_data is None and load_labels_name:
         # ambigous name was provided (not found)
         warnings.warn(
             "load_labels settings string was not found in the naming convetions"
@@ -170,8 +206,8 @@ def add_layers(data_layer_dict,
         edit_data = np.zeros(data.shape, dtype=int)
 
     # Add editing_data as an editing layer to the viewer
-    if load_labels_name:
-        editing_layer = viewer.add_labels(editing_data[..., 0],
+    if label_mode and load_labels_name:
+        editing_layer = viewer.add_labels(editing_data[...],
                                           name='Editing',
                                           colormap=label_colormap)
         # Add the layer to the correct group in the layer manager
@@ -458,10 +494,10 @@ def create_tool(label_mode,
     viewer.window.add_dock_widget(bottom_tabs, area="bottom")
 
     # Set-up custom Layer Manager and remove the default dock layer list from napari
-    default_dock_layer_list = viewer.window.qt_viewer.dockLayerList
-    default_dock_layer_list.setVisible(False)
     layer_manager = LayerManager(
-        napari_viewer=viewer, init_groups=[layer.value for layer in LayerType])
+        napari_viewer=viewer,
+        shape=(shape[-1], shape[0], shape[1]),
+        init_groups=[layer.value for layer in LayerType])
     viewer.window.add_dock_widget(layer_manager, area='left')
 
     # Add the instrument layer data to the viewer
@@ -472,7 +508,8 @@ def create_tool(label_mode,
                                                shape,
                                                viewer,
                                                config,
-                                               load_labels_name=load_labels_name if label_mode else '')
+                                               load_labels_name=load_labels_name if label_mode else '',
+                                               label_mode=label_mode)
 
     # Add Min/Max Slider for Image Layers
     min_max_slider, min_max_layout = create_sliders(
@@ -485,36 +522,90 @@ def create_tool(label_mode,
                                   name="Min-Max Range Slider",
                                   area='right')
 
+    # Create a function to search for a layer to rename from LayerManager event
+    def update_sliders_name(old_name, new_name):
+        """Loops through alll Min/Max Sliders to check for if they have the name
+        of old_name. If so, call their update_layer_name() with the new_name
+
+        Args:
+            old_name: a string representing the old name of a renamed layer
+            new_name: a string representing the new name of a renamed layer
+        """
+        for mms in min_max_slider:
+            if old_name == mms.name:
+                mms.update_layer_name()
+
+    # Connect the renaming event call to this function
+    layer_manager.layer_renamed.connect(update_sliders_name)
+
     # If there are multiple view-angles found, add a POV Slider to navigate them
     if im_np.shape[-1] > 1:
-        # Create Tab widget & layout
-        POV_tab_widget = QWidget()
-        POV_tab_layout = QVBoxLayout()
-        POV_tab_widget.setLayout(POV_tab_layout)
-        # create title for top of POV nav widget
-        POV_title = QLabel("Point of View Navigator",
-                           alignment=Qt.AlignCenter,
-                           font=QFont("Arial", weight=QFont.Bold))
-        POV_tab_layout.addWidget(POV_title)
 
-        #top_layout.addWidget(POV_title)  # add to top layout
+        # Access the slider widget
+        qt_dims = viewer.window._qt_viewer.dims
+        # Grab the first slider widget
+        slider_widget = qt_dims.slider_widgets[0]
 
-        # Create the POV nav to iterate through view angles
-        POV_nav = PointOfViewNavigator(im_layers=im_layers,
-                                       min_max_slider=min_max_slider,
-                                       im_data=im_np,
-                                       label_layers=label_layers,
-                                       label_data=label_list,
-                                       view_text=views,
-                                       angles=angles)
-        # Connect viewer's key events to this widget
-        # left arrow -> goes to next left view
-        # right arrow -> goes to next right view
-        viewer.bind_key('Left', POV_nav.go_left)
-        viewer.bind_key('Right', POV_nav.go_right)
-        #top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
-        POV_tab_layout.addWidget(POV_nav)
-        bottom_tabs.addTab(POV_tab_widget, "Point of View Navigator")
+        # Create a formatted string and label to present
+        # the camera and VZA strings to the user
+        view_indicator_string = "Camera: {0} ; VZA: {1}"
+        view_indicator_label = QLabel(
+            view_indicator_string.format(views[slider_widget.slider.value()],
+                                         angles[slider_widget.slider.value()]))
+
+        # Add a new QLabel to replace the numeric text
+        slider_widget.layout().insertWidget(0, view_indicator_label)
+
+        # Define a callback function to update the label dynamically
+        def update_view_label(view_dim):
+            """Update the custom text next to the view dim slider
+
+            Args:
+                view_dim: integer representing the index of the view we
+                          are currently presenting in the view panel from
+                          the slider.
+            """
+            if 0 <= view_dim < len(views):  # Ensure within bounds
+                view_indicator_label.setText(
+                    view_indicator_string.format(views[view_dim],
+                                                 angles[view_dim]))
+
+        # Connect the slider's valueChanged signal to the callback
+        slider_widget.slider.valueChanged.connect(update_view_label)
+
+        # Configure the slider default settings
+        slider_widget.axis = 0
+        slider_widget.fps = 2
+        slider_widget.loop_mode = "back_and_forth"
+
+    #    # Create Tab widget & layout
+    #    POV_tab_widget = QWidget()
+    #    POV_tab_layout = QVBoxLayout()
+    #    POV_tab_widget.setLayout(POV_tab_layout)
+    #    # create title for top of POV nav widget
+    #    POV_title = QLabel("Point of View Navigator",
+    #                       alignment=Qt.AlignCenter,
+    #                       font=QFont("Arial", weight=QFont.Bold))
+    #    POV_tab_layout.addWidget(POV_title)
+
+    #    #top_layout.addWidget(POV_title)  # add to top layout
+
+    #    # Create the POV nav to iterate through view angles
+    #    POV_nav = PointOfViewNavigator(im_layers=im_layers,
+    #                                   min_max_slider=min_max_slider,
+    #                                   im_data=im_np,
+    #                                   label_layers=label_layers,
+    #                                   label_data=label_list,
+    #                                   view_text=views,
+    #                                   angles=angles)
+    #    # Connect viewer's key events to this widget
+    #    # left arrow -> goes to next left view
+    #    # right arrow -> goes to next right view
+    #    viewer.bind_key('Left', POV_nav.go_left)
+    #    viewer.bind_key('Right', POV_nav.go_right)
+    #    #top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
+    #    POV_tab_layout.addWidget(POV_nav)
+    #    bottom_tabs.addTab(POV_tab_widget, "Point of View Navigator")
 
     # Create and add the Notes Tab to the bottom tab area
     bottom_tabs.addTab(get_notes_tab(output_filepath, prior_notes=notes),
@@ -546,6 +637,39 @@ def create_tool(label_mode,
                                     dataset_name,
                                     controls=layer_controls_scroll_area),
             "Pixel Tools")
+
+        # Create and add a tab for the ThresholdWidget
+        threshold_gate_widget = QWidget()
+        threshold_gate_layout = QHBoxLayout()
+        # Remove extra spacing and margins from the layout
+        threshold_gate_layout.setSpacing(0)
+        threshold_gate_layout.setContentsMargins(0, 0, 0, 0)
+        # Create the ThresholdWidget and LogicGatesWidget
+        thresh_widget = ThresholdWidget(viewer, layer_manager, views=views)
+        logic_gate_widget = LogicGatesWidget(viewer, layer_manager)
+        # Set size policies to allow both widgets to share space equally
+        thresh_widget.setSizePolicy(QSizePolicy.Expanding,
+                                    QSizePolicy.Preferred)
+        logic_gate_widget.setSizePolicy(QSizePolicy.Expanding,
+                                        QSizePolicy.Preferred)
+        # Create a vertical line
+        vertical_line = QFrame()
+        vertical_line.setFrameShape(QFrame.VLine)
+        vertical_line.setFrameShadow(QFrame.Sunken)
+        vertical_line.setLineWidth(
+            10)  # Set the width of the line for visibility
+        vertical_line.setStyleSheet("background-color: #414851;")
+
+        # Add widgets to the layout
+        threshold_gate_layout.addWidget(
+            thresh_widget, stretch=1)  # Assign equal stretch factor
+        threshold_gate_layout.addWidget(vertical_line)  # Add vertical line
+        threshold_gate_layout.addWidget(logic_gate_widget, stretch=1)
+        # Set the layout for the container widget
+        threshold_gate_widget.setLayout(threshold_gate_layout)
+        # Add the tab to the bottom_tabs
+        bottom_tabs.addTab(threshold_gate_widget, "Thresholding & Logic Gates")
+
     # Otherwise, load the Review Mode tab
     else:
         if isinstance(config["grade_slider_min"], int) and \

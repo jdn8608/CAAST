@@ -114,7 +114,7 @@ def save_labels(output_filepath,
         for v, view in enumerate(tqdm(views, desc="Saving File(s)")):
             pixel_labels_output_filepath = format_output_filepath_views(
                 output_filepath, view)
-            writer(pixel_labels_output_filepath, dataset_name, labels[:, :, v])
+            writer(pixel_labels_output_filepath, dataset_name, labels[v])
             tqdm.write(
                 f"{datetime.datetime.now()}: pixel labels saved to {pixel_labels_output_filepath}"
             )

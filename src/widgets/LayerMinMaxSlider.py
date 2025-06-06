@@ -18,8 +18,10 @@ class LayerMinMaxSlider(QWidget):
         super().__init__()
         self.layer = layer  # Specific layer for this slider
         self.slider_scale = slider_scale
-        self.data_max = override_max if override_max else np.nanmax(layer.data)
-        self.data_min = override_min if override_min else np.nanmin(layer.data)
+        self.data_max = override_max if override_max is not None else np.nanmax(
+            layer.data)
+        self.data_min = override_min if override_min is not None else np.nanmin(
+            layer.data)
         self.layer_name_label = QLabel(f"Layer: {self.layer.name}")
         self.name = self.layer.name
 
@@ -110,3 +112,8 @@ class LayerMinMaxSlider(QWidget):
                 self.range_slider.setValue((scaled_min, scaled_max))
         except ValueError:
             pass  # Ignore invalid input
+
+    def update_layer_name(self):
+        """Update the layer name displayed on the slider."""
+        self.name = self.layer.name
+        self.layer_name_label.setText(f"Layer: {self.name}")

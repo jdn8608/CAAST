@@ -1,7 +1,7 @@
 {
-	"filename_search_string" :	"*AV_1000*nofit_0p*",
-	"view" : ["DA","AF","DF"],
-	"angle" : ["-70.0","+26.1","+70.0"],
+	"filename_search_string" :	"ML_OUT*.h5",
+	"view" : ["Nadir"],
+	"angle" : ["0.0"],
    	"scene_labels" : ["cirrus","cumulus","sub-pixel_cumulus","smoke","aerosols","dark cloud","snow", "glint"],
 	"bands" : ["ALL"],
 	"aprioi" : "None",
@@ -9,6 +9,6 @@
     "create_nan_mask": 0,
     "add_cloud_mask": 1,
     "add_dtt" : 0,
-    "add_surface_id":1,
+    "add_surface_id":0,
     "add_sun_view_geometry":0
 }

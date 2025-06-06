@@ -34,7 +34,8 @@ def find_file(parent_dir, search, view=''):
 
     # Search for a file based on the search string and filter by the view string
     search_result_files = [
-        r for r in glob.glob(f'{parent_dir}/{search}') if view in r
+        r for r in glob.glob(os.path.join(parent_dir, search))
+        if view in os.path.basename(r)
     ]
 
     # If there is more than one file found, throw an Exception
@@ -89,6 +90,7 @@ def get_bands(hdf_file, band_names, num_of_channels):
 
     for i, name in enumerate(band_names):
         band_data[:, :, i] = np.array(hdf_file['Reflectance'][name])
+    band_data[band_data < 0] = 0
 
     return band_data
 
@@ -106,6 +108,7 @@ def get_cloud_mask(hdf_file):
     cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
     # Convet NaN mask values (3) to -1 for the purpose of colormap formatting
     cloud_mask[cloud_mask == 3] = -1
+    cloud_mask[cloud_mask == 1] = 3  # temp for 4 color colormap
     return cloud_mask
 
 
