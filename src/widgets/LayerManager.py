@@ -66,8 +66,6 @@ class LayerManager(QWidget):
 
         # Re-order Layers
         self.reorder_layers_button = QPushButton("Re-Order Visual")
-        default_dock_layer_list = self.viewer.window.qt_viewer.dockLayerList  # Override the Dock Layer list
-        default_dock_layer_list.setVisible(False)
         self.reorder_layers_button.clicked.connect(self.toggle_layer_list)
         button_mid_layout.addWidget(self.reorder_layers_button)
 

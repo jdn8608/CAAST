@@ -431,21 +431,45 @@ def get_review_mode_tab(output_filepath,
 
 class AdaptiveSplitViewer(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, shape=(480, 360, 1)):
         super().__init__()
 
         self.setWindowTitle("Napari Multi-Viewer")
         self.setGeometry(100, 100, 1600, 800)
 
+        # Create main widget area object
         main_widget = QWidget()
         outer_layout = QVBoxLayout()
         main_widget.setLayout(outer_layout)
         self.setCentralWidget(main_widget)
 
+        ## Create bottom area for tabs and add to viewer
+        #bottom_tabs = QTabWidget()
+        #bottom_tabs.setTabPosition(QTabWidget.North)
+        #self.main_viewer.window.add_dock_widget(bottom_tabs, area="bottom")
+
+        # Create viewer row layout and associated QSplitter
         self.viewer_row_layout = QHBoxLayout()
         self.viewer_splitter = QSplitter(Qt.Horizontal)
 
+        # Assign Main Viewer and turn of napari default layer list
         self.main_viewer = napari.Viewer()
+        self.main_viewer.window.qt_viewer.dockLayerList.setVisible(
+            False)  # Override the Dock Layer list
+        self.main_viewer.window.qt_viewer.dockLayerControls.setMaximumHeight(
+            300)
+
+        # Assign reference to layer_manager and add to main viewer
+        self.layer_manager = LayerManager(
+            napari_viewer=self.main_viewer,
+            shape=(shape[-1], shape[0], shape[1]),
+            init_groups=[layer.value for layer in LayerType])
+        self.main_viewer.window.add_dock_widget(self.layer_manager,
+                                                area='left')
+
+        #dock_layer_controls
+
+        # Define data types for tracking new viewers and cursors
         self.viewers = [self.main_viewer]
         self.cursor_layers = {}
 
@@ -669,7 +693,7 @@ def create_tool(label_mode,
 
     app = QApplication(sys.argv)
 
-    viewer_app = AdaptiveSplitViewer()
+    viewer_app = AdaptiveSplitViewer(shape=shape)
     viewer_app.show()
     sys.exit(app.exec_())
 
@@ -678,28 +702,7 @@ def create_tool(label_mode,
     ##viewer.window._qt_window.showFullScreen()
     #viewer.show()
 
-    ## Create Area layouts for tool widgets
-    ## Create top area and add to viewer
-    ##top_widget = QWidget()
-    ##top_layout = QVBoxLayout()
-    ##top_widget.setLayout(top_layout)
-    ##viewer.window.add_dock_widget(
-    ##    top_widget,
-    ##    #name="Point of View Navigator",
-    ##    area="top")
-    ### Create bottom area for tabs and add to viewer
-    #bottom_tabs = QTabWidget()
-    #bottom_tabs.setTabPosition(QTabWidget.North)
-    #viewer.window.add_dock_widget(bottom_tabs, area="bottom")
-
-    ## Set-up custom Layer Manager and remove the default dock layer list from napari
-    #layer_manager = LayerManager(
-    #    napari_viewer=viewer,
-    #    shape=(shape[-1], shape[0], shape[1]),
-    #    init_groups=[layer.value for layer in LayerType])
-    #viewer.window.add_dock_widget(layer_manager, area='left')
-
-    ## Add the instrument layer data to the viewer
+    # Add the instrument layer data to the viewer
     #(edit_np, edit_layer), \
     #    (im_np, im_layers), \
     #    (label_list, label_layers) = add_layers(data_layer_dict,
