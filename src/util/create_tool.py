@@ -468,6 +468,16 @@ class AdaptiveSplitViewer(QMainWindow):
         self.main_viewer.window.add_dock_widget(self.layer_manager,
                                                 area='left')
 
+        (edit_np, edit_layer), \
+        (im_np, im_layers), \
+        (label_list, label_layers) = add_layers(data_layer_dict,
+                                               self.layer_manager,
+                                               self.shape,
+                                               self.main_viewer,
+                                               config,
+                                               load_labels_name=load_labels_name if label_mode else '',
+                                               label_mode=label_mode)
+
         self.viewer_row_layout.addWidget(self.viewer_splitter)
 
         self.placeholder_widget = QLabel("Right-side Widget Placeholder")
@@ -492,14 +502,6 @@ class AdaptiveSplitViewer(QMainWindow):
 
         bottom_button = QPushButton("Placeholder Button")
         outer_layout.addWidget(bottom_button)
-
-        image1 = np.random.random(self.image_shape)
-        image2 = np.random.random(self.image_shape)
-        labels = np.random.randint(0, 5, size=self.image_shape, dtype=np.uint8)
-
-        self.main_viewer.add_image(image1, name="Image A")
-        self.main_viewer.add_image(image2, name="Image B")
-        self.main_viewer.add_labels(labels, name="Labels")
 
         self.cursor_layers = {}
         for viewer in self.viewers:
@@ -732,17 +734,6 @@ def create_tool(label_mode,
     #viewer = napari.Viewer(show=False)
     ##viewer.window._qt_window.showFullScreen()
     #viewer.show()
-
-    # Add the instrument layer data to the viewer
-    #(edit_np, edit_layer), \
-    #    (im_np, im_layers), \
-    #    (label_list, label_layers) = add_layers(data_layer_dict,
-    #                                           layer_manager,
-    #                                           shape,
-    #                                           viewer,
-    #                                           config,
-    #                                           load_labels_name=load_labels_name if label_mode else '',
-    #                                           label_mode=label_mode)
 
     ## Add Min/Max Slider for Image Layers
     #min_max_slider, min_max_layout = create_sliders(
