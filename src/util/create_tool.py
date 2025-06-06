@@ -431,33 +431,34 @@ def get_review_mode_tab(output_filepath,
 
 class AdaptiveSplitViewer(QMainWindow):
 
-    def __init__(self, shape=(480, 360, 1)):
+    def __init__(self, data_layer_dict, config, shape, label_mode,
+                 load_labels_name):
         super().__init__()
+
+        self.shape = shape
 
         self.setWindowTitle("Napari Multi-Viewer")
         self.setGeometry(100, 100, 1600, 800)
 
-        # Create main widget area object
+        self.image_shape = (10, 600, 400)
+
         main_widget = QWidget()
         outer_layout = QVBoxLayout()
         main_widget.setLayout(outer_layout)
         self.setCentralWidget(main_widget)
 
-        ## Create bottom area for tabs and add to viewer
-        #bottom_tabs = QTabWidget()
-        #bottom_tabs.setTabPosition(QTabWidget.North)
-        #self.main_viewer.window.add_dock_widget(bottom_tabs, area="bottom")
-
-        # Create viewer row layout and associated QSplitter
         self.viewer_row_layout = QHBoxLayout()
         self.viewer_splitter = QSplitter(Qt.Horizontal)
 
         # Assign Main Viewer and turn of napari default layer list
         self.main_viewer = napari.Viewer()
+        self.viewers = [self.main_viewer]
         self.main_viewer.window.qt_viewer.dockLayerList.setVisible(
             False)  # Override the Dock Layer list
         self.main_viewer.window.qt_viewer.dockLayerControls.setMaximumHeight(
             300)
+        viewer_widget = self.main_viewer.window._qt_window
+        self.viewer_splitter.addWidget(viewer_widget)
 
         # Assign reference to layer_manager and add to main viewer
         self.layer_manager = LayerManager(
@@ -466,15 +467,6 @@ class AdaptiveSplitViewer(QMainWindow):
             init_groups=[layer.value for layer in LayerType])
         self.main_viewer.window.add_dock_widget(self.layer_manager,
                                                 area='left')
-
-        #dock_layer_controls
-
-        # Define data types for tracking new viewers and cursors
-        self.viewers = [self.main_viewer]
-        self.cursor_layers = {}
-
-        viewer_widget = self.main_viewer.window._qt_window
-        self.viewer_splitter.addWidget(viewer_widget)
 
         self.viewer_row_layout.addWidget(self.viewer_splitter)
 
@@ -501,30 +493,60 @@ class AdaptiveSplitViewer(QMainWindow):
         bottom_button = QPushButton("Placeholder Button")
         outer_layout.addWidget(bottom_button)
 
-        self.add_cursor_layer(self.main_viewer)
+        image1 = np.random.random(self.image_shape)
+        image2 = np.random.random(self.image_shape)
+        labels = np.random.randint(0, 5, size=self.image_shape, dtype=np.uint8)
 
+        self.main_viewer.add_image(image1, name="Image A")
+        self.main_viewer.add_image(image2, name="Image B")
+        self.main_viewer.add_labels(labels, name="Labels")
+
+        self.cursor_layers = {}
         for viewer in self.viewers:
-            viewer.mouse_move_callbacks.append(self.cursor_moved)
+            self.add_cursor_indicator(viewer)
+            self.add_border_shape(viewer, self.image_shape[1:])
+            viewer.mouse_move_callbacks.append(self.update_cursor_positions)
+
+        self.main_viewer.dims.events.current_step.connect(self.sync_time_steps)
 
         self.update_layer_dropdown()
         self.update_viewer_selector()
 
-    def add_cursor_layer(self, viewer):
-        cursor_layer = viewer.add_points(np.empty((0, 2)),
-                                         size=6,
-                                         face_color='white',
-                                         border_color='red',
-                                         opacity=0.6,
-                                         name='Cursor Dot',
-                                         visible=True)
-        cursor_layer.editable = False
-        self.cursor_layers[viewer] = cursor_layer
+    def sync_time_steps(self, event):
+        step = self.main_viewer.dims.current_step[0]
+        for viewer in self.viewers:
+            if viewer != self.main_viewer:
+                viewer.dims.current_step = (
+                    step, ) + viewer.dims.current_step[1:]
 
-    def cursor_moved(self, viewer, event):
+    def add_cursor_indicator(self, viewer):
+        num_times = self.image_shape[0]
+        data = [[t, 0, 0] for t in range(num_times)]
+        layer = viewer.add_points(data=data,
+                                  name='Cursor',
+                                  ndim=3,
+                                  size=12,
+                                  face_color='white',
+                                  border_color='red',
+                                  opacity=0.6)
+        viewer.scale_bar.visible = False
+        self.cursor_layers[viewer] = layer
+
+    def update_cursor_positions(self, viewer, event):
         pos = event.position
+        num_times = self.image_shape[0]
+        y, x = pos[1], pos[2]
+
         for v in self.viewers:
-            if v in self.cursor_layers:
-                self.cursor_layers[v].data = [pos]
+            cursor_layer = self.cursor_layers.get(v)
+            if cursor_layer:
+                if len(cursor_layer.data) < self.image_shape[0]:
+                    cursor_layer.data = [[t_, 0, 0]
+                                         for t_ in range(self.image_shape[0])]
+                new_data = cursor_layer.data.copy()
+                for t in range(num_times):
+                    new_data[t] = [t, y, x]
+                cursor_layer.data = new_data
 
     def add_border_shape(self, viewer, shape_dims):
         viewer_index = self.viewers.index(viewer)
@@ -554,7 +576,8 @@ class AdaptiveSplitViewer(QMainWindow):
     def update_layer_dropdown(self):
         self.layer_selector.clear()
         for layer in self.main_viewer.layers:
-            self.layer_selector.addItem(layer.name)
+            if layer.name != 'Cursor':
+                self.layer_selector.addItem(layer.name)
 
     def update_viewer_selector(self):
         self.viewer_selector.clear()
@@ -573,6 +596,7 @@ class AdaptiveSplitViewer(QMainWindow):
 
         if selected_index == self.viewer_selector.count() - 1:
             new_viewer = napari.Viewer()
+            new_viewer.scale_bar.visible = False
             new_viewer.window._qt_viewer.controls.setVisible(False)
             new_viewer.window._qt_viewer.dockLayerList.setVisible(False)
             new_viewer.window._qt_viewer.dockLayerControls.setVisible(False)
@@ -596,10 +620,11 @@ class AdaptiveSplitViewer(QMainWindow):
             elif layer._type_string == 'labels':
                 target_viewer.add_labels(layer.data, name=layer.name)
 
-            self.add_border_shape(target_viewer, layer.data.shape)
-
-            self.add_cursor_layer(new_viewer)
-            new_viewer.mouse_move_callbacks.append(self.cursor_moved)
+            self.add_cursor_indicator(target_viewer)
+            self.add_border_shape(target_viewer, layer.data.shape[1:])
+            target_viewer.mouse_move_callbacks.append(
+                self.update_cursor_positions)
+            self.sync_time_steps(None)
 
         else:
             target_viewer = self.viewers[selected_index + 1]
@@ -609,7 +634,10 @@ class AdaptiveSplitViewer(QMainWindow):
             elif layer._type_string == 'labels':
                 target_viewer.add_labels(layer.data, name=layer.name)
 
-            self.add_border_shape(target_viewer, layer.data.shape)
+            self.add_cursor_indicator(target_viewer)
+            self.add_border_shape(target_viewer, layer.data.shape[1:])
+            target_viewer.mouse_move_callbacks.append(
+                self.update_cursor_positions)
 
         self.update_viewer_selector()
 
@@ -692,8 +720,11 @@ def create_tool(label_mode,
         config = json.load(file)
 
     app = QApplication(sys.argv)
-
-    viewer_app = AdaptiveSplitViewer(shape=shape)
+    viewer_app = AdaptiveSplitViewer(data_layer_dict=data_layer_dict,
+                                     config=config,
+                                     shape=shape,
+                                     label_mode=label_mode,
+                                     load_labels_name=load_labels_name)
     viewer_app.show()
     sys.exit(app.exec_())
 
