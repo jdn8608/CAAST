@@ -5,13 +5,17 @@ and widgets loaded into the tool.
 """
 import json
 import os
+import sys
 
 import numpy as np
 
 import napari
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QPoint
 from qtpy.QtGui import QFont
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QLabel, QTextEdit, QComboBox, QSizePolicy, QFrame
+from qtpy.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+                            QHBoxLayout, QTabWidget, QScrollArea, QLabel,
+                            QTextEdit, QComboBox, QSizePolicy, QFrame,
+                            QPushButton, QSplitter, QMenu)
 
 from util.LayerType import LayerType
 from util.colormaps import get_all_colormaps
