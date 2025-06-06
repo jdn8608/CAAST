@@ -437,8 +437,6 @@ class AdaptiveSplitViewer(QMainWindow):
         self.setWindowTitle("Napari Multi-Viewer")
         self.setGeometry(100, 100, 1600, 800)
 
-        self.image_shape = (600, 400)
-
         main_widget = QWidget()
         outer_layout = QVBoxLayout()
         main_widget.setLayout(outer_layout)
@@ -447,11 +445,11 @@ class AdaptiveSplitViewer(QMainWindow):
         self.viewer_row_layout = QHBoxLayout()
         self.viewer_splitter = QSplitter(Qt.Horizontal)
 
-        self.viewer1 = napari.Viewer()
-        self.viewers = [self.viewer1]
+        self.main_viewer = napari.Viewer()
+        self.viewers = [self.main_viewer]
         self.cursor_layers = {}
 
-        viewer_widget = self.viewer1.window._qt_window
+        viewer_widget = self.main_viewer.window._qt_window
         self.viewer_splitter.addWidget(viewer_widget)
 
         self.viewer_row_layout.addWidget(self.viewer_splitter)
@@ -479,16 +477,7 @@ class AdaptiveSplitViewer(QMainWindow):
         bottom_button = QPushButton("Placeholder Button")
         outer_layout.addWidget(bottom_button)
 
-        image1 = np.random.random(self.image_shape)
-        image2 = np.random.random(self.image_shape)
-        labels = np.random.randint(0, 5, size=self.image_shape, dtype=np.uint8)
-
-        self.viewer1.add_image(image1, name="Image A")
-        self.viewer1.add_image(image2, name="Image B")
-        self.viewer1.add_labels(labels, name="Labels")
-
-        self.add_border_shape(self.viewer1, self.image_shape)
-        self.add_cursor_layer(self.viewer1)
+        self.add_cursor_layer(self.main_viewer)
 
         for viewer in self.viewers:
             viewer.mouse_move_callbacks.append(self.cursor_moved)
@@ -540,7 +529,7 @@ class AdaptiveSplitViewer(QMainWindow):
 
     def update_layer_dropdown(self):
         self.layer_selector.clear()
-        for layer in self.viewer1.layers:
+        for layer in self.main_viewer.layers:
             self.layer_selector.addItem(layer.name)
 
     def update_viewer_selector(self):
@@ -556,7 +545,7 @@ class AdaptiveSplitViewer(QMainWindow):
         if selected_layer_name == "":
             return
 
-        layer = self.viewer1.layers[selected_layer_name]
+        layer = self.main_viewer.layers[selected_layer_name]
 
         if selected_index == self.viewer_selector.count() - 1:
             new_viewer = napari.Viewer()
