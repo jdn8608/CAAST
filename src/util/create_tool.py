@@ -500,9 +500,6 @@ class AdaptiveSplitViewer(QMainWindow):
         controls_layout.addWidget(self.add_btn)
         outer_layout.addLayout(controls_layout)
 
-        bottom_button = QPushButton("Placeholder Button")
-        outer_layout.addWidget(bottom_button)
-
         self.cursor_layers = {}
         for viewer in self.viewers:
             self.add_cursor_indicator(viewer)
