@@ -459,6 +459,7 @@ class AdaptiveSplitViewer(QMainWindow):
             300)
         viewer_widget = self.main_viewer.window._qt_window
         self.viewer_splitter.addWidget(viewer_widget)
+        self.viewer_row_layout.addWidget(self.viewer_splitter)
 
         # Assign reference to layer_manager and add to main viewer
         self.layer_manager = LayerManager(
@@ -478,12 +479,23 @@ class AdaptiveSplitViewer(QMainWindow):
                                                load_labels_name=load_labels_name if label_mode else '',
                                                label_mode=label_mode)
 
-        self.viewer_row_layout.addWidget(self.viewer_splitter)
-
-        self.placeholder_widget = QLabel("Right-side Widget Placeholder")
-        self.placeholder_widget.setFixedWidth(200)
-        self.placeholder_widget.setAlignment(Qt.AlignCenter)
-        self.viewer_row_layout.addWidget(self.placeholder_widget)
+        # Create min/max sliders for image layers
+        self.min_max_slider, self.min_max_layout = create_sliders(
+            option=int(config["min_max_slider_option"]),
+            # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
+            viewer=self.main_viewer,
+            layers=im_layers,
+            data=im_np)
+        #viewer.window.add_dock_widget(self.min_max_layout,
+        #                              name="Min-Max Range Slider",
+        #                              area='right')
+        # Connect the renaming event call to this function
+        self.layer_manager.layer_renamed.connect(self.update_sliders_name)
+        #self.placeholder_widget = QLabel("Right-side Widget Placeholder")
+        #self.placeholder_widget.setFixedWidth(200)
+        #self.placeholder_widget.setAlignment(Qt.AlignCenter)
+        self.min_max_layout.setFixedWidth(250)
+        self.viewer_row_layout.addWidget(self.min_max_layout)
 
         outer_layout.addLayout(self.viewer_row_layout)
 
@@ -510,6 +522,18 @@ class AdaptiveSplitViewer(QMainWindow):
 
         self.update_layer_dropdown()
         self.update_viewer_selector()
+
+    def update_sliders_name(old_name, new_name):
+        """Loops through alll Min/Max Sliders to check for if they have the name
+        of old_name. If so, call their update_layer_name() with the new_name
+
+        Args:
+            old_name: a string representing the old name of a renamed layer
+            new_name: a string representing the new name of a renamed layer
+        """
+        for mms in self.min_max_slider:
+            if old_name == mms.name:
+                mms.update_layer_name()
 
     def sync_time_steps(self, event):
         step = self.main_viewer.dims.current_step[0]
