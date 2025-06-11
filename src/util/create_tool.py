@@ -467,6 +467,7 @@ class AdaptiveSplitViewer(QMainWindow):
         # Set up left tab widget for left panel tools
         left_tabs = QTabWidget()
         left_tabs.setTabPosition(QTabWidget.South)
+        left_tabs.setMinimumWidth(330)
         self.main_viewer.window.add_dock_widget(left_tabs,
                                                 area="left",
                                                 name="Left Panel")
@@ -477,7 +478,12 @@ class AdaptiveSplitViewer(QMainWindow):
             shape=(shape[-1], shape[0], shape[1]),
             init_groups=[layer.value
                          for layer in LayerType])  # replaces layerlist
+        self.layer_manager.setMinimumWidth(300)
+        self.layer_manager.setMinimumHeight(350)
+        self.layer_manager.setSizePolicy(QSizePolicy.Expanding,
+                                         QSizePolicy.Preferred)
 
+        # Add layer and controls to a scroll-able tab
         layers_and_controls_scroll_area = QScrollArea()
         layers_and_controls_scroll_area.setWidgetResizable(True)
         layers_and_controls_widget = QWidget()
@@ -510,7 +516,9 @@ class AdaptiveSplitViewer(QMainWindow):
         self.layer_manager.layer_renamed.connect(
             self.update_sliders_name
         )  # Connect the renaming event call to this function
-        self.min_max_layout.setFixedWidth(250)
+        self.min_max_layout.setMinimumWidth(300)
+        self.min_max_layout.setSizePolicy(QSizePolicy.Expanding,
+                                          QSizePolicy.Preferred)
         left_tabs.addTab(self.min_max_layout, "Set Bounds")
 
         # To be replace later within layer manager
