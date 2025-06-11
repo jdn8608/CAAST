@@ -511,9 +511,7 @@ class AdaptiveSplitViewer(QMainWindow):
             self.update_sliders_name
         )  # Connect the renaming event call to this function
         self.min_max_layout.setFixedWidth(250)
-        #self.viewer_row_layout.addWidget(self.min_max_layout)
-        self.main_viewer.window.add_dock_widget(self.min_max_layout,
-                                                area="right")
+        left_tabs.addTab(self.min_max_layout, "Set Bounds")
 
         # To be replace later within layer manager
         # Prelim widget to add layers to new or existing viewers
