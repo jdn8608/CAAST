@@ -437,10 +437,7 @@ class AdaptiveSplitViewer(QMainWindow):
         super().__init__()
 
         # Set image shape param for dimensionality references
-        self.image_shape = shape
-        print('------')
-        print(shape)
-        print('------')
+        self.image_shape = (shape[-1], shape[0], shape[1])
 
         # Set window name and aspect geometry
         self.setWindowTitle("Napari Multi-Viewer")
@@ -503,7 +500,7 @@ class AdaptiveSplitViewer(QMainWindow):
         (im_np, im_layers), \
         (label_list, label_layers) = add_layers(data_layer_dict,
                                                self.layer_manager,
-                                               self.image_shape,
+                                               shape, # need to swap to self.image_shape once fixed
                                                self.main_viewer,
                                                config,
                                                load_labels_name=load_labels_name if label_mode else '',
