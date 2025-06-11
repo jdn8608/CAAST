@@ -438,6 +438,9 @@ class AdaptiveSplitViewer(QMainWindow):
 
         # Set image shape param for dimensionality references
         self.image_shape = shape
+        print('------')
+        print(shape)
+        print('------')
 
         # Set window name and aspect geometry
         self.setWindowTitle("Napari Multi-Viewer")
@@ -563,6 +566,15 @@ class AdaptiveSplitViewer(QMainWindow):
                 mms.update_layer_name()
 
     def sync_time_steps(self, event):
+        """Synchronize the time step along the 1st dimension of layers
+        from the main viewer to all subsequent viewers. This ensure that
+        as the main viewer timestep/viewing angle changes, the additional
+        viewers will also move with it.
+
+        ***Note***
+        additional viewers can change timesteps without synchronizing the
+        main viewer, thus one way logic is in play.
+        """
         step = self.main_viewer.dims.current_step[0]
         for viewer in self.viewers:
             if viewer != self.main_viewer:
@@ -570,6 +582,7 @@ class AdaptiveSplitViewer(QMainWindow):
                     step, ) + viewer.dims.current_step[1:]
 
     def add_cursor_indicator(self, viewer):
+        """Add a point layer to indicate where the cursor is in a viewer"""
         num_times = self.image_shape[0]
         data = [[t, 0, 0] for t in range(num_times)]
         layer = viewer.add_points(data=data,
@@ -583,6 +596,9 @@ class AdaptiveSplitViewer(QMainWindow):
         self.cursor_layers[viewer] = layer
 
     def update_cursor_positions(self, viewer, event):
+        """Update the cursor point layer's object position to the updated
+        cursor position.
+        """
         pos = event.position
         num_times = self.image_shape[0]
         y, x = pos[1], pos[2]
@@ -599,9 +615,11 @@ class AdaptiveSplitViewer(QMainWindow):
                 cursor_layer.data = new_data
 
     def add_border_shape(self, viewer, shape_dims):
+        """Add a border shape around the imagery to differeniate between viewers"""
         viewer_index = self.viewers.index(viewer)
         viewer_name = "Main Viewer" if viewer_index == 0 else f"Viewer {viewer_index+1}"
 
+        # add a 5 pixel boarder to the image shape dims
         shape = np.array([[-5, -5], [-5, shape_dims[1] + 5],
                           [shape_dims[0] + 5, shape_dims[1] + 5],
                           [shape_dims[0] + 5, -5], [-5, -5]])
@@ -624,98 +642,110 @@ class AdaptiveSplitViewer(QMainWindow):
                           name="Border Rectangle")
 
     def update_layer_dropdown(self):
+        """Update the dropdown widget with the layers available"""
         self.layer_selector.clear()
         for layer in self.main_viewer.layers:
             if layer.name != 'Cursor':
                 self.layer_selector.addItem(layer.name)
 
     def update_viewer_selector(self):
+        """Update the viewers available"""
         self.viewer_selector.clear()
         for i in range(1, len(self.viewers)):
             self.viewer_selector.addItem(f"Viewer {i+1}")
         self.viewer_selector.addItem("+ New Viewer")
 
     def add_layer_to_viewer(self):
+        """Add a single layer to a new or existing viewer"""
         selected_layer_name = self.layer_selector.currentText()
         selected_index = self.viewer_selector.currentIndex()
 
+        # check for now layer selected
         if selected_layer_name == "":
             return
 
+        # grab the layer to add to a viewer
         layer = self.main_viewer.layers[selected_layer_name]
 
+        # check for if we are adding a new viewer
         if selected_index == self.viewer_selector.count() - 1:
-            new_viewer = napari.Viewer()
-            new_viewer.scale_bar.visible = False
-            new_viewer.window._qt_viewer.controls.setVisible(False)
-            new_viewer.window._qt_viewer.dockLayerList.setVisible(False)
-            new_viewer.window._qt_viewer.dockLayerControls.setVisible(False)
+            # create the new viewer
+            target_viewer = napari.Viewer()
+            # turn off all default widgets
+            target_viewer.scale_bar.visible = False
+            target_viewer.window._qt_viewer.controls.setVisible(False)
+            target_viewer.window._qt_viewer.dockLayerList.setVisible(False)
+            target_viewer.window._qt_viewer.dockLayerControls.setVisible(False)
 
-            viewer_widget = new_viewer.window._qt_window
-
+            viewer_widget = target_viewer.window._qt_window
+            # add right click to close menu
             viewer_widget.setContextMenuPolicy(Qt.CustomContextMenu)
             viewer_widget.customContextMenuRequested.connect(
-                lambda pos, v=new_viewer, w=viewer_widget: self.
+                lambda pos, v=target_viewer, w=viewer_widget: self.
                 viewer_context_menu(pos, v, w))
 
+            # add viewer to the splitter and list
             self.viewer_splitter.addWidget(viewer_widget)
-            self.viewers.append(new_viewer)
+            self.viewers.append(target_viewer)
 
+            # call syncs for all viewers with new view included
             self.sync_all_viewers()
-
-            target_viewer = new_viewer
-
-            if layer._type_string == 'image':
-                target_viewer.add_image(layer.data, name=layer.name)
-            elif layer._type_string == 'labels':
-                target_viewer.add_labels(layer.data, name=layer.name)
-
-            self.add_cursor_indicator(target_viewer)
-            self.add_border_shape(target_viewer, layer.data.shape[1:])
-            target_viewer.mouse_move_callbacks.append(
-                self.update_cursor_positions)
             self.sync_time_steps(None)
 
         else:
+            # grab the viewer and clear it's contents
             target_viewer = self.viewers[selected_index + 1]
             target_viewer.layers.clear()
-            if layer._type_string == 'image':
-                target_viewer.add_image(layer.data, name=layer.name)
-            elif layer._type_string == 'labels':
-                target_viewer.add_labels(layer.data, name=layer.name)
 
-            self.add_cursor_indicator(target_viewer)
-            self.add_border_shape(target_viewer, layer.data.shape[1:])
-            target_viewer.mouse_move_callbacks.append(
-                self.update_cursor_positions)
+        # add layers with correct typing
+        if layer._type_string == 'image':
+            target_viewer.add_image(layer.data, name=layer.name)
+        elif layer._type_string == 'labels':
+            target_viewer.add_labels(layer.data, name=layer.name)
 
+        # add the cursor indictor and border indicator
+        self.add_cursor_indicator(target_viewer)
+        self.add_border_shape(target_viewer, layer.data.shape[1:])
+        target_viewer.mouse_move_callbacks.append(self.update_cursor_positions)
+
+        # update viewer list dropdown
         self.update_viewer_selector()
 
     def viewer_context_menu(self, pos: QPoint, viewer, widget):
+        """Open a right-click menu for closing a viewer"""
         menu = QMenu()
+        # add close action option in menu
         close_action = menu.addAction("Close Viewer")
         action = menu.exec_(widget.mapToGlobal(pos))
         if action == close_action:
+            # call for remove
             self.remove_viewer(viewer, widget)
 
     def remove_viewer(self, viewer, widget):
+        """Call from viewer_context_menu to close a specific viewer"""
         if viewer in self.viewers:
             self.viewers.remove(viewer)
             viewer.close()
+            # update viewer dropdown to no longer have this removed viewer
             self.update_viewer_selector()
 
     def sync_all_viewers(self):
+        """Synchronize all viewers with each other for camera position"""
+        # Loop through all viewers and sync to all other viewers
         for src_viewer in self.viewers:
             for dst_viewer in self.viewers:
                 if src_viewer != dst_viewer:
+                    # sync camera center
                     src_viewer.camera.events.center.connect(
                         lambda e, src=src_viewer, dst=dst_viewer: self.
                         sync_camera(src, dst))
+                    # sync camera zoom amount
                     src_viewer.camera.events.zoom.connect(
                         lambda e, src=src_viewer, dst=dst_viewer: self.
                         sync_camera(src, dst))
 
     def sync_camera(self, src_viewer, dst_viewer):
+        """Synchronize camera position from a source to a destination viewer"""
         dst_viewer.camera.center = src_viewer.camera.center
         dst_viewer.camera.zoom = src_viewer.camera.zoom
 
