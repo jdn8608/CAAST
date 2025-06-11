@@ -443,7 +443,7 @@ class AdaptiveSplitViewer(QMainWindow):
         self.setWindowTitle("Napari Multi-Viewer")
         self.setGeometry(100, 100, 1600, 800)
 
-        # Create parent layout
+        # Create parent/main layout
         self.main_widget = QWidget()
         self.outer_layout = QVBoxLayout()
         self.main_widget.setLayout(self.outer_layout)
@@ -462,8 +462,14 @@ class AdaptiveSplitViewer(QMainWindow):
             False)  # Override the Dock Layer list
         self.main_viewer.window.qt_viewer.dockLayerControls.setMaximumHeight(
             300)
-        viewer_widget = self.main_viewer.window._qt_window
-        self.viewer_splitter.addWidget(viewer_widget)
+        self.viewer_splitter.addWidget(self.main_viewer.window._qt_window)
+
+        # Set up left tab widget for left panel tools
+        left_tabs = QTabWidget()
+        left_tabs.setTabPosition(QTabWidget.South)
+        self.main_viewer.window.add_dock_widget(left_tabs,
+                                                area="left",
+                                                name="Left Panel")
 
         # Assign reference to layer_manager and add to main viewer
         self.layer_manager = LayerManager(
@@ -471,8 +477,17 @@ class AdaptiveSplitViewer(QMainWindow):
             shape=(shape[-1], shape[0], shape[1]),
             init_groups=[layer.value
                          for layer in LayerType])  # replaces layerlist
-        self.main_viewer.window.add_dock_widget(self.layer_manager,
-                                                area='left')
+
+        layers_and_controls_scroll_area = QScrollArea()
+        layers_and_controls_scroll_area.setWidgetResizable(True)
+        layers_and_controls_widget = QWidget()
+        layers_and_controls_vlayout = QVBoxLayout(layers_and_controls_widget)
+        layers_and_controls_vlayout.addWidget(
+            self.main_viewer.window.qt_viewer.dockLayerControls)
+        layers_and_controls_vlayout.addWidget(self.layer_manager)
+        layers_and_controls_scroll_area.setWidget(layers_and_controls_widget)
+        left_tabs.addTab(layers_and_controls_scroll_area,
+                         "Layers and Controls")
 
         # Add the imagery and labels from data_layer_dict to the main viewer
         (edit_np, edit_layer), \
