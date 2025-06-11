@@ -433,24 +433,29 @@ class AdaptiveSplitViewer(QMainWindow):
 
     def __init__(self, data_layer_dict, config, shape, label_mode,
                  load_labels_name):
+        # call super init for a QMainWindow
         super().__init__()
 
-        self.shape = shape
+        # Set image shape param for dimensionality references
+        self.image_shape = shape
 
+        # Set window name and aspect geometry
         self.setWindowTitle("Napari Multi-Viewer")
         self.setGeometry(100, 100, 1600, 800)
 
-        self.image_shape = (10, 600, 400)
+        # Create parent layout
+        self.main_widget = QWidget()
+        self.outer_layout = QVBoxLayout()
+        self.main_widget.setLayout(self.outer_layout)
+        self.setCentralWidget(self.main_widget)
 
-        main_widget = QWidget()
-        outer_layout = QVBoxLayout()
-        main_widget.setLayout(outer_layout)
-        self.setCentralWidget(main_widget)
-
+        # Create QSplitter horizontal layout for additional viewers
         self.viewer_row_layout = QHBoxLayout()
         self.viewer_splitter = QSplitter(Qt.Horizontal)
+        self.viewer_row_layout.addWidget(self.viewer_splitter)
+        self.outer_layout.addLayout(self.viewer_row_layout)
 
-        # Assign Main Viewer and turn of napari default layer list
+        # Assign Main Viewer and turn off default dock widgets
         self.main_viewer = napari.Viewer()
         self.viewers = [self.main_viewer]
         self.main_viewer.window.qt_viewer.dockLayerList.setVisible(
@@ -459,21 +464,22 @@ class AdaptiveSplitViewer(QMainWindow):
             300)
         viewer_widget = self.main_viewer.window._qt_window
         self.viewer_splitter.addWidget(viewer_widget)
-        self.viewer_row_layout.addWidget(self.viewer_splitter)
 
         # Assign reference to layer_manager and add to main viewer
         self.layer_manager = LayerManager(
             napari_viewer=self.main_viewer,
             shape=(shape[-1], shape[0], shape[1]),
-            init_groups=[layer.value for layer in LayerType])
+            init_groups=[layer.value
+                         for layer in LayerType])  # replaces layerlist
         self.main_viewer.window.add_dock_widget(self.layer_manager,
                                                 area='left')
 
+        # Add the imagery and labels from data_layer_dict to the main viewer
         (edit_np, edit_layer), \
         (im_np, im_layers), \
         (label_list, label_layers) = add_layers(data_layer_dict,
                                                self.layer_manager,
-                                               self.shape,
+                                               self.image_shape,
                                                self.main_viewer,
                                                config,
                                                load_labels_name=load_labels_name if label_mode else '',
@@ -482,23 +488,20 @@ class AdaptiveSplitViewer(QMainWindow):
         # Create min/max sliders for image layers
         self.min_max_slider, self.min_max_layout = create_sliders(
             option=int(config["min_max_slider_option"]),
-            # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
-            viewer=self.main_viewer,
+            viewer=self.
+            main_viewer,  # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
             layers=im_layers,
             data=im_np)
-        #viewer.window.add_dock_widget(self.min_max_layout,
-        #                              name="Min-Max Range Slider",
-        #                              area='right')
-        # Connect the renaming event call to this function
-        self.layer_manager.layer_renamed.connect(self.update_sliders_name)
-        #self.placeholder_widget = QLabel("Right-side Widget Placeholder")
-        #self.placeholder_widget.setFixedWidth(200)
-        #self.placeholder_widget.setAlignment(Qt.AlignCenter)
+        self.layer_manager.layer_renamed.connect(
+            self.update_sliders_name
+        )  # Connect the renaming event call to this function
         self.min_max_layout.setFixedWidth(250)
-        self.viewer_row_layout.addWidget(self.min_max_layout)
+        #self.viewer_row_layout.addWidget(self.min_max_layout)
+        self.main_viewer.window.add_dock_widget(self.min_max_layout,
+                                                area="right")
 
-        outer_layout.addLayout(self.viewer_row_layout)
-
+        # To be replace later within layer manager
+        # Prelim widget to add layers to new or existing viewers
         controls_layout = QHBoxLayout()
         self.layer_selector = QComboBox()
         self.viewer_selector = QComboBox()
@@ -510,18 +513,21 @@ class AdaptiveSplitViewer(QMainWindow):
         controls_layout.addWidget(QLabel("Viewer:"))
         controls_layout.addWidget(self.viewer_selector)
         controls_layout.addWidget(self.add_btn)
-        outer_layout.addLayout(controls_layout)
-
-        self.cursor_layers = {}
-        for viewer in self.viewers:
-            self.add_cursor_indicator(viewer)
-            self.add_border_shape(viewer, self.image_shape[1:])
-            viewer.mouse_move_callbacks.append(self.update_cursor_positions)
-
-        self.main_viewer.dims.events.current_step.connect(self.sync_time_steps)
+        self.outer_layout.addLayout(controls_layout)
 
         self.update_layer_dropdown()
         self.update_viewer_selector()
+        # END of replace
+
+        # Add cursor indicators to the main viewer
+        self.cursor_layers = {}
+        self.add_cursor_indicator(self.main_viewer)
+        self.add_border_shape(self.main_viewer, self.image_shape[1:])
+        self.main_viewer.mouse_move_callbacks.append(
+            self.update_cursor_positions)
+
+        # Sync time steppers for new viewers to the main view
+        self.main_viewer.dims.events.current_step.connect(self.sync_time_steps)
 
     def update_sliders_name(old_name, new_name):
         """Loops through alll Min/Max Sliders to check for if they have the name
