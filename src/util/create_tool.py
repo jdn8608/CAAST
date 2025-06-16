@@ -432,13 +432,17 @@ def get_review_mode_tab(output_filepath,
 
 class AdaptiveSplitViewer(QMainWindow):
 
-    def __init__(self, data_layer_dict, config, shape, label_mode,
-                 load_labels_name):
+    def __init__(self, data_layer_dict, config, views, angles, shape,
+                 label_mode, load_labels_name):
         # call super init for a QMainWindow
         super().__init__()
 
         # Set image shape param for dimensionality references
         self.image_shape = (shape[-1], shape[0], shape[1])
+        print(self.image_shape)
+        self.is_multiview_instrument = self.image_shape[0] > 1
+        self.views = views
+        self.angles = angles
 
         # Set window name and aspect geometry
         self.setWindowTitle("Napari Multi-Viewer")
@@ -512,6 +516,10 @@ class AdaptiveSplitViewer(QMainWindow):
                                                load_labels_name=load_labels_name if label_mode else '',
                                                label_mode=label_mode)
 
+        # connect mutliview metadata to POV nav/time step
+        if self.is_multiview_instrument:
+            self.connect_multiview_metadata(self.main_viewer)
+
         # Create min/max sliders for image layers
         self.min_max_slider, self.min_max_layout = create_sliders(
             option=int(config["min_max_slider_option"]),
@@ -564,6 +572,48 @@ class AdaptiveSplitViewer(QMainWindow):
                     self.sync_layer_properties)
             if hasattr(layer, 'colormap'):
                 layer.events.colormap.connect(self.sync_layer_properties)
+
+    # If there are multiple view-angles found, add a POV Slider to navigate them
+
+    def connect_multiview_metadata(self, viewer):
+
+        # Access the slider widget
+        qt_dims = viewer.window._qt_viewer.dims
+        # Grab the first slider widget
+        slider_widget = qt_dims.slider_widgets[0]
+
+        # Create a formatted string and label to present
+        # the camera and VZA strings to the user
+        view_indicator_string = "Camera: {0} ; VZA: {1}"
+        view_indicator_label = QLabel(
+            view_indicator_string.format(
+                self.views[slider_widget.slider.value()],
+                self.angles[slider_widget.slider.value()]))
+
+        # Add a new QLabel to replace the numeric text
+        slider_widget.layout().insertWidget(0, view_indicator_label)
+
+        # Define a callback function to update the label dynamically
+        def update_view_label(view_dim):
+            """Update the custom text next to the view dim slider
+
+            Args:
+                view_dim: integer representing the index of the view we
+                          are currently presenting in the view panel from
+                          the slider.
+            """
+            if 0 <= view_dim < len(self.views):  # Ensure within bounds
+                view_indicator_label.setText(
+                    view_indicator_string.format(self.views[view_dim],
+                                                 self.angles[view_dim]))
+
+        # Connect the slider's valueChanged signal to the callback
+        slider_widget.slider.valueChanged.connect(update_view_label)
+
+        # Configure the slider default settings
+        slider_widget.axis = 0
+        slider_widget.fps = 2
+        slider_widget.loop_mode = "back_and_forth"
 
     def update_sliders_name(old_name, new_name):
         """Loops through alll Min/Max Sliders to check for if they have the name
@@ -737,6 +787,9 @@ class AdaptiveSplitViewer(QMainWindow):
         # disable layer controls for this viewer
         self.disable_layer_controls(target_viewer)
 
+        # connect multiview metadata for new viewer
+        if self.is_multiview_instrument:
+            self.connect_multiview_metadata(target_viewer)
 
         # Disable label tools
         target_viewer.bind_key('p', lambda v: None, overwrite=True)  # paint
@@ -880,6 +933,8 @@ def create_tool(label_mode,
     app = QApplication(sys.argv)
     viewer_app = AdaptiveSplitViewer(data_layer_dict=data_layer_dict,
                                      config=config,
+                                     views=views,
+                                     angles=angles,
                                      shape=shape,
                                      label_mode=label_mode,
                                      load_labels_name=load_labels_name)
@@ -917,6 +972,8 @@ def create_tool(label_mode,
 
     ## Connect the renaming event call to this function
     #layer_manager.layer_renamed.connect(update_sliders_name)
+
+    ### HERE
 
     ## If there are multiple view-angles found, add a POV Slider to navigate them
     #if im_np.shape[-1] > 1:
@@ -957,6 +1014,8 @@ def create_tool(label_mode,
     #    slider_widget.axis = 0
     #    slider_widget.fps = 2
     #    slider_widget.loop_mode = "back_and_forth"
+
+    ### HERE
 
     ##    # Create Tab widget & layout
     ##    POV_tab_widget = QWidget()
