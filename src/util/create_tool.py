@@ -742,7 +742,7 @@ class AdaptiveSplitViewer(QMainWindow):
         target_viewer.bind_key('e', lambda v: None, overwrite=True)  # erase
         target_viewer.bind_key('l', lambda v: None,
                                overwrite=True)  # pick label
-        ## Disable shapes tools
+        # Disable shapes tools
         target_viewer.bind_key('r', lambda v: None,
                                overwrite=True)  # rectangle
         target_viewer.bind_key('c', lambda v: None,
@@ -757,6 +757,9 @@ class AdaptiveSplitViewer(QMainWindow):
         self.add_cursor_indicator(target_viewer)
         self.add_border_shape(target_viewer, layer.data.shape[1:])
         target_viewer.mouse_move_callbacks.append(self.update_cursor_positions)
+
+        # select the first layer (the image/labels) for value depiction
+        target_viewer.layers.selection.active = target_viewer.layers[0]
 
         # Sync layer optical properties
         layer.events.opacity.connect(self.sync_layer_properties)
