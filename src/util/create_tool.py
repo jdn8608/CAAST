@@ -433,7 +433,8 @@ def get_review_mode_tab(output_filepath,
 class AdaptiveSplitViewer(QMainWindow):
 
     def __init__(self, data_layer_dict, config, views, angles, shape,
-                 label_mode, load_labels_name):
+                 label_mode, load_labels_name, scene_attrs, output_file_info,
+                 notes):
         # call super init for a QMainWindow
         super().__init__()
 
@@ -443,6 +444,7 @@ class AdaptiveSplitViewer(QMainWindow):
         self.is_multiview_instrument = self.image_shape[0] > 1
         self.views = views
         self.angles = angles
+        self.output_filepath, self.dataset_name = output_file_info
 
         # Set window name and aspect geometry
         self.setWindowTitle("Napari Multi-Viewer")
@@ -535,8 +537,20 @@ class AdaptiveSplitViewer(QMainWindow):
                                           QSizePolicy.Preferred)
         left_tabs.addTab(self.min_max_layout, "Set Bounds")
 
+        # Create bottom tab area
+        self.bottom_tabs = QTabWidget()
+        self.bottom_tabs.setTabPosition(QTabWidget.North)
+        self.bottom_tabs.setMaximumHeight(160)
+        # Try forcing a preferred size using QSizePolicy and sizeHint
+        size_policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        self.bottom_tabs.setSizePolicy(size_policy)
+        self.outer_layout.addWidget(self.bottom_tabs)
+        # self.main_viewer.window.add_dock_widget(self.bottom_tabs,
+        #                                        area="bottom")
+
         # To be replace later within layer manager
         # Prelim widget to add layers to new or existing viewers
+        controls_widget = QWidget()
         controls_layout = QHBoxLayout()
         self.layer_selector = QComboBox()
         self.viewer_selector = QComboBox()
@@ -548,11 +562,22 @@ class AdaptiveSplitViewer(QMainWindow):
         controls_layout.addWidget(QLabel("Viewer:"))
         controls_layout.addWidget(self.viewer_selector)
         controls_layout.addWidget(self.add_btn)
-        self.outer_layout.addLayout(controls_layout)
+        controls_widget.setLayout(controls_layout)
+        self.bottom_tabs.addTab(controls_widget, "Viewer Management")
 
         self.update_layer_dropdown()
         self.update_viewer_selector()
         # END of replace
+
+        # Create and add the Notes Tab to the bottom tab area
+        self.bottom_tabs.addTab(
+            get_notes_tab(self.output_filepath, prior_notes=notes), "Notes")
+
+        # Create Scene Labeling Dropdown Tab
+        if scene_attrs:
+            self.bottom_tabs.addTab(
+                get_scene_label_tab(self.output_filepath, scene_attrs),
+                "Scene Labeling")
 
         # Add cursor indicators to the main viewer
         self.cursor_layers = {}
@@ -937,7 +962,10 @@ def create_tool(label_mode,
                                      angles=angles,
                                      shape=shape,
                                      label_mode=label_mode,
-                                     load_labels_name=load_labels_name)
+                                     load_labels_name=load_labels_name,
+                                     scene_attrs=scene_attrs,
+                                     notes=notes,
+                                     output_file_info=output_file_info)
     viewer_app.show()
     sys.exit(app.exec_())
 
@@ -972,8 +1000,6 @@ def create_tool(label_mode,
 
     ## Connect the renaming event call to this function
     #layer_manager.layer_renamed.connect(update_sliders_name)
-
-    ### HERE
 
     ## If there are multiple view-angles found, add a POV Slider to navigate them
     #if im_np.shape[-1] > 1:
