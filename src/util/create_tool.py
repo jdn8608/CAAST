@@ -667,6 +667,15 @@ class AdaptiveSplitViewer(QMainWindow):
             self.viewer_selector.addItem(f"Viewer {i+1}")
         self.viewer_selector.addItem("+ New Viewer")
 
+    def disable_layer_controls(self, viewer):
+        try:
+            dock = viewer.window._qt_viewer.dockLayerControls
+            tool_buttons = dock.findChildren(QWidget)
+            for btn in tool_buttons:
+                btn.setDisabled(True)
+        except Exception as e:
+            print(f"Could not disable tools: {e}")
+
     def add_layer_to_viewer(self):
         """Add a single layer to a new or existing viewer"""
         selected_layer_name = self.layer_selector.currentText()
@@ -725,16 +734,9 @@ class AdaptiveSplitViewer(QMainWindow):
                                      colormap=layer.colormap,
                                      visible=True)
 
-        def disable_layer_controls(viewer):
-            try:
-                dock = viewer.window._qt_viewer.dockLayerControls
-                tool_buttons = dock.findChildren(QWidget)
-                for btn in tool_buttons:
-                    btn.setDisabled(True)
-            except Exception as e:
-                print(f"Could not disable tools: {e}")
+        # disable layer controls for this viewer
+        self.disable_layer_controls(target_viewer)
 
-        disable_layer_controls(target_viewer)
 
         # Disable label tools
         target_viewer.bind_key('p', lambda v: None, overwrite=True)  # paint
