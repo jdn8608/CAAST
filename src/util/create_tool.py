@@ -22,6 +22,7 @@ from util.colormaps import get_all_colormaps
 
 from widgets.Sliders import create_sliders
 from widgets.LayerManager import LayerManager
+from widgets.ControlPanel import ControlPanel
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 from widgets.SubmitButtons import create_save_button
 from widgets.SceneLabelGrid import create_scene_dropdowns
@@ -462,6 +463,10 @@ class AdaptiveSplitViewer(QMainWindow):
             False)  # Override the Dock Layer list
         self.main_viewer.window.qt_viewer.dockLayerControls.setMaximumHeight(
             300)
+        self.main_viewer.window.qt_viewer.dockLayerControls.setVisible(True)
+        self.main_viewer.window._qt_viewer.controls.setVisible(True)
+        self.main_viewer.window._qt_viewer.dockLayerControls.setFloating(True)
+
         self.viewer_splitter.addWidget(self.main_viewer.window._qt_window)
 
         # Set up left tab widget for left panel tools
@@ -471,6 +476,8 @@ class AdaptiveSplitViewer(QMainWindow):
         self.main_viewer.window.add_dock_widget(left_tabs,
                                                 area="left",
                                                 name="Left Panel")
+
+        self.control_panel = ControlPanel(self.main_viewer, self.viewers)
 
         # Assign reference to layer_manager and add to main viewer
         self.layer_manager = LayerManager(
@@ -488,8 +495,7 @@ class AdaptiveSplitViewer(QMainWindow):
         layers_and_controls_scroll_area.setWidgetResizable(True)
         layers_and_controls_widget = QWidget()
         layers_and_controls_vlayout = QVBoxLayout(layers_and_controls_widget)
-        layers_and_controls_vlayout.addWidget(
-            self.main_viewer.window.qt_viewer.dockLayerControls)
+        layers_and_controls_vlayout.addWidget(self.control_panel)
         layers_and_controls_vlayout.addWidget(self.layer_manager)
         layers_and_controls_scroll_area.setWidget(layers_and_controls_widget)
         left_tabs.addTab(layers_and_controls_scroll_area,
@@ -550,6 +556,15 @@ class AdaptiveSplitViewer(QMainWindow):
         # Sync time steppers for new viewers to the main view
         self.main_viewer.dims.events.current_step.connect(self.sync_time_steps)
 
+        # Sync optical properties of layers
+        for layer in self.main_viewer.layers:
+            layer.events.opacity.connect(self.sync_layer_properties)
+            if hasattr(layer, 'contrast_limits'):
+                layer.events.contrast_limits.connect(
+                    self.sync_layer_properties)
+            if hasattr(layer, 'colormap'):
+                layer.events.colormap.connect(self.sync_layer_properties)
+
     def update_sliders_name(old_name, new_name):
         """Loops through alll Min/Max Sliders to check for if they have the name
         of old_name. If so, call their update_layer_name() with the new_name
@@ -589,7 +604,7 @@ class AdaptiveSplitViewer(QMainWindow):
                                   face_color='white',
                                   border_color='red',
                                   opacity=0.6)
-        viewer.scale_bar.visible = False
+        viewer.scale_bar.visible = True
         self.cursor_layers[viewer] = layer
 
     def update_cursor_positions(self, viewer, event):
@@ -669,7 +684,7 @@ class AdaptiveSplitViewer(QMainWindow):
             # create the new viewer
             target_viewer = napari.Viewer()
             # turn off all default widgets
-            target_viewer.scale_bar.visible = False
+            target_viewer.scale_bar.visible = True
             target_viewer.window._qt_viewer.controls.setVisible(False)
             target_viewer.window._qt_viewer.dockLayerList.setVisible(False)
             target_viewer.window._qt_viewer.dockLayerControls.setVisible(False)
@@ -696,14 +711,59 @@ class AdaptiveSplitViewer(QMainWindow):
 
         # add layers with correct typing
         if layer._type_string == 'image':
-            target_viewer.add_image(layer.data, name=layer.name)
+            target_viewer.add_image(layer.data,
+                                    name=layer.name,
+                                    contrast_limits=layer.contrast_limits,
+                                    opacity=layer.opacity,
+                                    colormap=layer.colormap,
+                                    visible=True)
+
         elif layer._type_string == 'labels':
-            target_viewer.add_labels(layer.data, name=layer.name)
+            target_viewer.add_labels(layer.data,
+                                     name=layer.name,
+                                     opacity=layer.opacity,
+                                     colormap=layer.colormap,
+                                     visible=True)
+
+        def disable_layer_controls(viewer):
+            try:
+                dock = viewer.window._qt_viewer.dockLayerControls
+                tool_buttons = dock.findChildren(QWidget)
+                for btn in tool_buttons:
+                    btn.setDisabled(True)
+            except Exception as e:
+                print(f"Could not disable tools: {e}")
+
+        disable_layer_controls(target_viewer)
+
+        # Disable label tools
+        target_viewer.bind_key('p', lambda v: None, overwrite=True)  # paint
+        target_viewer.bind_key('f', lambda v: None, overwrite=True)  # fill
+        target_viewer.bind_key('e', lambda v: None, overwrite=True)  # erase
+        target_viewer.bind_key('l', lambda v: None,
+                               overwrite=True)  # pick label
+        ## Disable shapes tools
+        target_viewer.bind_key('r', lambda v: None,
+                               overwrite=True)  # rectangle
+        target_viewer.bind_key('c', lambda v: None,
+                               overwrite=True)  # ellipse/circle
+        target_viewer.bind_key('t', lambda v: None, overwrite=True)  # text
+        target_viewer.bind_key('s', lambda v: None, overwrite=True)  # select
+        target_viewer.bind_key('d', lambda v: None,
+                               overwrite=True)  # direct select
+        target_viewer.window._qt_viewer.controls.setEnabled(False)
 
         # add the cursor indictor and border indicator
         self.add_cursor_indicator(target_viewer)
         self.add_border_shape(target_viewer, layer.data.shape[1:])
         target_viewer.mouse_move_callbacks.append(self.update_cursor_positions)
+
+        # Sync layer optical properties
+        layer.events.opacity.connect(self.sync_layer_properties)
+        if hasattr(layer, 'contrast_limits'):
+            layer.events.contrast_limits.connect(self.sync_layer_properties)
+        if hasattr(layer, 'colormap'):
+            layer.events.colormap.connect(self.sync_layer_properties)
 
         # update viewer list dropdown
         self.update_viewer_selector()
@@ -725,6 +785,22 @@ class AdaptiveSplitViewer(QMainWindow):
             viewer.close()
             # update viewer dropdown to no longer have this removed viewer
             self.update_viewer_selector()
+
+    def sync_layer_properties(self, event):
+        src_layer = event.source
+        name = src_layer.name
+        for viewer in self.viewers:
+            if viewer == self.main_viewer:
+                continue
+            if name in viewer.layers:
+                target_layer = viewer.layers[name]
+                if hasattr(src_layer, 'contrast_limits') and hasattr(
+                        target_layer, 'contrast_limits'):
+                    target_layer.contrast_limits = src_layer.contrast_limits
+                if hasattr(src_layer, 'colormap') and hasattr(
+                        target_layer, 'colormap'):
+                    target_layer.colormap = src_layer.colormap
+                target_layer.opacity = src_layer.opacity
 
     def sync_all_viewers(self):
         """Synchronize all viewers with each other for camera position"""
