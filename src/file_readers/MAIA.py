@@ -368,10 +368,7 @@ def read(parent_dir, search, views, config=None):
     if add_nan_mask:
         nan_masks = np.zeros((Y_DIM, X_DIM, len(views)))
     if add_dtt:
-        obs_names = [
-            "R Band 6", "R Band 9", "R Band 13", "NDVI", "NDSI",
-            "Whiteness Index", "SVI"
-        ]
+        obs_names = ["WI", "NDVI", "NDSI", "visRef", "nirRef", "SVI", "Cirrus"]
         num_of_observables = len(obs_names)
 
         dtt = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
