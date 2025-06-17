@@ -393,8 +393,6 @@ def read(parent_dir, search, views, config=None):
         if band_names is None:
             band_names = np.array(list(hdf_file['Reflectance'].keys()))
 
-        print(band_names)
-
         # Get the band data
         band_data[..., i] = get_bands(hdf_file, band_names, num_of_channels)
 
