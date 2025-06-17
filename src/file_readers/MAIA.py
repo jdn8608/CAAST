@@ -311,6 +311,11 @@ def create_true_color(hdf_file):
         ((ref05)),((ref04))))
 
     RGB[RGB == -999] = np.nan
+
+    # Adding code to nan out columns with missing any rgb data
+    nan_mask = np.isnan(RGB).any(axis=2)
+    RGB[nan_mask] = np.nan
+
     RGB = get_enhanced_RGB(RGB)
     return RGB
 
