@@ -523,7 +523,7 @@ class AdaptiveSplitViewer(QMainWindow):
             self.connect_multiview_metadata(self.main_viewer)
 
         # Create min/max sliders for image layers
-        self.min_max_slider, self.min_max_layout = create_sliders(
+        self.min_max_sliders, self.min_max_layout = create_sliders(
             option=int(config["min_max_slider_option"]),
             viewer=self.
             main_viewer,  # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
@@ -598,7 +598,8 @@ class AdaptiveSplitViewer(QMainWindow):
             if hasattr(layer, 'colormap'):
                 layer.events.colormap.connect(self.sync_layer_properties)
 
-    # If there are multiple view-angles found, add a POV Slider to navigate them
+        # add sync between contrast slider in control panel and the min/max tab sliders
+        self.sync_contrast_slider_to_minmax()
 
     def connect_multiview_metadata(self, viewer):
 
@@ -648,7 +649,7 @@ class AdaptiveSplitViewer(QMainWindow):
             old_name: a string representing the old name of a renamed layer
             new_name: a string representing the new name of a renamed layer
         """
-        for mms in self.min_max_slider:
+        for mms in self.min_max_sliders:
             if old_name == mms.name:
                 mms.update_layer_name()
 
@@ -884,6 +885,32 @@ class AdaptiveSplitViewer(QMainWindow):
                         target_layer, 'colormap'):
                     target_layer.colormap = src_layer.colormap
                 target_layer.opacity = src_layer.opacity
+
+    def sync_contrast_slider_to_minmax(self):
+        """
+        Connect the control panel contrast slider to update all min/max sliders.
+
+        Parameters:
+        - control_panel: the ControlPanel instance
+        - min_max_sliders: list of LayerMinMaxSlider instances
+        """
+
+        def sync_all_minmax():
+            active_layer = self.main_viewer.layers.selection.active
+            if not active_layer or active_layer._type_string != 'image':
+                return
+
+            contrast_min, contrast_max = active_layer.contrast_limits
+            for mms in self.min_max_sliders:
+                if mms.layer == active_layer:
+                    mms.update_contrast_limits(mms.data_min, mms.data_max,
+                                               contrast_min, contrast_max)
+
+        # Hook the signal connection
+        self.control_panel.contrast_slider.valuesChanged.connect(
+            sync_all_minmax)
+        self.control_panel.min_textbox.returnPressed.connect(sync_all_minmax)
+        self.control_panel.max_textbox.returnPressed.connect(sync_all_minmax)
 
     def sync_all_viewers(self):
         """Synchronize all viewers with each other for camera position"""
