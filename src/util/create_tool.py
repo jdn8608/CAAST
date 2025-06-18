@@ -688,15 +688,17 @@ class AdaptiveSplitViewer(QMainWindow):
         cursor position.
         """
         pos = event.position
+        if pos is None or len(pos) < 3:
+            return
+
         num_times = self.image_shape[0]
         y, x = pos[1], pos[2]
 
         for v in self.viewers:
             cursor_layer = self.cursor_layers.get(v)
             if cursor_layer:
-                if len(cursor_layer.data) < self.image_shape[0]:
-                    cursor_layer.data = [[t_, 0, 0]
-                                         for t_ in range(self.image_shape[0])]
+                if len(cursor_layer.data) < num_times:
+                    cursor_layer.data = [[t_, 0, 0] for t_ in range(num_times)]
                 new_data = cursor_layer.data.copy()
                 for t in range(num_times):
                     new_data[t] = [t, y, x]
