@@ -675,10 +675,10 @@ class AdaptiveSplitViewer(QMainWindow):
         layer = viewer.add_points(data=data,
                                   name='Cursor',
                                   ndim=3,
-                                  size=12,
+                                  size=5,
                                   face_color='white',
                                   border_color='red',
-                                  opacity=0.6)
+                                  opacity=0.4)
         viewer.scale_bar.visible = True
         self.cursor_layers[viewer] = layer
 
