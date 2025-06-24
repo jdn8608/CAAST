@@ -92,6 +92,7 @@ class ViewerManagerTab(QWidget):
             combo.addItems(viewer_names)
         # option for new viewer when adding layers
         self.viewer_selector_add.addItem("+ New Viewer")
+        self.viewer_selector_add.setCurrentIndex(self.viewer_selector_add.count() - 1)
 
     def update_layer_dropdown(self):
         self.layer_selector.clear()

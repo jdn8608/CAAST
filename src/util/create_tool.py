@@ -552,6 +552,8 @@ class AdaptiveSplitViewer(QMainWindow):
         # Viewer management tab
         self.viewer_manager_tab = ViewerManagerTab(self)
         self.bottom_tabs.addTab(self.viewer_manager_tab, "Manage Viewers")
+        self.layer_manager.layer_renamed.connect(
+            lambda *_: self.viewer_manager_tab.update_layer_dropdown())
 
         # To be replaced by layer manager context menu
         # controls_widget = QWidget()
@@ -743,6 +745,22 @@ class AdaptiveSplitViewer(QMainWindow):
                           text=text_props,
                           name="Border Rectangle")
 
+    def update_viewer_labels(self):
+        """Update border texts to reflect current viewer indices."""
+        for idx, viewer in enumerate(self.viewers):
+            label = "Main Viewer" if idx == 0 else f"Viewer {idx+1}"
+            for layer in viewer.layers:
+                if layer.name == "Border Rectangle" and hasattr(layer, "text"):
+                    try:
+                        layer.text.values = [label]
+                    except Exception:
+                        try:
+                            props = dict(layer.text)
+                            props["string"] = [label]
+                            layer.text = props
+                        except Exception:
+                            pass
+
     def update_layer_dropdown(self):
         """Update the dropdown widget with the layers available"""
         if not hasattr(self, 'viewer_manager_tab'):
@@ -860,6 +878,7 @@ class AdaptiveSplitViewer(QMainWindow):
 
         self.add_cursor_indicator(target_viewer)
         self.add_border_shape(target_viewer, layer.data.shape[1:])
+        self.update_viewer_labels()
         target_viewer.mouse_move_callbacks.append(self.update_cursor_positions)
 
         target_viewer.layers.selection.active = target_viewer.layers[0]
@@ -889,6 +908,7 @@ class AdaptiveSplitViewer(QMainWindow):
         if viewer in self.viewers:
             self.viewers.remove(viewer)
             viewer.close()
+            self.update_viewer_labels()
             # update viewer dropdown to no longer have this removed viewer
             if hasattr(self, 'viewer_manager_tab'):
                 self.viewer_manager_tab.update_controls()
