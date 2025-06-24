@@ -27,9 +27,10 @@ class LayerManager(QWidget):
     # PyQt signal for other widgets when layer name changes
     layer_renamed = pyqtSignal(str, str)
 
-    def __init__(self, napari_viewer, shape, init_groups=None):
+    def __init__(self, napari_viewer, shape, viewer_tool, init_groups=None):
         super().__init__(None)
         self.viewer = napari_viewer
+        self.viewer_tool = viewer_tool
         self.image_shape = shape
         self.groups = {}  # Dictionary to store groups and their layers
 
@@ -190,6 +191,22 @@ class LayerManager(QWidget):
             rename_action = QAction("Rename", self)
             rename_action.triggered.connect(lambda: self.rename_layer(item))
             menu.addAction(rename_action)
+            layer_name = item.text(0)
+
+            show_new_action = QAction("Show in New Viewer", self)
+            show_new_action.triggered.connect(
+                lambda checked=False, ln=layer_name: self.viewer_tool.add_layer_to_viewer(
+                    layer=self.viewer.layers[ln], viewer_index=None))
+            menu.addAction(show_new_action)
+
+            if hasattr(self.viewer_tool, 'viewers'):
+                for idx in range(1, len(self.viewer_tool.viewers)):
+                    viewer_label = f"Viewer {idx+1}"
+                    action = QAction(f"Display in {viewer_label}", self)
+                    action.triggered.connect(
+                        lambda checked=False, ln=layer_name, i=idx-1: self.viewer_tool.add_layer_to_viewer(
+                            layer=self.viewer.layers[ln], viewer_index=i))
+                    menu.addAction(action)
             menu.exec_(self.tree_widget.viewport().mapToGlobal(position))
 
     def rename_layer(self, item):

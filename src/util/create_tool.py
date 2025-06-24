@@ -15,7 +15,8 @@ from qtpy.QtGui import QFont
 from qtpy.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                             QHBoxLayout, QTabWidget, QScrollArea, QLabel,
                             QTextEdit, QComboBox, QSizePolicy, QFrame,
-                            QPushButton, QSplitter, QMenu)
+                            QPushButton, QSplitter, QMenu, QTreeWidget,
+                            QTreeWidgetItem)
 
 from util.LayerType import LayerType
 from util.colormaps import get_all_colormaps
@@ -489,6 +490,7 @@ class AdaptiveSplitViewer(QMainWindow):
         self.layer_manager = LayerManager(
             napari_viewer=self.main_viewer,
             shape=(shape[-1], shape[0], shape[1]),
+            viewer_tool=self,
             init_groups=[layer.value
                          for layer in LayerType])  # replaces layerlist
         self.layer_manager.setMinimumWidth(300)
@@ -548,26 +550,41 @@ class AdaptiveSplitViewer(QMainWindow):
         # self.main_viewer.window.add_dock_widget(self.bottom_tabs,
         #                                        area="bottom")
 
-        # To be replace later within layer manager
-        # Prelim widget to add layers to new or existing viewers
-        controls_widget = QWidget()
-        controls_layout = QHBoxLayout()
-        self.layer_selector = QComboBox()
+        # Viewer management tab
+        manage_widget = QWidget()
+        manage_layout = QVBoxLayout()
+
+        top_row = QHBoxLayout()
         self.viewer_selector = QComboBox()
-        self.add_btn = QPushButton("Add Layer to Viewer")
-        self.add_btn.clicked.connect(self.add_layer_to_viewer)
+        self.close_viewer_btn = QPushButton("Close Viewer")
+        self.close_viewer_btn.clicked.connect(self.close_selected_viewer)
+        top_row.addWidget(QLabel("Viewer:"))
+        top_row.addWidget(self.viewer_selector)
+        top_row.addWidget(self.close_viewer_btn)
+        manage_layout.addLayout(top_row)
 
-        controls_layout.addWidget(QLabel("Layer:"))
-        controls_layout.addWidget(self.layer_selector)
-        controls_layout.addWidget(QLabel("Viewer:"))
-        controls_layout.addWidget(self.viewer_selector)
-        controls_layout.addWidget(self.add_btn)
-        controls_widget.setLayout(controls_layout)
-        self.bottom_tabs.addTab(controls_widget, "Viewer Management")
+        self.viewer_layer_tree = QTreeWidget()
+        self.viewer_layer_tree.setHeaderLabel("Viewer Layers")
+        manage_layout.addWidget(self.viewer_layer_tree)
 
-        self.update_layer_dropdown()
+        swap_row = QHBoxLayout()
+        self.swap_a = QComboBox()
+        self.swap_b = QComboBox()
+        swap_btn = QPushButton("Swap")
+        swap_btn.clicked.connect(self.swap_selected_viewers)
+        swap_row.addWidget(self.swap_a)
+        swap_row.addWidget(QLabel("<->"))
+        swap_row.addWidget(self.swap_b)
+        swap_row.addWidget(swap_btn)
+        manage_layout.addLayout(swap_row)
+
+        manage_widget.setLayout(manage_layout)
+        self.bottom_tabs.addTab(manage_widget, "Viewer Management")
+
         self.update_viewer_selector()
-        # END of replace
+        self.update_viewer_layers_display()
+
+        # END viewer management tab
 
         # Create and add the Notes Tab to the bottom tab area
         self.bottom_tabs.addTab(
@@ -731,6 +748,8 @@ class AdaptiveSplitViewer(QMainWindow):
 
     def update_layer_dropdown(self):
         """Update the dropdown widget with the layers available"""
+        if not hasattr(self, 'layer_selector'):
+            return
         self.layer_selector.clear()
         for layer in self.main_viewer.layers:
             if layer.name != 'Cursor':
@@ -738,10 +757,18 @@ class AdaptiveSplitViewer(QMainWindow):
 
     def update_viewer_selector(self):
         """Update the viewers available"""
+        if not hasattr(self, 'viewer_selector'):
+            return
         self.viewer_selector.clear()
+        if hasattr(self, 'swap_a'):
+            self.swap_a.clear()
+            self.swap_b.clear()
         for i in range(1, len(self.viewers)):
-            self.viewer_selector.addItem(f"Viewer {i+1}")
-        self.viewer_selector.addItem("+ New Viewer")
+            label = f"Viewer {i}"
+            self.viewer_selector.addItem(label)
+            if hasattr(self, 'swap_a'):
+                self.swap_a.addItem(label)
+                self.swap_b.addItem(label)
 
     def disable_layer_controls(self, viewer):
         try:
@@ -752,20 +779,39 @@ class AdaptiveSplitViewer(QMainWindow):
         except Exception as e:
             print(f"Could not disable tools: {e}")
 
-    def add_layer_to_viewer(self):
-        """Add a single layer to a new or existing viewer"""
-        selected_layer_name = self.layer_selector.currentText()
-        selected_index = self.viewer_selector.currentIndex()
+    def add_layer_to_viewer(self, layer=None, viewer_index=None):
+        """Add a single layer to a new or existing viewer
 
-        # check for now layer selected
-        if selected_layer_name == "":
-            return
+        Parameters
+        ----------
+        layer : napari.layers.Layer, optional
+            The layer to display. If ``None`` the currently selected layer
+            from ``layer_selector`` will be used when available.
+        viewer_index : int or None, optional
+            Index of the target viewer in ``self.viewers`` excluding the main
+            viewer. ``None`` will open a new viewer. If ``layer_selector`` and
+            ``viewer_selector`` are defined and ``viewer_index`` is ``None``,
+            the index from ``viewer_selector`` will be used.
+        """
 
-        # grab the layer to add to a viewer
-        layer = self.main_viewer.layers[selected_layer_name]
+        if layer is None:
+            if hasattr(self, 'layer_selector'):
+                selected_layer_name = self.layer_selector.currentText()
+                if selected_layer_name == "":
+                    return
+                layer = self.main_viewer.layers[selected_layer_name]
+            else:
+                return
+
+        if viewer_index is None and hasattr(self, 'viewer_selector'):
+            selected_index = self.viewer_selector.currentIndex()
+            if selected_index == self.viewer_selector.count() - 1:
+                viewer_index = None
+            else:
+                viewer_index = selected_index
 
         # check for if we are adding a new viewer
-        if selected_index == self.viewer_selector.count() - 1:
+        if viewer_index is None:
             # create the new viewer
             target_viewer = napari.Viewer()
             # turn off all default widgets
@@ -791,7 +837,7 @@ class AdaptiveSplitViewer(QMainWindow):
 
         else:
             # grab the viewer and clear it's contents
-            target_viewer = self.viewers[selected_index + 1]
+            target_viewer = self.viewers[viewer_index + 1]
             target_viewer.layers.clear()
 
         # add layers with correct typing
@@ -851,6 +897,7 @@ class AdaptiveSplitViewer(QMainWindow):
 
         # update viewer list dropdown
         self.update_viewer_selector()
+        self.update_viewer_layers_display()
 
     def viewer_context_menu(self, pos: QPoint, viewer, widget):
         """Open a right-click menu for closing a viewer"""
@@ -869,6 +916,46 @@ class AdaptiveSplitViewer(QMainWindow):
             viewer.close()
             # update viewer dropdown to no longer have this removed viewer
             self.update_viewer_selector()
+            self.update_viewer_layers_display()
+
+    def close_selected_viewer(self):
+        """Close the viewer selected in the management tab"""
+        idx = self.viewer_selector.currentIndex()
+        if idx >= 0 and idx < len(self.viewers) - 1:
+            viewer = self.viewers[idx + 1]
+            widget = viewer.window._qt_window
+            self.remove_viewer(viewer, widget)
+
+    def update_viewer_layers_display(self):
+        """Show which layers are displayed in each viewer"""
+        if not hasattr(self, 'viewer_layer_tree'):
+            return
+        self.viewer_layer_tree.clear()
+        for i in range(1, len(self.viewers)):
+            v = self.viewers[i]
+            v_item = QTreeWidgetItem([f"Viewer {i}"])
+            for layer in v.layers:
+                QTreeWidgetItem(v_item, [layer.name])
+            self.viewer_layer_tree.addTopLevelItem(v_item)
+        self.viewer_layer_tree.expandAll()
+
+    def swap_selected_viewers(self):
+        """Swap the layers shown between two viewers"""
+        idx_a = self.swap_a.currentIndex()
+        idx_b = self.swap_b.currentIndex()
+        if idx_a == idx_b or idx_a < 0 or idx_b < 0:
+            return
+        if idx_a >= len(self.viewers) - 1 or idx_b >= len(self.viewers) - 1:
+            return
+        viewer_a = self.viewers[idx_a + 1]
+        viewer_b = self.viewers[idx_b + 1]
+        if not viewer_a.layers or not viewer_b.layers:
+            return
+        layer_a_name = viewer_a.layers[0].name
+        layer_b_name = viewer_b.layers[0].name
+        self.add_layer_to_viewer(self.main_viewer.layers[layer_b_name], idx_a)
+        self.add_layer_to_viewer(self.main_viewer.layers[layer_a_name], idx_b)
+        self.update_viewer_layers_display()
 
     def sync_layer_properties(self, event):
         src_layer = event.source
