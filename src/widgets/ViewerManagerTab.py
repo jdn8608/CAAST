@@ -1,6 +1,6 @@
 from qtpy.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,
-    QTextEdit
+    QTextEdit, QGroupBox
 )
 from qtpy.QtCore import Qt
 
@@ -12,36 +12,47 @@ class ViewerManagerTab(QWidget):
         super().__init__()
         self.parent = parent
 
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        main_layout = QHBoxLayout()
+        self.setLayout(main_layout)
 
-        # Close viewer controls
-        close_layout = QHBoxLayout()
-        close_layout.addWidget(QLabel("Select Viewer:"))
-        self.viewer_selector = QComboBox()
-        close_layout.addWidget(self.viewer_selector)
-        self.close_btn = QPushButton("Close")
-        self.close_btn.clicked.connect(self.close_viewer)
-        close_layout.addWidget(self.close_btn)
-        layout.addLayout(close_layout)
-
-        # Layer info
+        # Left: Viewer layer indicator
+        info_group = QGroupBox("Viewer Layers")
+        info_layout = QVBoxLayout()
         self.layer_info = QTextEdit()
         self.layer_info.setReadOnly(True)
-        layout.addWidget(self.layer_info)
+        info_layout.addWidget(self.layer_info)
+        info_group.setLayout(info_layout)
+        main_layout.addWidget(info_group)
 
-        # Swap controls
+        # Right: Close and swap controls stacked vertically
+        controls_layout = QVBoxLayout()
+
+        close_group = QGroupBox("Close Viewer")
+        close_layout = QHBoxLayout()
+        self.viewer_selector = QComboBox()
+        self.close_btn = QPushButton("Close")
+        self.close_btn.clicked.connect(self.close_viewer)
+        close_layout.addWidget(QLabel("Select"))
+        close_layout.addWidget(self.viewer_selector)
+        close_layout.addWidget(self.close_btn)
+        close_group.setLayout(close_layout)
+        controls_layout.addWidget(close_group)
+
+        swap_group = QGroupBox("Swap Viewers")
         swap_layout = QHBoxLayout()
-        swap_layout.addWidget(QLabel("Swap Viewer"))
         self.swap_a = QComboBox()
         self.swap_b = QComboBox()
-        swap_layout.addWidget(self.swap_a)
-        swap_layout.addWidget(QLabel("with"))
-        swap_layout.addWidget(self.swap_b)
         self.swap_btn = QPushButton("Swap")
         self.swap_btn.clicked.connect(self.swap_viewers)
+        swap_layout.addWidget(self.swap_a)
+        swap_layout.addWidget(QLabel("↔"))
+        swap_layout.addWidget(self.swap_b)
         swap_layout.addWidget(self.swap_btn)
-        layout.addLayout(swap_layout)
+        swap_group.setLayout(swap_layout)
+        controls_layout.addWidget(swap_group)
+
+        controls_layout.addStretch()
+        main_layout.addLayout(controls_layout)
 
         self.update_controls()
 
