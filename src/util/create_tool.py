@@ -23,6 +23,7 @@ from util.colormaps import get_all_colormaps
 from widgets.Sliders import create_sliders
 from widgets.LayerManager import LayerManager
 from widgets.ControlPanel import ControlPanel
+from widgets.ViewerManagerTab import ViewerManagerTab
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 from widgets.SubmitButtons import create_save_button
 from widgets.SceneLabelGrid import create_scene_dropdowns
@@ -548,6 +549,10 @@ class AdaptiveSplitViewer(QMainWindow):
         # self.main_viewer.window.add_dock_widget(self.bottom_tabs,
         #                                        area="bottom")
 
+        # Viewer management tab
+        self.viewer_manager_tab = ViewerManagerTab(self)
+        self.bottom_tabs.addTab(self.viewer_manager_tab, "Manage Viewers")
+
         # To be replaced by layer manager context menu
         # controls_widget = QWidget()
         # controls_layout = QHBoxLayout()
@@ -582,6 +587,9 @@ class AdaptiveSplitViewer(QMainWindow):
             self.bottom_tabs.addTab(
                 get_pixellabel_tool_tab(self.output_filepath, edit_np,
                                         self.views, self.dataset_name), "Save")
+
+        # initialize viewer manager dropdowns
+        self.viewer_manager_tab.update_controls()
 
         # Add cursor indicators to the main viewer
         self.cursor_layers = {}
@@ -809,6 +817,8 @@ class AdaptiveSplitViewer(QMainWindow):
 
             self.sync_all_viewers()
             self.sync_time_steps(None)
+            if hasattr(self, 'viewer_manager_tab'):
+                self.viewer_manager_tab.update_controls()
         else:
             target_viewer = self.viewers[viewer_index]
             target_viewer.layers.clear()
@@ -855,7 +865,8 @@ class AdaptiveSplitViewer(QMainWindow):
         if hasattr(layer, 'colormap'):
             layer.events.colormap.connect(self.sync_layer_properties)
 
-        #self.update_viewer_selector()
+        if hasattr(self, 'viewer_manager_tab'):
+            self.viewer_manager_tab.update_layer_info()
 
     def viewer_context_menu(self, pos: QPoint, viewer, widget):
         """Open a right-click menu for closing a viewer"""
@@ -874,7 +885,25 @@ class AdaptiveSplitViewer(QMainWindow):
             self.viewers.remove(viewer)
             viewer.close()
             # update viewer dropdown to no longer have this removed viewer
-            #self.update_viewer_selector()
+            if hasattr(self, 'viewer_manager_tab'):
+                self.viewer_manager_tab.update_controls()
+
+    def swap_viewer_contents(self, idx1, idx2):
+        """Swap the displayed layers between two viewers."""
+        if idx1 == 0 or idx2 == 0:
+            return
+        if idx1 >= len(self.viewers) or idx2 >= len(self.viewers):
+            return
+        viewer1 = self.viewers[idx1]
+        viewer2 = self.viewers[idx2]
+        if not viewer1.layers or not viewer2.layers:
+            return
+        layer1 = viewer1.layers[0].name
+        layer2 = viewer2.layers[0].name
+        self.display_layer_in_viewer(layer2, viewer_index=idx1)
+        self.display_layer_in_viewer(layer1, viewer_index=idx2)
+        if hasattr(self, 'viewer_manager_tab'):
+            self.viewer_manager_tab.update_layer_info()
 
     def sync_layer_properties(self, event):
         src_layer = event.source
