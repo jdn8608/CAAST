@@ -775,9 +775,13 @@ class AdaptiveSplitViewer(QMainWindow):
             target_viewer = napari.Viewer()
             # turn off all default widgets
             target_viewer.scale_bar.visible = True
-            target_viewer.window._qt_viewer.controls.setVisible(False)
-            target_viewer.window._qt_viewer.dockLayerList.setVisible(False)
-            target_viewer.window._qt_viewer.dockLayerControls.setVisible(False)
+            toggle_defaults = True
+            target_viewer.window._qt_viewer.controls.setVisible(
+                toggle_defaults)
+            target_viewer.window._qt_viewer.dockLayerList.setVisible(
+                toggle_defaults)
+            target_viewer.window._qt_viewer.dockLayerControls.setVisible(
+                toggle_defaults)
 
             viewer_widget = target_viewer.window._qt_window
             # add right click to close menu
