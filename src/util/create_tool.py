@@ -118,7 +118,6 @@ def add_layers(data_layer_dict,
                 name=layer_name)
             manager.add_layer_to_group(layer_type.value, current_layer)
         elif layer_type is LayerType.RGB:
-            print(data_temp.shape)
             data_temp = np.transpose(data_temp, (3, 0, 1, 2))
             current_layer = viewer.add_image(data_temp,
                                              name=layer_name,
@@ -128,7 +127,6 @@ def add_layers(data_layer_dict,
 
         else:
             data = np.transpose(data_temp, (2, 0, 1))
-            print(data.shape)
 
             # If regular image layer, add a layer with a gray-scale colormap
             if layer_type in (LayerType.GRAY_BAND, LayerType.VIEW_GEO,
@@ -469,9 +467,9 @@ class AdaptiveSplitViewer(QMainWindow):
             False)  # Override the Dock Layer list
         self.main_viewer.window.qt_viewer.dockLayerControls.setMaximumHeight(
             300)
-        self.main_viewer.window.qt_viewer.dockLayerControls.setVisible(True)
-        self.main_viewer.window._qt_viewer.controls.setVisible(True)
-        self.main_viewer.window._qt_viewer.dockLayerControls.setFloating(True)
+        self.main_viewer.window.qt_viewer.dockLayerControls.setVisible(False)
+        self.main_viewer.window._qt_viewer.controls.setVisible(False)
+        #self.main_viewer.window._qt_viewer.dockLayerControls.setFloating(True)
 
         self.viewer_splitter.addWidget(self.main_viewer.window._qt_window)
 
