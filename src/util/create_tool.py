@@ -644,7 +644,7 @@ class AdaptiveSplitViewer(QMainWindow):
         slider_widget.fps = 2
         slider_widget.loop_mode = "back_and_forth"
 
-    def update_sliders_name(old_name, new_name):
+    def update_sliders_name(self, old_name, new_name):
         """Loops through alll Min/Max Sliders to check for if they have the name
         of old_name. If so, call their update_layer_name() with the new_name
 
