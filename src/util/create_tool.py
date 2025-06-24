@@ -866,6 +866,7 @@ class AdaptiveSplitViewer(QMainWindow):
         menu = QMenu()
         # add close action option in menu
         close_action = menu.addAction("Close Viewer")
+        cancel_action = menu.addAction("Cancel")
         action = menu.exec_(widget.mapToGlobal(pos))
         if action == close_action:
             # call for remove
