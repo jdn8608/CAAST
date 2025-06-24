@@ -487,8 +487,10 @@ class AdaptiveSplitViewer(QMainWindow):
         self.layer_manager = LayerManager(
             napari_viewer=self.main_viewer,
             shape=(shape[-1], shape[0], shape[1]),
-            init_groups=[layer.value
-                         for layer in LayerType])  # replaces layerlist
+            init_groups=[layer.value for layer in LayerType],
+            viewers=self.viewers,
+            display_callback=self.display_layer_in_viewer
+        )  # replaces layerlist
         self.layer_manager.setMinimumWidth(300)
         self.layer_manager.setMinimumHeight(350)
         self.layer_manager.setSizePolicy(QSizePolicy.Expanding,
@@ -546,25 +548,24 @@ class AdaptiveSplitViewer(QMainWindow):
         # self.main_viewer.window.add_dock_widget(self.bottom_tabs,
         #                                        area="bottom")
 
-        # To be replace later within layer manager
-        # Prelim widget to add layers to new or existing viewers
-        controls_widget = QWidget()
-        controls_layout = QHBoxLayout()
-        self.layer_selector = QComboBox()
-        self.viewer_selector = QComboBox()
-        self.add_btn = QPushButton("Add Layer to Viewer")
-        self.add_btn.clicked.connect(self.add_layer_to_viewer)
+        # To be replaced by layer manager context menu
+        # controls_widget = QWidget()
+        # controls_layout = QHBoxLayout()
+        # self.layer_selector = QComboBox()
+        # self.viewer_selector = QComboBox()
+        # self.add_btn = QPushButton("Add Layer to Viewer")
+        # self.add_btn.clicked.connect(self.add_layer_to_viewer)
 
-        controls_layout.addWidget(QLabel("Layer:"))
-        controls_layout.addWidget(self.layer_selector)
-        controls_layout.addWidget(QLabel("Viewer:"))
-        controls_layout.addWidget(self.viewer_selector)
-        controls_layout.addWidget(self.add_btn)
-        controls_widget.setLayout(controls_layout)
-        self.bottom_tabs.addTab(controls_widget, "Viewer Management")
+        # controls_layout.addWidget(QLabel("Layer:"))
+        # controls_layout.addWidget(self.layer_selector)
+        # controls_layout.addWidget(QLabel("Viewer:"))
+        # controls_layout.addWidget(self.viewer_selector)
+        # controls_layout.addWidget(self.add_btn)
+        # controls_widget.setLayout(controls_layout)
+        # self.bottom_tabs.addTab(controls_widget, "Viewer Management")
 
-        self.update_layer_dropdown()
-        self.update_viewer_selector()
+        # self.update_layer_dropdown()
+        # self.update_viewer_selector()
         # END of replace
 
         # Create and add the Notes Tab to the bottom tab area
@@ -741,12 +742,12 @@ class AdaptiveSplitViewer(QMainWindow):
             if layer.name != 'Cursor':
                 self.layer_selector.addItem(layer.name)
 
-    def update_viewer_selector(self):
-        """Update the viewers available"""
-        self.viewer_selector.clear()
-        for i in range(1, len(self.viewers)):
-            self.viewer_selector.addItem(f"Viewer {i+1}")
-        self.viewer_selector.addItem("+ New Viewer")
+    #def update_viewer_selector(self):
+    #    """Update the viewers available"""
+    #    self.viewer_selector.clear()
+    #    for i in range(1, len(self.viewers)):
+    #        self.viewer_selector.addItem(f"Viewer {i+1}")
+    #    self.viewer_selector.addItem("+ New Viewer")
 
     def disable_layer_controls(self, viewer):
         try:
@@ -758,22 +759,36 @@ class AdaptiveSplitViewer(QMainWindow):
             print(f"Could not disable tools: {e}")
 
     def add_layer_to_viewer(self):
-        """Add a single layer to a new or existing viewer"""
-        selected_layer_name = self.layer_selector.currentText()
-        selected_index = self.viewer_selector.currentIndex()
-
-        # check for now layer selected
-        if selected_layer_name == "":
+        """Add a single layer to a viewer based on dropdown selections"""
+        layer_name = self.layer_selector.currentText()
+        index = self.viewer_selector.currentIndex()
+        if layer_name == "":
             return
 
-        # grab the layer to add to a viewer
-        layer = self.main_viewer.layers[selected_layer_name]
+        # Determine if a new viewer is requested
+        if index == self.viewer_selector.count() - 1:
+            viewer_idx = None
+        else:
+            viewer_idx = index + 1
 
-        # check for if we are adding a new viewer
-        if selected_index == self.viewer_selector.count() - 1:
-            # create the new viewer
+        self.display_layer_in_viewer(layer_name, viewer_idx)
+
+    def display_layer_in_viewer(self, layer_name, viewer_index=None):
+        """Display ``layer_name`` in the specified viewer.
+
+        Parameters
+        ----------
+        layer_name : str
+            Name of the layer in the main viewer to display.
+        viewer_index : int or None
+            Index of the viewer in ``self.viewers``. ``None`` creates a new
+            viewer.
+        """
+
+        layer = self.main_viewer.layers[layer_name]
+
+        if viewer_index is None or viewer_index >= len(self.viewers):
             target_viewer = napari.Viewer()
-            # turn off all default widgets
             target_viewer.scale_bar.visible = True
             toggle_defaults = True
             target_viewer.window._qt_viewer.controls.setVisible(
@@ -784,26 +799,20 @@ class AdaptiveSplitViewer(QMainWindow):
                 toggle_defaults)
 
             viewer_widget = target_viewer.window._qt_window
-            # add right click to close menu
             viewer_widget.setContextMenuPolicy(Qt.CustomContextMenu)
             viewer_widget.customContextMenuRequested.connect(
                 lambda pos, v=target_viewer, w=viewer_widget: self.
                 viewer_context_menu(pos, v, w))
 
-            # add viewer to the splitter and list
             self.viewer_splitter.addWidget(viewer_widget)
             self.viewers.append(target_viewer)
 
-            # call syncs for all viewers with new view included
             self.sync_all_viewers()
             self.sync_time_steps(None)
-
         else:
-            # grab the viewer and clear it's contents
-            target_viewer = self.viewers[selected_index + 1]
+            target_viewer = self.viewers[viewer_index]
             target_viewer.layers.clear()
 
-        # add layers with correct typing
         if layer._type_string == 'image':
             target_viewer.add_image(layer.data,
                                     name=layer.name,
@@ -811,7 +820,6 @@ class AdaptiveSplitViewer(QMainWindow):
                                     opacity=layer.opacity,
                                     colormap=layer.colormap,
                                     visible=True)
-
         elif layer._type_string == 'labels':
             target_viewer.add_labels(layer.data,
                                      name=layer.name,
@@ -819,47 +827,35 @@ class AdaptiveSplitViewer(QMainWindow):
                                      colormap=layer.colormap,
                                      visible=True)
 
-        # disable layer controls for this viewer
         self.disable_layer_controls(target_viewer)
 
-        # connect multiview metadata for new viewer
         if self.is_multiview_instrument:
             self.connect_multiview_metadata(target_viewer)
 
-        # Disable label tools
-        target_viewer.bind_key('p', lambda v: None, overwrite=True)  # paint
-        target_viewer.bind_key('f', lambda v: None, overwrite=True)  # fill
-        target_viewer.bind_key('e', lambda v: None, overwrite=True)  # erase
-        target_viewer.bind_key('l', lambda v: None,
-                               overwrite=True)  # pick label
-        # Disable shapes tools
-        target_viewer.bind_key('r', lambda v: None,
-                               overwrite=True)  # rectangle
-        target_viewer.bind_key('c', lambda v: None,
-                               overwrite=True)  # ellipse/circle
-        target_viewer.bind_key('t', lambda v: None, overwrite=True)  # text
-        target_viewer.bind_key('s', lambda v: None, overwrite=True)  # select
-        target_viewer.bind_key('d', lambda v: None,
-                               overwrite=True)  # direct select
+        target_viewer.bind_key('p', lambda v: None, overwrite=True)
+        target_viewer.bind_key('f', lambda v: None, overwrite=True)
+        target_viewer.bind_key('e', lambda v: None, overwrite=True)
+        target_viewer.bind_key('l', lambda v: None, overwrite=True)
+        target_viewer.bind_key('r', lambda v: None, overwrite=True)
+        target_viewer.bind_key('c', lambda v: None, overwrite=True)
+        target_viewer.bind_key('t', lambda v: None, overwrite=True)
+        target_viewer.bind_key('s', lambda v: None, overwrite=True)
+        target_viewer.bind_key('d', lambda v: None, overwrite=True)
         target_viewer.window._qt_viewer.controls.setEnabled(False)
 
-        # add the cursor indictor and border indicator
         self.add_cursor_indicator(target_viewer)
         self.add_border_shape(target_viewer, layer.data.shape[1:])
         target_viewer.mouse_move_callbacks.append(self.update_cursor_positions)
 
-        # select the first layer (the image/labels) for value depiction
         target_viewer.layers.selection.active = target_viewer.layers[0]
 
-        # Sync layer optical properties
         layer.events.opacity.connect(self.sync_layer_properties)
         if hasattr(layer, 'contrast_limits'):
             layer.events.contrast_limits.connect(self.sync_layer_properties)
         if hasattr(layer, 'colormap'):
             layer.events.colormap.connect(self.sync_layer_properties)
 
-        # update viewer list dropdown
-        self.update_viewer_selector()
+        #self.update_viewer_selector()
 
     def viewer_context_menu(self, pos: QPoint, viewer, widget):
         """Open a right-click menu for closing a viewer"""
@@ -878,7 +874,7 @@ class AdaptiveSplitViewer(QMainWindow):
             self.viewers.remove(viewer)
             viewer.close()
             # update viewer dropdown to no longer have this removed viewer
-            self.update_viewer_selector()
+            #self.update_viewer_selector()
 
     def sync_layer_properties(self, event):
         src_layer = event.source
