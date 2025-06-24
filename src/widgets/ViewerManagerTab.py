@@ -2,7 +2,6 @@ from qtpy.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,
     QTextEdit, QGroupBox
 )
-from qtpy.QtCore import Qt
 
 
 class ViewerManagerTab(QWidget):
@@ -15,44 +14,47 @@ class ViewerManagerTab(QWidget):
         main_layout = QHBoxLayout()
         self.setLayout(main_layout)
 
-        # Left: Viewer layer indicator
+        # Column 1: Viewer layer indicator
         info_group = QGroupBox("Viewer Layers")
         info_layout = QVBoxLayout()
         self.layer_info = QTextEdit()
         self.layer_info.setReadOnly(True)
+        self.layer_info.setMaximumWidth(120)
         info_layout.addWidget(self.layer_info)
         info_group.setLayout(info_layout)
         main_layout.addWidget(info_group)
 
-        # Right: Close and swap controls stacked vertically
-        controls_layout = QVBoxLayout()
-
+        # Column 2: Close viewer controls
         close_group = QGroupBox("Close Viewer")
-        close_layout = QHBoxLayout()
+        close_layout = QVBoxLayout()
         self.viewer_selector = QComboBox()
         self.close_btn = QPushButton("Close")
         self.close_btn.clicked.connect(self.close_viewer)
-        close_layout.addWidget(QLabel("Select"))
         close_layout.addWidget(self.viewer_selector)
         close_layout.addWidget(self.close_btn)
         close_group.setLayout(close_layout)
-        controls_layout.addWidget(close_group)
+        main_layout.addWidget(close_group)
 
+        # Column 3: Swap viewer controls
         swap_group = QGroupBox("Swap Viewers")
-        swap_layout = QHBoxLayout()
+        swap_layout = QVBoxLayout()
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel("Swap"))
         self.swap_a = QComboBox()
+        row1.addWidget(self.swap_a)
+        row2 = QHBoxLayout()
+        row2.addWidget(QLabel("with"))
         self.swap_b = QComboBox()
+        row2.addWidget(self.swap_b)
         self.swap_btn = QPushButton("Swap")
         self.swap_btn.clicked.connect(self.swap_viewers)
-        swap_layout.addWidget(self.swap_a)
-        swap_layout.addWidget(QLabel("↔"))
-        swap_layout.addWidget(self.swap_b)
+        swap_layout.addLayout(row1)
+        swap_layout.addLayout(row2)
         swap_layout.addWidget(self.swap_btn)
         swap_group.setLayout(swap_layout)
-        controls_layout.addWidget(swap_group)
+        main_layout.addWidget(swap_group)
 
-        controls_layout.addStretch()
-        main_layout.addLayout(controls_layout)
+        main_layout.addStretch()
 
         self.update_controls()
 
