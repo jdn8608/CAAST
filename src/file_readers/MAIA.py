@@ -32,6 +32,15 @@ def find_file(parent_dir, search, view=''):
 
     """
 
+    # Check how data is stored...
+    folder_format = os.path.isdir(parent_dir)
+
+    # If folder exists, it contains one scene's observations...
+    # otherwise we need to format a search string with date_id
+    if not folder_format:
+        parent_dir, date_id = os.path.split(os.path.normpath(parent_dir))
+        search = '*' + date_id + search
+
     # Search for a file based on the search string and filter by the view string
     search_result_files = [
         r for r in glob.glob(os.path.join(parent_dir, search))
@@ -390,6 +399,9 @@ def read(parent_dir, search, views, config=None):
 
         # Open file
         hdf_file = h5.File(filepath, 'r')
+        #print(hdf_file.keys())
+        #print(list(hdf_file['Ancillary'].keys()))
+        #print(list(hdf_file['Ancillary']['configuration_file'].keys()))
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
         if band_names is None:
