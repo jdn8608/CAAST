@@ -491,7 +491,8 @@ class AdaptiveSplitViewer(QMainWindow):
             shape=(shape[-1], shape[0], shape[1]),
             init_groups=[layer.value for layer in LayerType],
             viewers=self.viewers,
-            display_callback=self.display_layer_in_viewer)  # replaces layerlist
+            display_callback=self.display_layer_in_viewer
+        )  # replaces layerlist
         self.layer_manager.setMinimumWidth(300)
         self.layer_manager.setMinimumHeight(350)
         self.layer_manager.setSizePolicy(QSizePolicy.Expanding,
@@ -736,12 +737,12 @@ class AdaptiveSplitViewer(QMainWindow):
             if layer.name != 'Cursor':
                 self.layer_selector.addItem(layer.name)
 
-    def update_viewer_selector(self):
-        """Update the viewers available"""
-        self.viewer_selector.clear()
-        for i in range(1, len(self.viewers)):
-            self.viewer_selector.addItem(f"Viewer {i+1}")
-        self.viewer_selector.addItem("+ New Viewer")
+    #def update_viewer_selector(self):
+    #    """Update the viewers available"""
+    #    self.viewer_selector.clear()
+    #    for i in range(1, len(self.viewers)):
+    #        self.viewer_selector.addItem(f"Viewer {i+1}")
+    #    self.viewer_selector.addItem("+ New Viewer")
 
     def disable_layer_controls(self, viewer):
         try:
@@ -791,7 +792,8 @@ class AdaptiveSplitViewer(QMainWindow):
             viewer_widget = target_viewer.window._qt_window
             viewer_widget.setContextMenuPolicy(Qt.CustomContextMenu)
             viewer_widget.customContextMenuRequested.connect(
-                lambda pos, v=target_viewer, w=viewer_widget: self.viewer_context_menu(pos, v, w))
+                lambda pos, v=target_viewer, w=viewer_widget: self.
+                viewer_context_menu(pos, v, w))
 
             self.viewer_splitter.addWidget(viewer_widget)
             self.viewers.append(target_viewer)
@@ -844,7 +846,7 @@ class AdaptiveSplitViewer(QMainWindow):
         if hasattr(layer, 'colormap'):
             layer.events.colormap.connect(self.sync_layer_properties)
 
-        self.update_viewer_selector()
+        #self.update_viewer_selector()
 
     def viewer_context_menu(self, pos: QPoint, viewer, widget):
         """Open a right-click menu for closing a viewer"""
@@ -862,7 +864,7 @@ class AdaptiveSplitViewer(QMainWindow):
             self.viewers.remove(viewer)
             viewer.close()
             # update viewer dropdown to no longer have this removed viewer
-            self.update_viewer_selector()
+            #self.update_viewer_selector()
 
     def sync_layer_properties(self, event):
         src_layer = event.source
