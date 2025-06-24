@@ -541,7 +541,7 @@ class AdaptiveSplitViewer(QMainWindow):
         # Create bottom tab area
         self.bottom_tabs = QTabWidget()
         self.bottom_tabs.setTabPosition(QTabWidget.North)
-        self.bottom_tabs.setMaximumHeight(160)
+        self.bottom_tabs.setMaximumHeight(190)
         # Try forcing a preferred size using QSizePolicy and sizeHint
         size_policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         self.bottom_tabs.setSizePolicy(size_policy)
