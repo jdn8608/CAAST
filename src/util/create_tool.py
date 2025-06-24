@@ -577,6 +577,11 @@ class AdaptiveSplitViewer(QMainWindow):
                 get_scene_label_tab(self.output_filepath, scene_attrs),
                 "Scene Labeling")
 
+        if label_mode:
+            self.bottom_tabs.addTab(
+                get_pixellabel_tool_tab(self.output_filepath, edit_np,
+                                        self.views, self.dataset_name), "Save")
+
         # Add cursor indicators to the main viewer
         self.cursor_layers = {}
         self.add_cursor_indicator(self.main_viewer)
