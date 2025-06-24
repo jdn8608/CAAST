@@ -745,10 +745,13 @@ class AdaptiveSplitViewer(QMainWindow):
 
     def update_layer_dropdown(self):
         """Update the dropdown widget with the layers available"""
-        self.layer_selector.clear()
+        if not hasattr(self, 'viewer_manager_tab'):
+            return
+        combo = self.viewer_manager_tab.layer_selector
+        combo.clear()
         for layer in self.main_viewer.layers:
             if layer.name != 'Cursor':
-                self.layer_selector.addItem(layer.name)
+                combo.addItem(layer.name)
 
     #def update_viewer_selector(self):
     #    """Update the viewers available"""
@@ -768,13 +771,15 @@ class AdaptiveSplitViewer(QMainWindow):
 
     def add_layer_to_viewer(self):
         """Add a single layer to a viewer based on dropdown selections"""
-        layer_name = self.layer_selector.currentText()
-        index = self.viewer_selector.currentIndex()
+        if not hasattr(self, 'viewer_manager_tab'):
+            return
+        layer_name = self.viewer_manager_tab.layer_selector.currentText()
+        index = self.viewer_manager_tab.viewer_selector_add.currentIndex()
         if layer_name == "":
             return
 
         # Determine if a new viewer is requested
-        if index == self.viewer_selector.count() - 1:
+        if index == self.viewer_manager_tab.viewer_selector_add.count() - 1:
             viewer_idx = None
         else:
             viewer_idx = index + 1
