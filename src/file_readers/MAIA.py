@@ -32,15 +32,6 @@ def find_file(parent_dir, search, view=''):
 
     """
 
-    # Check how data is stored...
-    folder_format = os.path.isdir(parent_dir)
-
-    # If folder exists, it contains one scene's observations...
-    # otherwise we need to format a search string with date_id
-    if not folder_format:
-        parent_dir, date_id = os.path.split(os.path.normpath(parent_dir))
-        search = '*' + date_id + search
-
     # Search for a file based on the search string and filter by the view string
     search_result_files = [
         r for r in glob.glob(os.path.join(parent_dir, search))
