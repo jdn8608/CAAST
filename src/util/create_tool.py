@@ -130,8 +130,8 @@ def add_layers(data_layer_dict,
             data = np.transpose(data_temp, (2, 0, 1))
 
             # If regular image layer, add a layer with a gray-scale colormap
-            if layer_type in (LayerType.GRAY_BAND, LayerType.VIEW_GEO,
-                              LayerType.LAT_LON):
+            if layer_type in (LayerType.GRAY_BAND, LayerType.AEROSOL,
+                              LayerType.VIEW_GEO, LayerType.LAT_LON):
 
                 current_layer = viewer.add_image(data[...],
                                                  name=layer_name,

@@ -320,6 +320,61 @@ def create_true_color(hdf_file):
     return RGB
 
 
+def get_aerosol_data(parent_dir, location, date, shape):
+    """
+    Find, get, and return Total AODs from the MAIA aerosol proxy data
+    """
+    import netCDF4 as nc
+
+    # Build path and find file
+    search_dir = os.path.join(parent_dir, 'MAIA_aerosol', f'*{location}')
+    file_path = find_file(search_dir, search=f'*{date}*.nc')
+
+    # Load NetCDF data
+    with nc.Dataset(file_path, 'r') as ds:
+        total_AOD = ds.groups['Aerosol_Optical_Depth'].variables[
+            'Total_AOD'][:]
+        data = total_AOD.data.copy()
+        data[total_AOD.mask] = -1  # Replace masked values with -1
+
+        # Reshape and label
+        O, W, H = total_AOD.shape
+        formatted = np.transpose(data, axes=(2, 1, 0))  # -> (H, W, O)
+        names = [f"Total_AOD: {wl} nm" for wl in ds.getncattr('wavelengths')]
+
+    # Expand to multiview dim and pad height width
+    expanded = np.repeat(formatted[..., np.newaxis], shape[-1], axis=-1)
+    padded = pad(expanded, shape)
+
+    return padded, names
+
+
+def pad(arr, shape_to_pad):
+    """
+    Add padding on the first two dims (height, width) to match the provided shape_to_pad
+    """
+    # Target shape: (480, 360, 8, 9)
+    H, W, O, V = shape_to_pad
+    # Calculate padding needed for each dimension
+    pad_height = H - arr.shape[0]  # 16
+    pad_width = W - arr.shape[1]  # 8
+
+    # Compute symmetric padding (before, after)
+    pad_top = pad_height // 2  # 8
+    pad_bottom = pad_height - pad_top  # 8
+
+    pad_left = pad_width // 2  # 4
+    pad_right = pad_width - pad_left  # 4
+
+    # Apply padding
+    padded_arr = np.pad(arr,
+                        pad_width=((pad_top, pad_bottom),
+                                   (pad_left, pad_right), (0, 0), (0, 0)),
+                        mode='constant',
+                        constant_values=-1)
+    return padded_arr
+
+
 def read(parent_dir, search, views, config=None):
     """Finds MAIA files and reads in required data for the tool
 
@@ -392,9 +447,6 @@ def read(parent_dir, search, views, config=None):
 
         # Open file
         hdf_file = h5.File(filepath, 'r')
-        #print(hdf_file.keys())
-        #print(list(hdf_file['Ancillary'].keys()))
-        #print(list(hdf_file['Ancillary']['configuration_file'].keys()))
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
         if band_names is None:
@@ -454,6 +506,21 @@ def read(parent_dir, search, views, config=None):
                                                                         i, :])
             data_layer_dict['DTT ' + str(name)] = (LayerType.DTT, dtt[...,
                                                                       i, :])
+
+    get_aerosol_product = True
+    if get_aerosol_product:
+        parts = filepath.split('_')
+        location, date = parts[3], parts[6]
+        del parts
+        date = date.split('T')[0]
+        aerosol_data, aerosol_var_names = get_aerosol_data(
+            parent_dir, location, date, shape)
+
+        shape[2] += len(aerosol_var_names)
+
+        for w, name in enumerate(aerosol_var_names):
+            data_layer_dict[str(name)] = (LayerType.AEROSOL,
+                                          aerosol_data[..., w, :])
 
     # Add Sun-View Geometry to the dict
     if add_geom:

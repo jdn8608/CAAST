@@ -50,6 +50,7 @@ class LayerType(Enum):
     CLOUD_MASK = "Cloud Mask(s)"
     DTT = "Distance to Thresholds"
     OBSERVABLE = "Observables"
+    AEROSOL = "Aerosol Data"
     SURFACE_ID = "Surface Ids"
     VIEW_GEO = "Viewing Geometery"
     LAT_LON = "Latitude/Longitude"
