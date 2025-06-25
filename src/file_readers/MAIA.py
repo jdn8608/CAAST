@@ -395,7 +395,9 @@ def read(parent_dir, search, views, config=None):
     # Loop through all views
     for i, view in enumerate(views):
         # Find the file
-        filepath = find_file(parent_dir, search, view=view)
+        filepath = find_file(os.path.join(parent_dir, 'mcm_output'),
+                             search,
+                             view=view)
 
         # Open file
         hdf_file = h5.File(filepath, 'r')

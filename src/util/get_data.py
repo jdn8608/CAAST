@@ -26,7 +26,10 @@ def create_instrument_dict():
     return reader_dict
 
 
-def get_instrument_layer_data(parent_dir, instrument_name, config=None):
+def get_instrument_layer_data(parent_dir,
+                              instrument_name,
+                              search_string,
+                              config=None):
     """Calls the corresponding module to ingest instrument imager data
 
      Args:
@@ -50,7 +53,7 @@ def get_instrument_layer_data(parent_dir, instrument_name, config=None):
     file_reader = reader_dict.get(instrument_name, None)
     if file_reader:
         return file_reader(parent_dir,
-                           search=config["filename_search_string"],
+                           search=search_string,
                            views=config["view"],
                            config=config)
 
@@ -107,6 +110,7 @@ def get_review_mode_output_settings(json_filepath):
 def get_data(
     parent_dir,
     instrument_name,
+    search_string,
     output_settings_filepath,
     reader_config_filepath,
     label_mode=False,
@@ -144,7 +148,7 @@ def get_data(
 
     # Get instrument NumPy Layer data (and input file location)
     data_layer_dict, input_filepath, shape = get_instrument_layer_data(
-        parent_dir, instrument_name, config)
+        parent_dir, instrument_name, search_string, config)
 
     # Get the filepath and dataset name to save out pixel labels
     output_filepath_convention, dataset_name = get_general_output_settings(
