@@ -3,7 +3,7 @@ from qtpy.QtWidgets import (QFrame, QGridLayout, QSlider, QSpinBox, QLineEdit,
                             QPushButton, QLabel, QComboBox, QSizePolicy)
 from qtpy.QtCore import Qt, QPoint
 
-from qtpy.QtGui import QColor
+from qtpy.QtGui import QColor, QImage, QPixmap, QIcon
 # Custom dual-slider for contrast
 from superqt import QRangeSlider  # Replaces napari internal import
 
@@ -110,9 +110,34 @@ class ControlPanel(QFrame):
         self.max_textbox.returnPressed.connect(self.update_contrast_from_text)
         self.control_layout.addWidget(self.max_textbox, 11, 1)
 
+        # Colormap selection for image layers
+        self.colormap_label = QLabel("Colormap:")
+        self.colormap_dropdown = QComboBox()
+        self.colormap_dropdown.currentIndexChanged.connect(self.change_colormap)
+        self.colormap_preview = QLabel()
+        self.colormap_preview.setFixedHeight(20)
+        self.colormap_preview.setMinimumWidth(100)
+
+        self._colormap_options = [
+            "gray",
+            "gray_r",
+            "bwr",
+            "viridis",
+            "magma",
+            "inferno",
+            "plasma",
+        ]
+        for cmap in self._colormap_options:
+            icon = self._create_colormap_icon(cmap)
+            self.colormap_dropdown.addItem(icon, cmap)
+
+        self.control_layout.addWidget(self.colormap_label, 12, 0)
+        self.control_layout.addWidget(self.colormap_dropdown, 12, 1)
+        self.control_layout.addWidget(self.colormap_preview, 13, 0, 1, 2)
+
         self.update_labels_btn = QPushButton("Update Viewers")
         self.update_labels_btn.clicked.connect(self.update_viewer_labels)
-        self.control_layout.addWidget(self.update_labels_btn, 12, 0, 1, 2)
+        self.control_layout.addWidget(self.update_labels_btn, 14, 0, 1, 2)
 
         self.update_tool_visibility()
         self.main_viewer.layers.selection.events.active.connect(
@@ -183,6 +208,9 @@ class ControlPanel(QFrame):
 
         self.opacity_slider.setVisible(is_labels or is_image)
         self.opacity_label.setVisible(is_labels or is_image)
+        self.colormap_label.setVisible(is_image)
+        self.colormap_dropdown.setVisible(is_image)
+        self.colormap_preview.setVisible(is_image)
 
         if is_labels:
             self.update_label_color()
@@ -192,6 +220,7 @@ class ControlPanel(QFrame):
             self.opacity_slider.setValue(int(layer.opacity * 100))
         if is_image:
             self.update_contrast_slider(layer)
+            self._sync_colormap_dropdown(layer)
 
     def set_label_value(self):
         active_layer = self.main_viewer.layers.selection.active
@@ -265,3 +294,36 @@ class ControlPanel(QFrame):
         active_layer = self.main_viewer.layers.selection.active
         if active_layer and active_layer._type_string in ['labels', 'image']:
             active_layer.opacity = self.opacity_slider.value() / 100
+
+    def change_colormap(self):
+        layer = self.main_viewer.layers.selection.active
+        if layer and layer._type_string == 'image':
+            cmap = self.colormap_dropdown.currentText()
+            layer.colormap = cmap
+            self._update_colormap_preview(cmap)
+
+    def _create_colormap_icon(self, cmap_name, width=100, height=20):
+        import matplotlib.cm as cm
+        cmap = cm.get_cmap(cmap_name)
+        gradient = np.linspace(0, 1, width)
+        colors = (cmap(gradient)[:, :3] * 255).astype(np.uint8)
+        img = np.repeat(colors[None, ...], height, axis=0)
+        image = QImage(img.data, width, height, 3 * width, QImage.Format_RGB888)
+        return QIcon(QPixmap.fromImage(image.copy()))
+
+    def _update_colormap_preview(self, cmap_name):
+        icon = self._create_colormap_icon(cmap_name)
+        self.colormap_preview.setPixmap(icon.pixmap(self.colormap_preview.size()))
+
+    def _sync_colormap_dropdown(self, layer):
+        cmap_name = getattr(layer.colormap, 'name', str(layer.colormap))
+        if cmap_name not in self._colormap_options:
+            self._colormap_options.append(cmap_name)
+            self.colormap_dropdown.addItem(self._create_colormap_icon(cmap_name),
+                                           cmap_name)
+        idx = self.colormap_dropdown.findText(cmap_name)
+        if idx != -1:
+            self.colormap_dropdown.blockSignals(True)
+            self.colormap_dropdown.setCurrentIndex(idx)
+            self.colormap_dropdown.blockSignals(False)
+        self._update_colormap_preview(cmap_name)
