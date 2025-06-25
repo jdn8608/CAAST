@@ -113,7 +113,8 @@ class ControlPanel(QFrame):
         # Colormap selection for image layers
         self.colormap_label = QLabel("Colormap:")
         self.colormap_dropdown = QComboBox()
-        self.colormap_dropdown.currentIndexChanged.connect(self.change_colormap)
+        self.colormap_dropdown.currentIndexChanged.connect(
+            self.change_colormap)
         self.colormap_preview = QLabel()
         self.colormap_preview.setFixedHeight(20)
         self.colormap_preview.setMinimumWidth(100)
@@ -328,19 +329,21 @@ class ControlPanel(QFrame):
         gradient = np.linspace(0, 1, width)
         colors = (cmap(gradient)[:, :3] * 255).astype(np.uint8)
         img = np.repeat(colors[None, ...], height, axis=0)
-        image = QImage(img.data, width, height, 3 * width, QImage.Format_RGB888)
+        image = QImage(img.data, width, height, 3 * width,
+                       QImage.Format_RGB888)
         return QIcon(QPixmap.fromImage(image.copy()))
 
     def _update_colormap_preview(self, cmap_name):
-        icon = self._create_colormap_icon(cmap_name)
-        self.colormap_preview.setPixmap(icon.pixmap(self.colormap_preview.size()))
+        icon = self._create_colormap_icon(cmap_name, width=300)
+        self.colormap_preview.setPixmap(
+            icon.pixmap(self.colormap_preview.size()))
 
     def _sync_colormap_dropdown(self, layer):
         cmap_name = getattr(layer.colormap, 'name', str(layer.colormap))
         if cmap_name not in self._colormap_options:
             self._colormap_options.append(cmap_name)
-            self.colormap_dropdown.addItem(self._create_colormap_icon(cmap_name),
-                                           cmap_name)
+            self.colormap_dropdown.addItem(
+                self._create_colormap_icon(cmap_name), cmap_name)
         idx = self.colormap_dropdown.findText(cmap_name)
         if idx != -1:
             self.colormap_dropdown.blockSignals(True)
