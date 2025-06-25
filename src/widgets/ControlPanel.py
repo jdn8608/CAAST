@@ -118,14 +118,26 @@ class ControlPanel(QFrame):
         self.colormap_preview.setFixedHeight(20)
         self.colormap_preview.setMinimumWidth(100)
 
+        # Default list of colormaps.  Start with the common grayscale and diverging
+        # options, then extend with the perceptually uniform sets and a few other
+        # popular maps.
         self._colormap_options = [
             "gray",
             "gray_r",
             "bwr",
+            # Perceptually uniform colormaps
             "viridis",
-            "magma",
-            "inferno",
             "plasma",
+            "inferno",
+            "magma",
+            "cividis",
+            # Additional requests
+            "Greens",
+            "jet",
+            "hot",
+            "PRGn",
+            "gist_rainbow",
+            "gist_ncar",
         ]
         for cmap in self._colormap_options:
             icon = self._create_colormap_icon(cmap)
@@ -301,6 +313,14 @@ class ControlPanel(QFrame):
             cmap = self.colormap_dropdown.currentText()
             layer.colormap = cmap
             self._update_colormap_preview(cmap)
+            # Propagate the colormap change to matching layers in the other
+            # viewers so that they stay synchronized.
+            for viewer in self.viewers:
+                if viewer is self.main_viewer:
+                    continue
+                for other in viewer.layers:
+                    if other._type_string == 'image' and other.name == layer.name:
+                        other.colormap = cmap
 
     def _create_colormap_icon(self, cmap_name, width=100, height=20):
         import matplotlib.cm as cm
