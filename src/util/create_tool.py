@@ -433,7 +433,7 @@ class AdaptiveSplitViewer(QMainWindow):
 
     def __init__(self, data_layer_dict, config, views, angles, shape,
                  label_mode, load_labels_name, scene_attrs, output_file_info,
-                 notes):
+                 csv_filepath, review_data, notes):
         # call super init for a QMainWindow
         super().__init__()
 
@@ -565,10 +565,65 @@ class AdaptiveSplitViewer(QMainWindow):
                 get_scene_label_tab(self.output_filepath, scene_attrs),
                 "Scene Labeling")
 
+        # If Label/Editing Mode, load the Labeling Tool tab
         if label_mode:
             self.bottom_tabs.addTab(
                 get_pixellabel_tool_tab(self.output_filepath, edit_np,
                                         self.views, self.dataset_name), "Save")
+
+            # Create and add a tab for the ThresholdWidget
+            threshold_gate_widget = QWidget()
+            threshold_gate_layout = QHBoxLayout()
+            # Remove extra spacing and margins from the layout
+            threshold_gate_layout.setSpacing(0)
+            threshold_gate_layout.setContentsMargins(0, 0, 0, 0)
+            # Create the ThresholdWidget and LogicGatesWidget
+            thresh_widget = ThresholdWidget(self.main_viewer,
+                                            self.layer_manager,
+                                            views=self.views)
+            logic_gate_widget = LogicGatesWidget(self.main_viewer,
+                                                 self.layer_manager)
+            # Set size policies to allow both widgets to share space equally
+            thresh_widget.setSizePolicy(QSizePolicy.Expanding,
+                                        QSizePolicy.Preferred)
+            logic_gate_widget.setSizePolicy(QSizePolicy.Expanding,
+                                            QSizePolicy.Preferred)
+            # Create a vertical line
+            vertical_line = QFrame()
+            vertical_line.setFrameShape(QFrame.VLine)
+            vertical_line.setFrameShadow(QFrame.Sunken)
+            vertical_line.setLineWidth(
+                10)  # Set the width of the line for visibility
+            vertical_line.setStyleSheet("background-color: #414851;")
+
+            # Add widgets to the layout
+            threshold_gate_layout.addWidget(
+                thresh_widget, stretch=1)  # Assign equal stretch factor
+            threshold_gate_layout.addWidget(vertical_line)  # Add vertical line
+            threshold_gate_layout.addWidget(logic_gate_widget, stretch=1)
+            # Set the layout for the container widget
+            threshold_gate_widget.setLayout(threshold_gate_layout)
+            # Add the tab to the bottom_tabs
+            self.bottom_tabs.addTab(threshold_gate_widget,
+                                    "Thresholding & Logic Gates")
+        # Otherwise, load the Review Mode tab
+        else:
+            if isinstance(config["grade_slider_min"], int) and \
+            isinstance(config["grade_slider_max"],int) and \
+            config["grade_slider_min"] < config["grade_slider_max"]:
+                self.bottom_tabs.addTab(
+                    get_review_mode_tab(self.output_filepath,
+                                        csv_filepath,
+                                        review_data=review_data,
+                                        min_val=config["grade_slider_min"],
+                                        max_val=config["grade_slider_max"]),
+                    "Review Grading")
+            else:
+                self.bottom_tabs.addTab(
+                    get_review_mode_tab(self.output_filepath,
+                                        csv_filepath,
+                                        review_data=review_data), \
+                    "Review Grading")
 
         # initialize viewer manager dropdowns
         self.viewer_manager_tab.update_controls()
@@ -794,7 +849,7 @@ class AdaptiveSplitViewer(QMainWindow):
         if viewer_index is None or viewer_index >= len(self.viewers):
             target_viewer = napari.Viewer()
             target_viewer.scale_bar.visible = True
-            toggle_defaults = True
+            toggle_defaults = False
             target_viewer.window._qt_viewer.controls.setVisible(
                 toggle_defaults)
             target_viewer.window._qt_viewer.dockLayerList.setVisible(
@@ -1024,6 +1079,8 @@ def create_tool(label_mode,
                                      label_mode=label_mode,
                                      load_labels_name=load_labels_name,
                                      scene_attrs=scene_attrs,
+                                     csv_filepath=csv_filepath,
+                                     review_data=review_data,
                                      notes=notes,
                                      output_file_info=output_file_info)
     viewer_app.show()

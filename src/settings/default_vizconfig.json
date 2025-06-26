@@ -6,7 +6,7 @@
 						"0": "clouds",
 						"1": "clear-sky"
 					},
-	"label_colormap"	:	"custom_labeling1",
+	"label_colormap"	:	"custom_DG_cmask",
 	"label_string_text"	:	{
 						"0": "clouds",
 						"1": "clear-sky",
