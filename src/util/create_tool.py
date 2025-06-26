@@ -24,6 +24,7 @@ from widgets.Sliders import create_sliders
 from widgets.LayerManager import LayerManager
 from widgets.ControlPanel import ControlPanel
 from widgets.ViewerManagerTab import ViewerManagerTab
+from widgets.HistogramTab import HistogramTab
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 from widgets.SubmitButtons import create_save_button
 from widgets.SceneLabelGrid import create_scene_dropdowns
@@ -555,6 +556,23 @@ class AdaptiveSplitViewer(QMainWindow):
         self.layer_manager.layer_renamed.connect(
             lambda *_: self.viewer_manager_tab.update_layer_dropdown())
 
+        # Histogram visualization tab
+        self.hist_tab = HistogramTab(self.main_viewer, self.layer_manager)
+        self.bottom_tabs.addTab(self.hist_tab, "Histograms")
+        # Update histograms when gray-band layers are toggled or changed
+        gray_group = self.layer_manager.groups.get(LayerType.GRAY_BAND.value)
+        if gray_group:
+            for layer, _ in gray_group.get("layers", []):
+                layer.events.visible.connect(
+                    lambda e, l=layer: self.hist_tab.update_histograms(
+                        self.main_viewer.dims.current_step[0]))
+                if hasattr(layer, "contrast_limits"):
+                    layer.events.contrast_limits.connect(
+                        lambda e, l=layer: self.hist_tab.update_histograms(
+                            self.main_viewer.dims.current_step[0]))
+        # Initial histogram display
+        self.hist_tab.update_histograms(self.main_viewer.dims.current_step[0])
+
         # To be replaced by layer manager context menu
         # controls_widget = QWidget()
         # controls_layout = QHBoxLayout()
@@ -602,6 +620,9 @@ class AdaptiveSplitViewer(QMainWindow):
 
         # Sync time steppers for new viewers to the main view
         self.main_viewer.dims.events.current_step.connect(self.sync_time_steps)
+        self.main_viewer.dims.events.current_step.connect(
+            lambda e: self.hist_tab.update_histograms(
+                self.main_viewer.dims.current_step[0]))
 
         # Sync optical properties of layers
         for layer in self.main_viewer.layers:
