@@ -1,4 +1,4 @@
-"""Widget to display histograms for gray-band layers."""
+"""Widget to display smoothed distributions for gray-band layers."""
 
 import numpy as np
 from qtpy.QtWidgets import (
@@ -8,47 +8,71 @@ from qtpy.QtWidgets import (
     QLabel,
     QSpinBox,
     QCheckBox,
+    QGroupBox,
+    QPushButton,
+    QDialog,
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from scipy.stats import gaussian_kde
 
 from util.LayerType import LayerType
 
 
 class HistogramTab(QWidget):
-    """Tab widget showing histograms for all gray-band layers."""
+    """Tab widget showing distributions for all gray-band layers."""
 
     def __init__(self, viewer, layer_manager):
         super().__init__()
         self.viewer = viewer
         self.layer_manager = layer_manager
 
+        self.layer_checks = {}
+        self.popup = None
+
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        # Matplotlib canvas for histograms
+        # Matplotlib canvas for distributions
         self.figure = Figure(figsize=(4, 3))
+        self._set_background()
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
 
-        # Controls for histogram options
+        # Controls for band visibility
+        self.check_group = QGroupBox("Bands")
+        self.check_layout = QVBoxLayout()
+        self.check_group.setLayout(self.check_layout)
+        layout.addWidget(self.check_group)
+
+        # Global controls
         controls = QHBoxLayout()
-        controls.addWidget(QLabel("Bins:"))
+        controls.addWidget(QLabel("Points:"))
         self.bin_spin = QSpinBox()
-        self.bin_spin.setRange(1, 512)
-        self.bin_spin.setValue(50)
+        self.bin_spin.setRange(10, 1024)
+        self.bin_spin.setValue(200)
         self.bin_spin.valueChanged.connect(self._trigger_update)
         controls.addWidget(self.bin_spin)
 
         self.log_check = QCheckBox("Log Scale")
         self.log_check.stateChanged.connect(self._trigger_update)
         controls.addWidget(self.log_check)
+
+        self.pop_btn = QPushButton("Pop Out")
+        self.pop_btn.clicked.connect(self.show_popup)
+        controls.addWidget(self.pop_btn)
+
         controls.addStretch()
 
         layout.addLayout(controls)
 
+    def _set_background(self):
+        """Update figure background to match Qt palette."""
+        color = self.palette().window().color().name()
+        self.figure.set_facecolor(color)
+
     def _trigger_update(self):
-        """Helper to update histograms for the current view."""
+        """Helper to update distributions for the current view."""
         view_idx = self.viewer.dims.current_step[0]
         self.update_histograms(view_idx)
 
@@ -59,34 +83,96 @@ class HistogramTab(QWidget):
         return [layer for layer, _ in group.get("layers", [])]
 
     def update_histograms(self, view_idx):
-        """Compute and display histograms for all gray-band layers."""
+        """Compute and display distributions for all gray-band layers."""
         self.figure.clear()
+        self._set_background()
         ax = self.figure.add_subplot(111)
 
         layers = self._get_gray_layers()
-        bins = self.bin_spin.value()
+        points = self.bin_spin.value()
         use_log = self.log_check.isChecked()
 
+        # Ensure checkboxes exist for each layer
         for layer in layers:
+            if layer not in self.layer_checks:
+                check = QCheckBox(layer.name)
+                check.setChecked(True)
+                check.stateChanged.connect(self._trigger_update)
+                self.layer_checks[layer] = check
+                self.check_layout.addWidget(check)
+
+        x_min, x_max = None, None
+        for layer in layers:
+            if not self.layer_checks.get(layer, None) or not self.layer_checks[layer].isChecked():
+                continue
             data = layer.data[view_idx]
             data = data[np.isfinite(data)]
             if data.size == 0:
                 continue
-            ax.hist(
-                data.ravel(),
-                bins=bins,
-                histtype="step",
-                label=layer.name,
-                log=use_log,
-            )
+            kde = gaussian_kde(data.ravel())
+            x = np.linspace(data.min(), data.max(), points)
+            y = kde(x)
+            ax.plot(x, y, label=layer.name)
+            x_min = x.min() if x_min is None else min(x_min, x.min())
+            x_max = x.max() if x_max is None else max(x_max, x.max())
 
         if layers:
             ax.legend(fontsize="small")
         ax.set_xlabel("Value")
-        ax.set_ylabel("Frequency")
+        ax.set_ylabel("Density")
+        if x_min is not None and x_max is not None:
+            ax.set_xlim(x_min, x_max)
         if use_log:
             ax.set_yscale("log")
         else:
             ax.set_yscale("linear")
 
         self.canvas.draw_idle()
+
+    def show_popup(self):
+        """Open the current plot in a separate window."""
+        if self.popup is None:
+            self.popup = QDialog(self)
+            self.popup.setWindowTitle("Histograms")
+            layout = QVBoxLayout()
+            self.popup.setLayout(layout)
+            fig = Figure(figsize=(5, 4))
+            fig.set_facecolor(self.palette().window().color().name())
+            canvas = FigureCanvas(fig)
+            layout.addWidget(canvas)
+            self.popup_canvas = canvas
+            self.popup_fig = fig
+        self.popup.show()
+        self._redraw_popup()
+
+    def _redraw_popup(self):
+        """Redraw the popout figure with current data."""
+        if not hasattr(self, "popup_fig"):
+            return
+        fig = self.popup_fig
+        fig.clear()
+        ax = fig.add_subplot(111)
+        layers = self._get_gray_layers()
+        points = self.bin_spin.value()
+        use_log = self.log_check.isChecked()
+        for layer in layers:
+            if not self.layer_checks.get(layer, None) or not self.layer_checks[layer].isChecked():
+                continue
+            data = layer.data[self.viewer.dims.current_step[0]]
+            data = data[np.isfinite(data)]
+            if data.size == 0:
+                continue
+            kde = gaussian_kde(data.ravel())
+            x = np.linspace(data.min(), data.max(), points)
+            y = kde(x)
+            ax.plot(x, y, label=layer.name)
+        if layers:
+            ax.legend(fontsize="small")
+        ax.set_xlabel("Value")
+        ax.set_ylabel("Density")
+        if use_log:
+            ax.set_yscale("log")
+        else:
+            ax.set_yscale("linear")
+        self.popup_canvas.draw_idle()
+
