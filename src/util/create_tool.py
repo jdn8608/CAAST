@@ -555,26 +555,6 @@ class AdaptiveSplitViewer(QMainWindow):
         self.layer_manager.layer_renamed.connect(
             lambda *_: self.viewer_manager_tab.update_layer_dropdown())
 
-        # To be replaced by layer manager context menu
-        # controls_widget = QWidget()
-        # controls_layout = QHBoxLayout()
-        # self.layer_selector = QComboBox()
-        # self.viewer_selector = QComboBox()
-        # self.add_btn = QPushButton("Add Layer to Viewer")
-        # self.add_btn.clicked.connect(self.add_layer_to_viewer)
-
-        # controls_layout.addWidget(QLabel("Layer:"))
-        # controls_layout.addWidget(self.layer_selector)
-        # controls_layout.addWidget(QLabel("Viewer:"))
-        # controls_layout.addWidget(self.viewer_selector)
-        # controls_layout.addWidget(self.add_btn)
-        # controls_widget.setLayout(controls_layout)
-        # self.bottom_tabs.addTab(controls_widget, "Viewer Management")
-
-        # self.update_layer_dropdown()
-        # self.update_viewer_selector()
-        # END of replace
-
         # Create and add the Notes Tab to the bottom tab area
         self.bottom_tabs.addTab(
             get_notes_tab(self.output_filepath, prior_notes=notes), "Notes")
@@ -770,13 +750,6 @@ class AdaptiveSplitViewer(QMainWindow):
         for layer in self.main_viewer.layers:
             if layer.name != 'Cursor':
                 combo.addItem(layer.name)
-
-    #def update_viewer_selector(self):
-    #    """Update the viewers available"""
-    #    self.viewer_selector.clear()
-    #    for i in range(1, len(self.viewers)):
-    #        self.viewer_selector.addItem(f"Viewer {i+1}")
-    #    self.viewer_selector.addItem("+ New Viewer")
 
     def disable_layer_controls(self, viewer):
         try:
