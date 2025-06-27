@@ -4,6 +4,8 @@ from qtpy.QtWidgets import (QFrame, QGridLayout, QSlider, QSpinBox, QLineEdit,
 from qtpy.QtCore import Qt, QPoint
 
 from qtpy.QtGui import QColor, QImage, QPixmap, QIcon
+import json
+from util.colormaps import build_label_colormap
 # Custom dual-slider for contrast
 from superqt import QRangeSlider  # Replaces napari internal import
 
@@ -148,9 +150,39 @@ class ControlPanel(QFrame):
         self.control_layout.addWidget(self.colormap_dropdown, 12, 1)
         self.control_layout.addWidget(self.colormap_preview, 13, 0, 1, 2)
 
+        # Colormap selection for label layers
+        self.label_colormap_label = QLabel("Label Colormap:")
+        self.label_colormap_dropdown = QComboBox()
+        self.label_colormap_dropdown.currentIndexChanged.connect(
+            self.change_label_colormap)
+        self.label_colormap_preview = QLabel()
+        self.label_colormap_preview.setFixedHeight(20)
+        self.label_colormap_preview.setMinimumWidth(100)
+
+        # Populate default label colormap list
+        self._label_colormap_options = ["random"]
+        try:
+            with open('./settings/custom_colormaps.json', 'r') as f:
+                for name in json.load(f).keys():
+                    self._label_colormap_options.append(f"custom_{name}")
+        except Exception:
+            pass
+        self._label_colormap_options.extend([
+            "viridis",
+            "tab20",
+            "nipy_spectral",
+        ])
+        for cmap in self._label_colormap_options:
+            icon = self._create_label_colormap_icon(cmap)
+            self.label_colormap_dropdown.addItem(icon, cmap)
+
+        self.control_layout.addWidget(self.label_colormap_label, 14, 0)
+        self.control_layout.addWidget(self.label_colormap_dropdown, 14, 1)
+        self.control_layout.addWidget(self.label_colormap_preview, 15, 0, 1, 2)
+
         self.update_labels_btn = QPushButton("Update Viewers")
         self.update_labels_btn.clicked.connect(self.update_viewer_labels)
-        self.control_layout.addWidget(self.update_labels_btn, 14, 0, 1, 2)
+        self.control_layout.addWidget(self.update_labels_btn, 16, 0, 1, 2)
 
         self.update_tool_visibility()
         self.main_viewer.layers.selection.events.active.connect(
@@ -224,6 +256,9 @@ class ControlPanel(QFrame):
         self.colormap_label.setVisible(is_image)
         self.colormap_dropdown.setVisible(is_image)
         self.colormap_preview.setVisible(is_image)
+        self.label_colormap_label.setVisible(is_labels)
+        self.label_colormap_dropdown.setVisible(is_labels)
+        self.label_colormap_preview.setVisible(is_labels)
 
         if is_labels:
             self.update_label_color()
@@ -234,6 +269,8 @@ class ControlPanel(QFrame):
         if is_image:
             self.update_contrast_slider(layer)
             self._sync_colormap_dropdown(layer)
+        if is_labels:
+            self._sync_label_colormap_dropdown(layer)
 
     def set_label_value(self):
         active_layer = self.main_viewer.layers.selection.active
@@ -350,3 +387,50 @@ class ControlPanel(QFrame):
             self.colormap_dropdown.setCurrentIndex(idx)
             self.colormap_dropdown.blockSignals(False)
         self._update_colormap_preview(cmap_name)
+
+    def change_label_colormap(self):
+        layer = self.main_viewer.layers.selection.active
+        if layer and layer._type_string == 'labels':
+            cmap_name = self.label_colormap_dropdown.currentText()
+            cmap = build_label_colormap(cmap_name, np.unique(layer.data))
+            layer.colormap = cmap
+            layer.metadata['label_colormap_name'] = cmap_name
+            self._update_label_colormap_preview(cmap_name)
+            for viewer in self.viewers:
+                if viewer is self.main_viewer:
+                    continue
+                for other in viewer.layers:
+                    if other._type_string == 'labels' and other.name == layer.name:
+                        other.colormap = cmap
+                        other.metadata['label_colormap_name'] = cmap_name
+
+    def _create_label_colormap_icon(self, cmap_name, width=100, height=20):
+        cmap = build_label_colormap(cmap_name, range(6))
+        colors = [cmap[k] for k in sorted(cmap) if k is not None][:6]
+        cell_w = max(1, width // len(colors))
+        img = np.zeros((height, cell_w * len(colors), 3), dtype=np.uint8)
+        for i, col in enumerate(colors):
+            rgb = (np.array(col[:3]) * 255).astype(np.uint8)
+            img[:, i * cell_w:(i + 1) * cell_w] = rgb
+        image = QImage(img.data, img.shape[1], height, 3 * img.shape[1],
+                       QImage.Format_RGB888)
+        return QIcon(QPixmap.fromImage(image.copy()))
+
+    def _update_label_colormap_preview(self, cmap_name):
+        icon = self._create_label_colormap_icon(cmap_name, width=300)
+        self.label_colormap_preview.setPixmap(
+            icon.pixmap(self.label_colormap_preview.size()))
+
+    def _sync_label_colormap_dropdown(self, layer):
+        cmap_name = layer.metadata.get('label_colormap_name',
+                                       getattr(layer.colormap, 'name', ''))
+        if cmap_name not in self._label_colormap_options:
+            self._label_colormap_options.append(cmap_name)
+            self.label_colormap_dropdown.addItem(
+                self._create_label_colormap_icon(cmap_name), cmap_name)
+        idx = self.label_colormap_dropdown.findText(cmap_name)
+        if idx != -1:
+            self.label_colormap_dropdown.blockSignals(True)
+            self.label_colormap_dropdown.setCurrentIndex(idx)
+            self.label_colormap_dropdown.blockSignals(False)
+        self._update_label_colormap_preview(cmap_name)
