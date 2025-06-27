@@ -121,13 +121,9 @@ class ControlPanel(QFrame):
 
         # Populate the dropdown with napari's built-in colormaps along with
         # any custom colormaps defined in ``util/colormaps.py``.
-        from napari.utils.colormaps import AVAILABLE_COLORMAPS
-        import json
+        from util.colormaps import list_all_colormap_names
 
-        with open('./settings/custom_colormaps.json', 'r') as file:
-            custom_names = [f"custom_{name}" for name in json.load(file).keys()]
-
-        self._colormap_options = list(AVAILABLE_COLORMAPS.keys()) + custom_names
+        self._colormap_options = list_all_colormap_names()
 
         for cmap in self._colormap_options:
             icon = self._create_colormap_icon(cmap)
@@ -315,41 +311,50 @@ class ControlPanel(QFrame):
                 layer.colormap = AVAILABLE_COLORMAPS[cmap_name]
             else:
                 layer.colormap = cmap_name
-            # Manually propagate image layer colormaps across viewers
-            for viewer in self.viewers:
-                if viewer is self.main_viewer:
-                    continue
-                for other in viewer.layers:
-                    if other._type_string == 'image' and other.name == layer.name:
-                        other.colormap = layer.colormap
         self._update_colormap_preview(cmap_name)
 
     def _create_colormap_icon(self, cmap_name, width=100, height=20):
-        """Return a QIcon preview for the provided colormap name."""
+        """Return a QIcon preview for the provided colormap name or mapping."""
         from napari.utils.colormaps import AVAILABLE_COLORMAPS
         import matplotlib.cm as cm
+        from matplotlib.colors import to_rgb
         from util.colormaps import get_colormap
 
-        if isinstance(cmap_name, str) and cmap_name.startswith('custom_'):
+        # Resolve custom maps or direct dictionary input
+        if isinstance(cmap_name, dict):
+            cmap_dict = cmap_name
+        elif isinstance(cmap_name, str) and cmap_name.startswith('custom_'):
             cmap_dict = get_colormap(cmap_name)
+        else:
+            cmap_dict = None
+
+        if cmap_dict is not None:
             ordered = [cmap_dict[k][:3] for k in sorted(cmap_dict.keys())]
             colors = np.array(ordered)
             if len(colors) < width:
                 colors = np.repeat(colors, int(np.ceil(width / len(colors))), axis=0)
             colors = colors[:width]
         else:
-            if cmap_name in AVAILABLE_COLORMAPS:
-                cmap = AVAILABLE_COLORMAPS[cmap_name]
+            name = str(cmap_name)
+            if name in AVAILABLE_COLORMAPS:
+                cmap = AVAILABLE_COLORMAPS[name]
                 gradient = cmap.map(np.linspace(0, 1, width))
                 colors = gradient[:, :3]
             else:
-                cmap = cm.get_cmap(str(cmap_name))
-                gradient = np.linspace(0, 1, width)
-                colors = cmap(gradient)[:, :3]
+                try:
+                    cmap = cm.get_cmap(name)
+                    gradient = np.linspace(0, 1, width)
+                    colors = cmap(gradient)[:, :3]
+                except ValueError:
+                    try:
+                        single = to_rgb(name)
+                    except ValueError:
+                        single = (0.5, 0.5, 0.5)
+                    colors = np.tile(single, (width, 1))
+
         colors = (colors * 255).astype(np.uint8)
         img = np.repeat(colors[None, ...], height, axis=0)
-        image = QImage(img.data, width, height, 3 * width,
-                       QImage.Format_RGB888)
+        image = QImage(img.data, width, height, 3 * width, QImage.Format_RGB888)
         return QIcon(QPixmap.fromImage(image.copy()))
 
     def _update_colormap_preview(self, cmap_name):

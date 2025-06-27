@@ -40,7 +40,7 @@
 
 - **Interactive Tools**:
   - Integration with Napari for interactive visualization.
-  - Custom widgets for adjusting sliders, managing colormaps for both image and label layers, navigating points of view, and handling legend creation.
+  - Custom widgets for adjusting sliders, managing colormaps for both image and label layers, navigating points of view, and handling legend creation. Colormap options include napari's built-ins and any custom maps defined in `settings/custom_colormaps.json`.
 
 ## Installation
 

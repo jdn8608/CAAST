@@ -4,6 +4,20 @@ This module is used to read/format colormaps chosen by the user for visualizatio
 import json
 
 
+def list_custom_colormap_names():
+    """Return the available custom colormap names prefixed with ``custom_``."""
+    with open('./settings/custom_colormaps.json', 'r') as file:
+        data = json.load(file)
+    return [f"custom_{name}" for name in data.keys()]
+
+
+def list_all_colormap_names():
+    """Return napari built-in colormaps plus any custom ones."""
+    from napari.utils.colormaps import AVAILABLE_COLORMAPS
+
+    return list(AVAILABLE_COLORMAPS.keys()) + list_custom_colormap_names()
+
+
 def _get_custom_colormap(option, plural=False):
     """opens custom colormaps file, retrieves the specified custom colormap based on it's name, 
     and returns the colormap as a dictionary
