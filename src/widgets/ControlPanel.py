@@ -299,26 +299,34 @@ class ControlPanel(QFrame):
 
     def change_colormap(self):
         layer = self.main_viewer.layers.selection.active
-        if layer and layer._type_string in ['image', 'labels']:
-            from util.colormaps import get_colormap
+        if not layer:
+            return
 
-            cmap_name = self.colormap_dropdown.currentText()
+        cmap_name = self.colormap_dropdown.currentText()
+        from napari.utils.colormaps import AVAILABLE_COLORMAPS
+        from util.colormaps import get_colormap
+
+        if layer._type_string == 'labels':
+            # Labels expect a discrete mapping dictionary
             layer.colormap = get_colormap(cmap_name)
-            self._update_colormap_preview(cmap_name)
-
-            # For image layers, maintain backwards compatibility with manual
-            # propagation. Label layers rely on the existing event hook which
-            # triggers ``sync_layer_properties``.
-            if layer._type_string == 'image':
-                for viewer in self.viewers:
-                    if viewer is self.main_viewer:
-                        continue
-                    for other in viewer.layers:
-                        if other._type_string == 'image' and other.name == layer.name:
-                            other.colormap = layer.colormap
+        elif layer._type_string == 'image':
+            # Images expect a continuous Colormap.  Use napari's built-in map if available
+            if cmap_name in AVAILABLE_COLORMAPS:
+                layer.colormap = AVAILABLE_COLORMAPS[cmap_name]
+            else:
+                layer.colormap = cmap_name
+            # Manually propagate image layer colormaps across viewers
+            for viewer in self.viewers:
+                if viewer is self.main_viewer:
+                    continue
+                for other in viewer.layers:
+                    if other._type_string == 'image' and other.name == layer.name:
+                        other.colormap = layer.colormap
+        self._update_colormap_preview(cmap_name)
 
     def _create_colormap_icon(self, cmap_name, width=100, height=20):
         """Return a QIcon preview for the provided colormap name."""
+        from napari.utils.colormaps import AVAILABLE_COLORMAPS
         import matplotlib.cm as cm
         from util.colormaps import get_colormap
 
@@ -328,11 +336,17 @@ class ControlPanel(QFrame):
             colors = np.array(ordered)
             if len(colors) < width:
                 colors = np.repeat(colors, int(np.ceil(width / len(colors))), axis=0)
-            colors = (colors[:width] * 255).astype(np.uint8)
+            colors = colors[:width]
         else:
-            cmap = cm.get_cmap(str(cmap_name))
-            gradient = np.linspace(0, 1, width)
-            colors = (cmap(gradient)[:, :3] * 255).astype(np.uint8)
+            if cmap_name in AVAILABLE_COLORMAPS:
+                cmap = AVAILABLE_COLORMAPS[cmap_name]
+                gradient = cmap.map(np.linspace(0, 1, width))
+                colors = gradient[:, :3]
+            else:
+                cmap = cm.get_cmap(str(cmap_name))
+                gradient = np.linspace(0, 1, width)
+                colors = cmap(gradient)[:, :3]
+        colors = (colors * 255).astype(np.uint8)
         img = np.repeat(colors[None, ...], height, axis=0)
         image = QImage(img.data, width, height, 3 * width,
                        QImage.Format_RGB888)
