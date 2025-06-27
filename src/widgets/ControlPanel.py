@@ -110,7 +110,7 @@ class ControlPanel(QFrame):
         self.max_textbox.returnPressed.connect(self.update_contrast_from_text)
         self.control_layout.addWidget(self.max_textbox, 11, 1)
 
-        # Colormap selection for image layers
+        # Colormap selection for image and label layers
         self.colormap_label = QLabel("Colormap:")
         self.colormap_dropdown = QComboBox()
         self.colormap_dropdown.currentIndexChanged.connect(
@@ -119,27 +119,16 @@ class ControlPanel(QFrame):
         self.colormap_preview.setFixedHeight(20)
         self.colormap_preview.setMinimumWidth(100)
 
-        # Default list of colormaps.  Start with the common grayscale and diverging
-        # options, then extend with the perceptually uniform sets and a few other
-        # popular maps.
-        self._colormap_options = [
-            "gray",
-            "gray_r",
-            "bwr",
-            # Perceptually uniform colormaps
-            "viridis",
-            "plasma",
-            "inferno",
-            "magma",
-            "cividis",
-            # Additional requests
-            "Greens",
-            "jet",
-            "hot",
-            "PRGn",
-            "gist_rainbow",
-            "gist_ncar",
-        ]
+        # Populate the dropdown with napari's built-in colormaps along with
+        # any custom colormaps defined in ``util/colormaps.py``.
+        from napari.utils.colormaps import AVAILABLE_COLORMAPS
+        import json
+
+        with open('./settings/custom_colormaps.json', 'r') as file:
+            custom_names = [f"custom_{name}" for name in json.load(file).keys()]
+
+        self._colormap_options = list(AVAILABLE_COLORMAPS.keys()) + custom_names
+
         for cmap in self._colormap_options:
             icon = self._create_colormap_icon(cmap)
             self.colormap_dropdown.addItem(icon, cmap)
@@ -221,9 +210,9 @@ class ControlPanel(QFrame):
 
         self.opacity_slider.setVisible(is_labels or is_image)
         self.opacity_label.setVisible(is_labels or is_image)
-        self.colormap_label.setVisible(is_image)
-        self.colormap_dropdown.setVisible(is_image)
-        self.colormap_preview.setVisible(is_image)
+        self.colormap_label.setVisible(is_labels or is_image)
+        self.colormap_dropdown.setVisible(is_labels or is_image)
+        self.colormap_preview.setVisible(is_labels or is_image)
 
         if is_labels:
             self.update_label_color()
@@ -231,9 +220,9 @@ class ControlPanel(QFrame):
             self.brush_size_slider.setValue(layer.brush_size)
         if is_labels or is_image:
             self.opacity_slider.setValue(int(layer.opacity * 100))
+            self._sync_colormap_dropdown(layer)
         if is_image:
             self.update_contrast_slider(layer)
-            self._sync_colormap_dropdown(layer)
 
     def set_label_value(self):
         active_layer = self.main_viewer.layers.selection.active
@@ -310,24 +299,40 @@ class ControlPanel(QFrame):
 
     def change_colormap(self):
         layer = self.main_viewer.layers.selection.active
-        if layer and layer._type_string == 'image':
-            cmap = self.colormap_dropdown.currentText()
-            layer.colormap = cmap
-            self._update_colormap_preview(cmap)
-            # Propagate the colormap change to matching layers in the other
-            # viewers so that they stay synchronized.
-            for viewer in self.viewers:
-                if viewer is self.main_viewer:
-                    continue
-                for other in viewer.layers:
-                    if other._type_string == 'image' and other.name == layer.name:
-                        other.colormap = cmap
+        if layer and layer._type_string in ['image', 'labels']:
+            from util.colormaps import get_colormap
+
+            cmap_name = self.colormap_dropdown.currentText()
+            layer.colormap = get_colormap(cmap_name)
+            self._update_colormap_preview(cmap_name)
+
+            # For image layers, maintain backwards compatibility with manual
+            # propagation. Label layers rely on the existing event hook which
+            # triggers ``sync_layer_properties``.
+            if layer._type_string == 'image':
+                for viewer in self.viewers:
+                    if viewer is self.main_viewer:
+                        continue
+                    for other in viewer.layers:
+                        if other._type_string == 'image' and other.name == layer.name:
+                            other.colormap = layer.colormap
 
     def _create_colormap_icon(self, cmap_name, width=100, height=20):
+        """Return a QIcon preview for the provided colormap name."""
         import matplotlib.cm as cm
-        cmap = cm.get_cmap(cmap_name)
-        gradient = np.linspace(0, 1, width)
-        colors = (cmap(gradient)[:, :3] * 255).astype(np.uint8)
+        from util.colormaps import get_colormap
+
+        if isinstance(cmap_name, str) and cmap_name.startswith('custom_'):
+            cmap_dict = get_colormap(cmap_name)
+            ordered = [cmap_dict[k][:3] for k in sorted(cmap_dict.keys())]
+            colors = np.array(ordered)
+            if len(colors) < width:
+                colors = np.repeat(colors, int(np.ceil(width / len(colors))), axis=0)
+            colors = (colors[:width] * 255).astype(np.uint8)
+        else:
+            cmap = cm.get_cmap(str(cmap_name))
+            gradient = np.linspace(0, 1, width)
+            colors = (cmap(gradient)[:, :3] * 255).astype(np.uint8)
         img = np.repeat(colors[None, ...], height, axis=0)
         image = QImage(img.data, width, height, 3 * width,
                        QImage.Format_RGB888)
@@ -339,7 +344,19 @@ class ControlPanel(QFrame):
             icon.pixmap(self.colormap_preview.size()))
 
     def _sync_colormap_dropdown(self, layer):
-        cmap_name = getattr(layer.colormap, 'name', str(layer.colormap))
+        from util.colormaps import get_colormap
+
+        cmap_obj = layer.colormap
+        if hasattr(cmap_obj, 'name'):
+            cmap_name = cmap_obj.name
+        else:
+            cmap_name = None
+            for name in self._colormap_options:
+                if name.startswith('custom_') and isinstance(cmap_obj, dict) and cmap_obj == get_colormap(name):
+                    cmap_name = name
+                    break
+            if cmap_name is None:
+                cmap_name = str(cmap_obj)
         if cmap_name not in self._colormap_options:
             self._colormap_options.append(cmap_name)
             self.colormap_dropdown.addItem(
