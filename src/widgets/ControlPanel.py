@@ -422,8 +422,13 @@ class ControlPanel(QFrame):
             icon.pixmap(self.label_colormap_preview.size()))
 
     def _sync_label_colormap_dropdown(self, layer):
-        cmap_name = layer.metadata.get('label_colormap_name',
-                                       getattr(layer.colormap, 'name', ''))
+        cmap_name = layer.metadata.get('label_colormap_name')
+        if not cmap_name:
+            attr_name = getattr(layer.colormap, 'name', '')
+            if attr_name and attr_name != 'custom':
+                cmap_name = attr_name
+            else:
+                cmap_name = 'random'
         if cmap_name not in self._label_colormap_options:
             self._label_colormap_options.append(cmap_name)
             self.label_colormap_dropdown.addItem(

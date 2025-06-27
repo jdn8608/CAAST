@@ -169,21 +169,28 @@ def add_layers(data_layer_dict,
             # If not an image-type layer, process as labels
             else:
                 data = data.astype(int)
+                cmap_name = None
                 # Determine which color map to use for labels
                 if layer_type is LayerType.CLOUD_MASK:
                     current_colormap = mask_colormap
+                    cmap_name = config.get('mask_colormap')
                 elif layer_type is LayerType.MANUAL_LABELS:
                     current_colormap = label_colormap
+                    cmap_name = config.get('label_colormap')
                 elif layer_type is LayerType.NAN_MASK:
                     current_colormap = nan_colormap
+                    cmap_name = config.get('nan_colormap')
                 elif layer_type is LayerType.SURFACE_ID:
                     current_colormap = surf_colormap
-
+                    cmap_name = config.get('surf_colormap')
+                
                 if current_colormap is not None:
                     # Add labels layer to viewer
                     current_layer = viewer.add_labels(
                         data[...], name=layer_name, colormap=current_colormap)
                     current_layer.editable = False  # do not allow for editing
+                    if cmap_name is not None:
+                        current_layer.metadata['label_colormap_name'] = cmap_name
 
                     # Add the layer to the correct group in the layer manager
                     manager.add_layer_to_group(layer_type.value, current_layer)
@@ -214,6 +221,8 @@ def add_layers(data_layer_dict,
         editing_layer = viewer.add_labels(editing_data[...],
                                           name='Editing',
                                           colormap=label_colormap)
+        if config.get('label_colormap') is not None:
+            editing_layer.metadata['label_colormap_name'] = config.get('label_colormap')
         # Add the layer to the correct group in the layer manager
         manager.add_layer_to_group(LayerType.MANUAL_LABELS.value,
                                    editing_layer)
