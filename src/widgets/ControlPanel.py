@@ -160,18 +160,24 @@ class ControlPanel(QFrame):
         self.label_colormap_preview.setMinimumWidth(100)
 
         # Populate default label colormap list
-        self._label_colormap_options = ["random"]
+        self._label_colormap_options = [
+            "random",
+            "viridis",
+            "tab20",
+            "nipy_spectral",
+            "tab10",
+            "tab20b",
+            "tab20c",
+            "Set1",
+            "Pastel1",
+            "Pastel2",
+        ]
         try:
             with open('./settings/custom_colormaps.json', 'r') as f:
                 for name in json.load(f).keys():
                     self._label_colormap_options.append(f"custom_{name}")
         except Exception:
             pass
-        self._label_colormap_options.extend([
-            "viridis",
-            "tab20",
-            "nipy_spectral",
-        ])
         for cmap in self._label_colormap_options:
             icon = self._create_label_colormap_icon(cmap)
             self.label_colormap_dropdown.addItem(icon, cmap)
@@ -396,6 +402,7 @@ class ControlPanel(QFrame):
             layer.colormap = cmap
             layer.metadata['label_colormap_name'] = cmap_name
             self._update_label_colormap_preview(cmap_name)
+            self.update_label_color()
             for viewer in self.viewers:
                 if viewer is self.main_viewer:
                     continue
