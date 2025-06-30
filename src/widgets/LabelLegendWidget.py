@@ -1,5 +1,5 @@
-from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-                           QLineEdit, QScrollArea)
+from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                            QComboBox, QLineEdit, QScrollArea)
 from qtpy.QtGui import QColor, QPixmap
 from qtpy.QtCore import Qt
 import numpy as np
@@ -20,6 +20,7 @@ class LabelLegendWidget(QWidget):
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
+        self.scroll.setMinimumHeight(550)
         self.rows_container = QWidget()
         self.rows_layout = QVBoxLayout()
         self.rows_layout.setSpacing(2)
@@ -32,7 +33,8 @@ class LabelLegendWidget(QWidget):
         self.layer_dropdown.currentIndexChanged.connect(self.update_rows)
         viewer.layers.events.inserted.connect(lambda e: self.refresh_layers())
         viewer.layers.events.removed.connect(lambda e: self.refresh_layers())
-        viewer.layers.selection.events.active.connect(lambda e: self.sync_selection())
+        viewer.layers.selection.events.active.connect(
+            lambda e: self.sync_selection())
 
         self._current_layer = None
 
@@ -70,7 +72,8 @@ class LabelLegendWidget(QWidget):
         layer = self.viewer.layers[layer_name]
         if self._current_layer is not None:
             try:
-                self._current_layer.events.colormap.disconnect(self.update_rows)
+                self._current_layer.events.colormap.disconnect(
+                    self.update_rows)
                 self._current_layer.events.data.disconnect(self.update_rows)
             except Exception:
                 pass
@@ -90,7 +93,7 @@ class LabelLegendWidget(QWidget):
             if color is None:
                 color = (1.0, 1.0, 1.0, 1.0)
             pix = QPixmap(20, 20)
-            pix.fill(QColor(*(int(c*255) for c in color[:3])))
+            pix.fill(QColor(*(int(c * 255) for c in color[:3])))
             color_label = QLabel()
             color_label.setPixmap(pix)
             num_label = QLabel(str(val))

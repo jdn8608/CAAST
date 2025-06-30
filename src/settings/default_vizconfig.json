@@ -7,7 +7,7 @@
 						"1": "clear-sky"
 					},
 	"label_colormap"	:	"custom_DG_cmask",
-        "label_strings"         :       {
+    "label_strings"         :       {
                 "Cloud Mask(s)" : {
                         "0": "confident cloud",
                         "1": "probably cloud",

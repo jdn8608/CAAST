@@ -10,6 +10,5 @@
     "add_cloud_mask": 1,
     "add_dtt" : 1,
     "add_surface_id":1,
-    "add_sun_view_geometry":1,
-
+    "add_sun_view_geometry":1
 }

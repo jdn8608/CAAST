@@ -184,7 +184,7 @@ def add_layers(data_layer_dict,
                 elif layer_type is LayerType.SURFACE_ID:
                     current_colormap = surf_colormap
                     cmap_name = config.get('surf_colormap')
-                
+
                 if current_colormap is not None:
                     # Add labels layer to viewer
                     current_layer = viewer.add_labels(
@@ -192,7 +192,8 @@ def add_layers(data_layer_dict,
                     current_layer.editable = False  # do not allow for editing
                     current_layer.metadata['layer_type'] = layer_type.value
                     if cmap_name is not None:
-                        current_layer.metadata['label_colormap_name'] = cmap_name
+                        current_layer.metadata[
+                            'label_colormap_name'] = cmap_name
 
                     # Add the layer to the correct group in the layer manager
                     manager.add_layer_to_group(layer_type.value, current_layer)
@@ -225,7 +226,8 @@ def add_layers(data_layer_dict,
                                           colormap=label_colormap)
         editing_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
         if config.get('label_colormap') is not None:
-            editing_layer.metadata['label_colormap_name'] = config.get('label_colormap')
+            editing_layer.metadata['label_colormap_name'] = config.get(
+                'label_colormap')
         # Add the layer to the correct group in the layer manager
         manager.add_layer_to_group(LayerType.MANUAL_LABELS.value,
                                    editing_layer)
