@@ -510,6 +510,8 @@ class AdaptiveSplitViewer(QMainWindow):
         self.layer_manager.setMinimumHeight(350)
         self.layer_manager.setSizePolicy(QSizePolicy.Expanding,
                                          QSizePolicy.Preferred)
+        self.layer_manager.group_selected.connect(
+            self.control_panel.set_target_layers)
 
         # Add layer and controls to a scroll-able tab
         layers_and_controls_scroll_area = QScrollArea()
