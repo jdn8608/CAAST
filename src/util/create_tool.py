@@ -30,6 +30,7 @@ from widgets.SceneLabelGrid import create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
 from widgets.ThresholdPanel import ThresholdWidget
 from widgets.LogicGatesPanel import LogicGatesWidget
+from widgets.LabelLegendWidget import LabelLegendWidget
 
 
 def add_layers(data_layer_dict,
@@ -189,6 +190,7 @@ def add_layers(data_layer_dict,
                     current_layer = viewer.add_labels(
                         data[...], name=layer_name, colormap=current_colormap)
                     current_layer.editable = False  # do not allow for editing
+                    current_layer.metadata['layer_type'] = layer_type.value
                     if cmap_name is not None:
                         current_layer.metadata['label_colormap_name'] = cmap_name
 
@@ -221,6 +223,7 @@ def add_layers(data_layer_dict,
         editing_layer = viewer.add_labels(editing_data[...],
                                           name='Editing',
                                           colormap=label_colormap)
+        editing_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
         if config.get('label_colormap') is not None:
             editing_layer.metadata['label_colormap_name'] = config.get('label_colormap')
         # Add the layer to the correct group in the layer manager
@@ -531,6 +534,10 @@ class AdaptiveSplitViewer(QMainWindow):
         # connect mutliview metadata to POV nav/time step
         if self.is_multiview_instrument:
             self.connect_multiview_metadata(self.main_viewer)
+
+        # Create a label legend tab
+        self.label_legend = LabelLegendWidget(self.main_viewer, config)
+        left_tabs.addTab(self.label_legend, "Label Legend")
 
         # Create min/max sliders for image layers
         self.min_max_sliders, self.min_max_layout = create_sliders(

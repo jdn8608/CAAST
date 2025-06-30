@@ -61,17 +61,21 @@ def build_label_colormap(name, labels):
     from napari.utils.colormaps import label_colormap as np_label_colormap
 
     labels = sorted(set(int(l) for l in labels))
+    if labels:
+        label_range = list(range(min(labels), max(labels) + 1))
+    else:
+        label_range = []
     if name.startswith('custom_'):
         cmap = _get_custom_colormap(name[7:])
-        return {int(k): tuple(v) for k, v in cmap.items()}
+        return {lbl: tuple(cmap.get(lbl, (1.0, 1.0, 1.0, 1.0))) for lbl in label_range}
     if name == 'random':
-        cmap = np_label_colormap(num_colors=len(labels))
+        cmap = np_label_colormap(num_colors=len(label_range))
         colors = cmap.colors
     else:
-        mpl_cmap = cm.get_cmap(name, len(labels))
-        colors = [mpl_cmap(i / max(len(labels) - 1, 1)) for i in range(len(labels))]
+        mpl_cmap = cm.get_cmap(name, len(label_range))
+        colors = [mpl_cmap(i / max(len(label_range) - 1, 1)) for i in range(len(label_range))]
 
-    return {lbl: tuple(map(float, colors[i])) for i, lbl in enumerate(labels)}
+    return {lbl: tuple(map(float, colors[i])) for i, lbl in enumerate(label_range)}
 
 
 def get_colormaps_from_config(config, option_name):
