@@ -7,12 +7,35 @@
 						"1": "clear-sky"
 					},
 	"label_colormap"	:	"custom_DG_cmask",
-	"label_string_text"	:	{
-						"0": "clouds",
-						"1": "clear-sky",
-						"2": "haze",
-						"3": "smoke"
-					},
+    "label_strings"         :       {
+                "Cloud Mask(s)" : {
+                        "0": "confident cloud",
+                        "1": "probably cloud",
+                        "2": "probably clear-sky",
+                        "3": "clear-sky"
+                },
+                "Surface Ids" : {
+                        "0": "SID 0",
+                        "1": "SID 1",
+                        "2": "SID 2",
+                        "3": "SID 3",
+                        "4": "SID 4",
+                        "5": "SID 5",
+                        "6": "SID 6",
+                        "7": "SID 7",
+                        "8": "SID 8",
+                        "9": "SID 9",
+                        "10": "SID 10",
+                        "11": "SID 11",
+                        "12": "SID 12",
+                        "13": "SID 13",
+                        "14": "SID 14",
+                        "15": "SID 15",
+                        "16": "SID 16",
+                        "17": "SID 17",
+                        "18": "SID 18"
+                }
+        },
     "surf_colormap"     :   "custom_SID1",
 	"button_location"	:	"bottom",
 	"slider_location"	:	"right",
