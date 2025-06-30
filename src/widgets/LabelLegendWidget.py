@@ -1,4 +1,5 @@
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit
+from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+                           QLineEdit, QScrollArea)
 from qtpy.QtGui import QColor, QPixmap
 from qtpy.QtCore import Qt
 import numpy as np
@@ -17,10 +18,15 @@ class LabelLegendWidget(QWidget):
         self.layer_dropdown = QComboBox()
         layout.addWidget(self.layer_dropdown)
 
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
         self.rows_container = QWidget()
         self.rows_layout = QVBoxLayout()
+        self.rows_layout.setSpacing(2)
+        self.rows_layout.setContentsMargins(0, 0, 0, 0)
         self.rows_container.setLayout(self.rows_layout)
-        layout.addWidget(self.rows_container)
+        self.scroll.setWidget(self.rows_container)
+        layout.addWidget(self.scroll)
         layout.addStretch()
 
         self.layer_dropdown.currentIndexChanged.connect(self.update_rows)
@@ -98,6 +104,8 @@ class LabelLegendWidget(QWidget):
                     text = f'Label {val}'
             text_edit = QLineEdit(text)
             row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(4)
             row.addWidget(color_label)
             row.addWidget(num_label)
             row.addWidget(text_edit)
