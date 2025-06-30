@@ -97,6 +97,8 @@ class LayerManager(QWidget):
         # Connect tree widget events
         self.tree_widget.itemChanged.connect(self.on_item_changed)
         self.tree_widget.itemClicked.connect(self.on_item_clicked)
+        self.tree_widget.itemSelectionChanged.connect(
+            self.on_selection_changed)
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(
             self.show_context_menu)
@@ -188,6 +190,15 @@ class LayerManager(QWidget):
             layers = [l for l, _ in self.groups.get(group_name, {}).get("layers", [])]
             if layers:
                 self.group_selected.emit(layers)
+
+    def on_selection_changed(self):
+        """Emit group_selected when the tree selection changes."""
+        items = self.tree_widget.selectedItems()
+        if not items:
+            self.group_selected.emit([])
+            return
+        item = items[0]
+        self.on_item_clicked(item, 0)
 
     def toggle_grid_mode(self):
         """Toggle grid mode in the viewer."""
