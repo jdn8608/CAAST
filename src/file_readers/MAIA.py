@@ -127,10 +127,6 @@ def get_dtt(hdf_file):
     dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
     dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
 
-    # Filter out NaN values within the MAIA product and set to 0
-    dtt[dtt < 0] = 0
-    dtt_obs[dtt_obs < 0] = 0
-
     return dtt, dtt_obs
 
 
