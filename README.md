@@ -240,10 +240,14 @@ To support a new satellite instrument, follow these steps to create a file reade
     - [x] Re-work `read()` for file readers 
     - [x] Adjustments to the visualization pipeline
     - [x] Add metadata attributes to pipeline
-- [ ] Visual Additions & Fixes 
-    - [ ] RGB Visualization
-    - [ ] Grid View Indicators
-    - [ ] Grid View Enhancements
+- [x] Visual Additions & Fixes 
+    - [x] RGB Visualization
+    - [x] Adaptive Split Viewers
+    - [x] Viewer Manager
+    - [x] Colormap Selection & Visual Enhancments
+    - [x] MAIA Aerosol Proxy Data
+    - [x] Customizable Control Panel
+    - [x] Customizable Legend Widget
 - [ ] Tutorial & Manuals 
     - [ ] Outline pictures to describe widgets
     - [ ] Create a tutorial video
