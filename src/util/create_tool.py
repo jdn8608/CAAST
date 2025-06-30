@@ -5,25 +5,32 @@ and widgets loaded into the tool.
 """
 import json
 import os
+import sys
 
 import numpy as np
 
 import napari
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QPoint
 from qtpy.QtGui import QFont
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QLabel, QTextEdit, QComboBox, QSizePolicy, QFrame
+from qtpy.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+                            QHBoxLayout, QTabWidget, QScrollArea, QLabel,
+                            QTextEdit, QComboBox, QSizePolicy, QFrame,
+                            QPushButton, QSplitter, QMenu)
 
 from util.LayerType import LayerType
 from util.colormaps import get_all_colormaps
 
 from widgets.Sliders import create_sliders
 from widgets.LayerManager import LayerManager
+from widgets.ControlPanel import ControlPanel
+from widgets.ViewerManagerTab import ViewerManagerTab
 from widgets.PointOfViewNavigator import PointOfViewNavigator
 from widgets.SubmitButtons import create_save_button
 from widgets.SceneLabelGrid import create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
 from widgets.ThresholdPanel import ThresholdWidget
 from widgets.LogicGatesPanel import LogicGatesWidget
+from widgets.LabelLegendWidget import LabelLegendWidget
 
 
 def add_layers(data_layer_dict,
@@ -113,7 +120,6 @@ def add_layers(data_layer_dict,
                 name=layer_name)
             manager.add_layer_to_group(layer_type.value, current_layer)
         elif layer_type is LayerType.RGB:
-            print(data_temp.shape)
             data_temp = np.transpose(data_temp, (3, 0, 1, 2))
             current_layer = viewer.add_image(data_temp,
                                              name=layer_name,
@@ -123,11 +129,10 @@ def add_layers(data_layer_dict,
 
         else:
             data = np.transpose(data_temp, (2, 0, 1))
-            print(data.shape)
 
             # If regular image layer, add a layer with a gray-scale colormap
-            if layer_type in (LayerType.GRAY_BAND, LayerType.VIEW_GEO,
-                              LayerType.LAT_LON):
+            if layer_type in (LayerType.GRAY_BAND, LayerType.AEROSOL,
+                              LayerType.VIEW_GEO, LayerType.LAT_LON):
 
                 current_layer = viewer.add_image(data[...],
                                                  name=layer_name,
@@ -165,21 +170,30 @@ def add_layers(data_layer_dict,
             # If not an image-type layer, process as labels
             else:
                 data = data.astype(int)
+                cmap_name = None
                 # Determine which color map to use for labels
                 if layer_type is LayerType.CLOUD_MASK:
                     current_colormap = mask_colormap
+                    cmap_name = config.get('mask_colormap')
                 elif layer_type is LayerType.MANUAL_LABELS:
                     current_colormap = label_colormap
+                    cmap_name = config.get('label_colormap')
                 elif layer_type is LayerType.NAN_MASK:
                     current_colormap = nan_colormap
+                    cmap_name = config.get('nan_colormap')
                 elif layer_type is LayerType.SURFACE_ID:
                     current_colormap = surf_colormap
+                    cmap_name = config.get('surf_colormap')
 
                 if current_colormap is not None:
                     # Add labels layer to viewer
                     current_layer = viewer.add_labels(
                         data[...], name=layer_name, colormap=current_colormap)
                     current_layer.editable = False  # do not allow for editing
+                    current_layer.metadata['layer_type'] = layer_type.value
+                    if cmap_name is not None:
+                        current_layer.metadata[
+                            'label_colormap_name'] = cmap_name
 
                     # Add the layer to the correct group in the layer manager
                     manager.add_layer_to_group(layer_type.value, current_layer)
@@ -210,6 +224,10 @@ def add_layers(data_layer_dict,
         editing_layer = viewer.add_labels(editing_data[...],
                                           name='Editing',
                                           colormap=label_colormap)
+        editing_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
+        if config.get('label_colormap') is not None:
+            editing_layer.metadata['label_colormap_name'] = config.get(
+                'label_colormap')
         # Add the layer to the correct group in the layer manager
         manager.add_layer_to_group(LayerType.MANUAL_LABELS.value,
                                    editing_layer)
@@ -425,6 +443,602 @@ def get_review_mode_tab(output_filepath,
     return review_tab_widget
 
 
+class AdaptiveSplitViewer(QMainWindow):
+
+    def __init__(self, data_layer_dict, config, views, angles, shape,
+                 label_mode, load_labels_name, scene_attrs, output_file_info,
+                 csv_filepath, review_data, notes):
+        # call super init for a QMainWindow
+        super().__init__()
+
+        # Set image shape param for dimensionality references
+        self.image_shape = (shape[-1], shape[0], shape[1])
+        print(self.image_shape)
+        self.is_multiview_instrument = self.image_shape[0] > 1
+        self.views = views
+        self.angles = angles
+        self.output_filepath, self.dataset_name = output_file_info
+
+        # Set window name and aspect geometry
+        self.setWindowTitle("Napari Multi-Viewer")
+        self.setGeometry(100, 100, 1600, 800)
+
+        # Create parent/main layout
+        self.main_widget = QWidget()
+        self.outer_layout = QVBoxLayout()
+        self.main_widget.setLayout(self.outer_layout)
+        self.setCentralWidget(self.main_widget)
+
+        # Create QSplitter horizontal layout for additional viewers
+        self.viewer_row_layout = QHBoxLayout()
+        self.viewer_splitter = QSplitter(Qt.Horizontal)
+        self.viewer_row_layout.addWidget(self.viewer_splitter)
+        self.outer_layout.addLayout(self.viewer_row_layout)
+
+        # Assign Main Viewer and turn off default dock widgets
+        self.main_viewer = napari.Viewer()
+        self.viewers = [self.main_viewer]
+        self.main_viewer.window.qt_viewer.dockLayerList.setVisible(
+            False)  # Override the Dock Layer list
+        self.main_viewer.window.qt_viewer.dockLayerControls.setMaximumHeight(
+            300)
+        self.main_viewer.window.qt_viewer.dockLayerControls.setVisible(False)
+        self.main_viewer.window._qt_viewer.controls.setVisible(False)
+        #self.main_viewer.window._qt_viewer.dockLayerControls.setFloating(True)
+
+        self.viewer_splitter.addWidget(self.main_viewer.window._qt_window)
+
+        # Set up left tab widget for left panel tools
+        left_tabs = QTabWidget()
+        left_tabs.setTabPosition(QTabWidget.South)
+        left_tabs.setMinimumWidth(330)
+        self.main_viewer.window.add_dock_widget(left_tabs,
+                                                area="left",
+                                                name="Left Panel")
+
+        self.control_panel = ControlPanel(self.main_viewer, self.viewers)
+
+        # Assign reference to layer_manager and add to main viewer
+        self.layer_manager = LayerManager(
+            napari_viewer=self.main_viewer,
+            shape=(shape[-1], shape[0], shape[1]),
+            init_groups=[layer.value for layer in LayerType],
+            viewers=self.viewers,
+            display_callback=self.display_layer_in_viewer
+        )  # replaces layerlist
+        self.layer_manager.setMinimumWidth(300)
+        self.layer_manager.setMinimumHeight(350)
+        self.layer_manager.setSizePolicy(QSizePolicy.Expanding,
+                                         QSizePolicy.Preferred)
+
+        # Add layer and controls to a scroll-able tab
+        layers_and_controls_scroll_area = QScrollArea()
+        layers_and_controls_scroll_area.setWidgetResizable(True)
+        layers_and_controls_widget = QWidget()
+        layers_and_controls_vlayout = QVBoxLayout(layers_and_controls_widget)
+        layers_and_controls_vlayout.addWidget(self.control_panel)
+        layers_and_controls_vlayout.addWidget(self.layer_manager)
+        layers_and_controls_scroll_area.setWidget(layers_and_controls_widget)
+        left_tabs.addTab(layers_and_controls_scroll_area,
+                         "Layers and Controls")
+
+        # Add the imagery and labels from data_layer_dict to the main viewer
+        (edit_np, edit_layer), \
+        (im_np, im_layers), \
+        (label_list, label_layers) = add_layers(data_layer_dict,
+                                               self.layer_manager,
+                                               shape, # need to swap to self.image_shape once fixed
+                                               self.main_viewer,
+                                               config,
+                                               load_labels_name=load_labels_name if label_mode else '',
+                                               label_mode=label_mode)
+
+        # connect mutliview metadata to POV nav/time step
+        if self.is_multiview_instrument:
+            self.connect_multiview_metadata(self.main_viewer)
+
+        # Create a label legend tab
+        self.label_legend = LabelLegendWidget(self.main_viewer, config)
+        left_tabs.addTab(self.label_legend, "Label Legend")
+
+        # Create min/max sliders for image layers
+        self.min_max_sliders, self.min_max_layout = create_sliders(
+            option=int(config["min_max_slider_option"]),
+            viewer=self.
+            main_viewer,  # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
+            layers=im_layers,
+            data=im_np)
+        self.layer_manager.layer_renamed.connect(
+            self.update_sliders_name
+        )  # Connect the renaming event call to this function
+        self.min_max_layout.setMinimumWidth(300)
+        self.min_max_layout.setSizePolicy(QSizePolicy.Expanding,
+                                          QSizePolicy.Preferred)
+        left_tabs.addTab(self.min_max_layout, "Set Bounds")
+
+        # Create bottom tab area
+        self.bottom_tabs = QTabWidget()
+        self.bottom_tabs.setTabPosition(QTabWidget.North)
+        self.bottom_tabs.setMaximumHeight(190)
+        # Try forcing a preferred size using QSizePolicy and sizeHint
+        size_policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        self.bottom_tabs.setSizePolicy(size_policy)
+        self.outer_layout.addWidget(self.bottom_tabs)
+        # self.main_viewer.window.add_dock_widget(self.bottom_tabs,
+        #                                        area="bottom")
+
+        # Viewer management tab
+        self.viewer_manager_tab = ViewerManagerTab(self)
+        self.bottom_tabs.addTab(self.viewer_manager_tab, "Manage Viewers")
+        self.layer_manager.layer_renamed.connect(
+            lambda *_: self.viewer_manager_tab.update_layer_dropdown())
+
+        # Create and add the Notes Tab to the bottom tab area
+        self.bottom_tabs.addTab(
+            get_notes_tab(self.output_filepath, prior_notes=notes), "Notes")
+
+        # Create Scene Labeling Dropdown Tab
+        if scene_attrs:
+            self.bottom_tabs.addTab(
+                get_scene_label_tab(self.output_filepath, scene_attrs),
+                "Scene Labeling")
+
+        # If Label/Editing Mode, load the Labeling Tool tab
+        if label_mode:
+            self.bottom_tabs.addTab(
+                get_pixellabel_tool_tab(self.output_filepath, edit_np,
+                                        self.views, self.dataset_name), "Save")
+
+            # Create and add a tab for the ThresholdWidget
+            threshold_gate_widget = QWidget()
+            threshold_gate_layout = QHBoxLayout()
+            # Remove extra spacing and margins from the layout
+            threshold_gate_layout.setSpacing(0)
+            threshold_gate_layout.setContentsMargins(0, 0, 0, 0)
+            # Create the ThresholdWidget and LogicGatesWidget
+            thresh_widget = ThresholdWidget(self.main_viewer,
+                                            self.layer_manager,
+                                            views=self.views)
+            logic_gate_widget = LogicGatesWidget(self.main_viewer,
+                                                 self.layer_manager)
+            # Set size policies to allow both widgets to share space equally
+            thresh_widget.setSizePolicy(QSizePolicy.Expanding,
+                                        QSizePolicy.Preferred)
+            logic_gate_widget.setSizePolicy(QSizePolicy.Expanding,
+                                            QSizePolicy.Preferred)
+            # Create a vertical line
+            vertical_line = QFrame()
+            vertical_line.setFrameShape(QFrame.VLine)
+            vertical_line.setFrameShadow(QFrame.Sunken)
+            vertical_line.setLineWidth(
+                10)  # Set the width of the line for visibility
+            vertical_line.setStyleSheet("background-color: #414851;")
+
+            # Add widgets to the layout
+            threshold_gate_layout.addWidget(
+                thresh_widget, stretch=1)  # Assign equal stretch factor
+            threshold_gate_layout.addWidget(vertical_line)  # Add vertical line
+            threshold_gate_layout.addWidget(logic_gate_widget, stretch=1)
+            # Set the layout for the container widget
+            threshold_gate_widget.setLayout(threshold_gate_layout)
+            # Add the tab to the bottom_tabs
+            self.bottom_tabs.addTab(threshold_gate_widget,
+                                    "Thresholding & Logic Gates")
+        # Otherwise, load the Review Mode tab
+        else:
+            if isinstance(config["grade_slider_min"], int) and \
+            isinstance(config["grade_slider_max"],int) and \
+            config["grade_slider_min"] < config["grade_slider_max"]:
+                self.bottom_tabs.addTab(
+                    get_review_mode_tab(self.output_filepath,
+                                        csv_filepath,
+                                        review_data=review_data,
+                                        min_val=config["grade_slider_min"],
+                                        max_val=config["grade_slider_max"]),
+                    "Review Grading")
+            else:
+                self.bottom_tabs.addTab(
+                    get_review_mode_tab(self.output_filepath,
+                                        csv_filepath,
+                                        review_data=review_data), \
+                    "Review Grading")
+
+        # initialize viewer manager dropdowns
+        self.viewer_manager_tab.update_controls()
+
+        # Add cursor indicators to the main viewer
+        self.cursor_layers = {}
+        self.add_cursor_indicator(self.main_viewer)
+        self.add_border_shape(self.main_viewer, self.image_shape[1:])
+        self.main_viewer.mouse_move_callbacks.append(
+            self.update_cursor_positions)
+
+        # Sync time steppers for new viewers to the main view
+        self.main_viewer.dims.events.current_step.connect(self.sync_time_steps)
+
+        # Sync optical properties of layers
+        for layer in self.main_viewer.layers:
+            layer.events.opacity.connect(self.sync_layer_properties)
+            if hasattr(layer, 'contrast_limits'):
+                layer.events.contrast_limits.connect(
+                    self.sync_layer_properties)
+            if hasattr(layer, 'colormap'):
+                layer.events.colormap.connect(self.sync_layer_properties)
+
+        # add sync between contrast slider in control panel and the min/max tab sliders
+        self.sync_contrast_slider_to_minmax()
+
+    def connect_multiview_metadata(self, viewer):
+
+        # Access the slider widget
+        qt_dims = viewer.window._qt_viewer.dims
+        # Grab the first slider widget
+        slider_widget = qt_dims.slider_widgets[0]
+
+        # Create a formatted string and label to present
+        # the camera and VZA strings to the user
+        view_indicator_string = "Camera: {0} ; VZA: {1}"
+        view_indicator_label = QLabel(
+            view_indicator_string.format(
+                self.views[slider_widget.slider.value()],
+                self.angles[slider_widget.slider.value()]))
+
+        # Add a new QLabel to replace the numeric text
+        slider_widget.layout().insertWidget(0, view_indicator_label)
+
+        # Define a callback function to update the label dynamically
+        def update_view_label(view_dim):
+            """Update the custom text next to the view dim slider
+
+            Args:
+                view_dim: integer representing the index of the view we
+                          are currently presenting in the view panel from
+                          the slider.
+            """
+            if 0 <= view_dim < len(self.views):  # Ensure within bounds
+                view_indicator_label.setText(
+                    view_indicator_string.format(self.views[view_dim],
+                                                 self.angles[view_dim]))
+
+        # Connect the slider's valueChanged signal to the callback
+        slider_widget.slider.valueChanged.connect(update_view_label)
+
+        # Configure the slider default settings
+        slider_widget.axis = 0
+        slider_widget.fps = 2
+        slider_widget.loop_mode = "back_and_forth"
+
+    def update_sliders_name(self, old_name, new_name):
+        """Loops through alll Min/Max Sliders to check for if they have the name
+        of old_name. If so, call their update_layer_name() with the new_name
+
+        Args:
+            old_name: a string representing the old name of a renamed layer
+            new_name: a string representing the new name of a renamed layer
+        """
+        for mms in self.min_max_sliders:
+            if old_name == mms.name:
+                mms.update_layer_name()
+
+    def sync_time_steps(self, event):
+        """Synchronize the time step along the 1st dimension of layers
+        from the main viewer to all subsequent viewers. This ensure that
+        as the main viewer timestep/viewing angle changes, the additional
+        viewers will also move with it.
+
+        ***Note***
+        additional viewers can change timesteps without synchronizing the
+        main viewer, thus one way logic is in play.
+        """
+        step = self.main_viewer.dims.current_step[0]
+        for viewer in self.viewers:
+            if viewer != self.main_viewer:
+                viewer.dims.current_step = (
+                    step, ) + viewer.dims.current_step[1:]
+
+    def add_cursor_indicator(self, viewer):
+        """Add a point layer to indicate where the cursor is in a viewer"""
+        num_times = self.image_shape[0]
+        data = [[t, 0, 0] for t in range(num_times)]
+        layer = viewer.add_points(data=data,
+                                  name='Cursor',
+                                  ndim=3,
+                                  size=5,
+                                  face_color='white',
+                                  border_color='red',
+                                  opacity=0.4)
+        viewer.scale_bar.visible = True
+        self.cursor_layers[viewer] = layer
+
+    def update_cursor_positions(self, viewer, event):
+        """Update the cursor point layer's object position to the updated
+        cursor position.
+        """
+        pos = event.position
+        if pos is None or len(pos) < 3:
+            return
+
+        num_times = self.image_shape[0]
+        y, x = pos[1], pos[2]
+
+        for v in self.viewers:
+            cursor_layer = self.cursor_layers.get(v)
+            if cursor_layer:
+                if len(cursor_layer.data) < num_times:
+                    cursor_layer.data = [[t_, 0, 0] for t_ in range(num_times)]
+                new_data = cursor_layer.data.copy()
+                for t in range(num_times):
+                    new_data[t] = [t, y, x]
+                cursor_layer.data = new_data
+
+    def add_border_shape(self, viewer, shape_dims):
+        """Add a border shape around the imagery to differeniate between viewers"""
+        viewer_index = self.viewers.index(viewer)
+        viewer_name = "Main Viewer" if viewer_index == 0 else f"Viewer {viewer_index+1}"
+
+        # add a 5 pixel boarder to the image shape dims
+        shape = np.array([[-5, -5], [-5, shape_dims[1] + 5],
+                          [shape_dims[0] + 5, shape_dims[1] + 5],
+                          [shape_dims[0] + 5, -5], [-5, -5]])
+
+        text_props = {
+            'string': [viewer_name],
+            'anchor': 'center',
+            'translation': [-20 - (shape_dims[0] / 2), 50],
+            'size': 40,
+            'color': 'red',
+            'scaling': True
+        }
+
+        viewer.add_shapes(data=[shape],
+                          shape_type='polygon',
+                          edge_color='transparent',
+                          edge_width=3,
+                          face_color='transparent',
+                          text=text_props,
+                          name="Border Rectangle")
+
+    def update_viewer_labels(self):
+        """Update border texts to reflect current viewer indices."""
+        for idx, viewer in enumerate(self.viewers):
+            label = "Main Viewer" if idx == 0 else f"Viewer {idx+1}"
+            for layer in viewer.layers:
+                if layer.name == "Border Rectangle" and hasattr(layer, "text"):
+                    try:
+                        layer.text.values = [label]
+                    except Exception:
+                        try:
+                            props = dict(layer.text)
+                            props["string"] = [label]
+                            layer.text = props
+                        except Exception:
+                            pass
+
+    def update_layer_dropdown(self):
+        """Update the dropdown widget with the layers available"""
+        if not hasattr(self, 'viewer_manager_tab'):
+            return
+        combo = self.viewer_manager_tab.layer_selector
+        combo.clear()
+        for layer in self.main_viewer.layers:
+            if layer.name != 'Cursor':
+                combo.addItem(layer.name)
+
+    def disable_layer_controls(self, viewer):
+        try:
+            dock = viewer.window._qt_viewer.dockLayerControls
+            tool_buttons = dock.findChildren(QWidget)
+            for btn in tool_buttons:
+                btn.setDisabled(True)
+        except Exception as e:
+            print(f"Could not disable tools: {e}")
+
+    def add_layer_to_viewer(self):
+        """Add a single layer to a viewer based on dropdown selections"""
+        if not hasattr(self, 'viewer_manager_tab'):
+            return
+        layer_name = self.viewer_manager_tab.layer_selector.currentText()
+        index = self.viewer_manager_tab.viewer_selector_add.currentIndex()
+        if layer_name == "":
+            return
+
+        # Determine if a new viewer is requested
+        if index == self.viewer_manager_tab.viewer_selector_add.count() - 1:
+            viewer_idx = None
+        else:
+            viewer_idx = index + 1
+
+        self.display_layer_in_viewer(layer_name, viewer_idx)
+
+    def display_layer_in_viewer(self, layer_name, viewer_index=None):
+        """Display ``layer_name`` in the specified viewer.
+
+        Parameters
+        ----------
+        layer_name : str
+            Name of the layer in the main viewer to display.
+        viewer_index : int or None
+            Index of the viewer in ``self.viewers``. ``None`` creates a new
+            viewer.
+        """
+
+        layer = self.main_viewer.layers[layer_name]
+
+        if viewer_index is None or viewer_index >= len(self.viewers):
+            target_viewer = napari.Viewer()
+            target_viewer.scale_bar.visible = True
+            toggle_defaults = False
+            target_viewer.window._qt_viewer.controls.setVisible(
+                toggle_defaults)
+            target_viewer.window._qt_viewer.dockLayerList.setVisible(
+                toggle_defaults)
+            target_viewer.window._qt_viewer.dockLayerControls.setVisible(
+                toggle_defaults)
+
+            viewer_widget = target_viewer.window._qt_window
+            viewer_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+            viewer_widget.customContextMenuRequested.connect(
+                lambda pos, v=target_viewer, w=viewer_widget: self.
+                viewer_context_menu(pos, v, w))
+
+            self.viewer_splitter.addWidget(viewer_widget)
+            self.viewers.append(target_viewer)
+
+            self.sync_all_viewers()
+            self.sync_time_steps(None)
+            if hasattr(self, 'viewer_manager_tab'):
+                self.viewer_manager_tab.update_controls()
+        else:
+            target_viewer = self.viewers[viewer_index]
+            target_viewer.layers.clear()
+
+        if layer._type_string == 'image':
+            target_viewer.add_image(layer.data,
+                                    name=layer.name,
+                                    contrast_limits=layer.contrast_limits,
+                                    opacity=layer.opacity,
+                                    colormap=layer.colormap,
+                                    visible=True)
+        elif layer._type_string == 'labels':
+            target_viewer.add_labels(layer.data,
+                                     name=layer.name,
+                                     opacity=layer.opacity,
+                                     colormap=layer.colormap,
+                                     visible=True)
+
+        self.disable_layer_controls(target_viewer)
+
+        if self.is_multiview_instrument:
+            self.connect_multiview_metadata(target_viewer)
+
+        target_viewer.bind_key('p', lambda v: None, overwrite=True)
+        target_viewer.bind_key('f', lambda v: None, overwrite=True)
+        target_viewer.bind_key('e', lambda v: None, overwrite=True)
+        target_viewer.bind_key('l', lambda v: None, overwrite=True)
+        target_viewer.bind_key('r', lambda v: None, overwrite=True)
+        target_viewer.bind_key('c', lambda v: None, overwrite=True)
+        target_viewer.bind_key('t', lambda v: None, overwrite=True)
+        target_viewer.bind_key('s', lambda v: None, overwrite=True)
+        target_viewer.bind_key('d', lambda v: None, overwrite=True)
+        target_viewer.window._qt_viewer.controls.setEnabled(False)
+
+        self.add_cursor_indicator(target_viewer)
+        self.add_border_shape(target_viewer, layer.data.shape[1:])
+        self.update_viewer_labels()
+        target_viewer.mouse_move_callbacks.append(self.update_cursor_positions)
+
+        target_viewer.layers.selection.active = target_viewer.layers[0]
+
+        layer.events.opacity.connect(self.sync_layer_properties)
+        if hasattr(layer, 'contrast_limits'):
+            layer.events.contrast_limits.connect(self.sync_layer_properties)
+        if hasattr(layer, 'colormap'):
+            layer.events.colormap.connect(self.sync_layer_properties)
+
+        if hasattr(self, 'viewer_manager_tab'):
+            self.viewer_manager_tab.update_layer_info()
+
+    def viewer_context_menu(self, pos: QPoint, viewer, widget):
+        """Open a right-click menu for closing a viewer"""
+        menu = QMenu()
+        # add close action option in menu
+        close_action = menu.addAction("Close Viewer")
+        cancel_action = menu.addAction("Cancel")
+        action = menu.exec_(widget.mapToGlobal(pos))
+        if action == close_action:
+            # call for remove
+            self.remove_viewer(viewer, widget)
+
+    def remove_viewer(self, viewer, widget):
+        """Call from viewer_context_menu to close a specific viewer"""
+        if viewer in self.viewers:
+            self.viewers.remove(viewer)
+            viewer.close()
+            self.update_viewer_labels()
+            # update viewer dropdown to no longer have this removed viewer
+            if hasattr(self, 'viewer_manager_tab'):
+                self.viewer_manager_tab.update_controls()
+
+    def swap_viewer_contents(self, idx1, idx2):
+        """Swap the displayed layers between two viewers."""
+        if idx1 == 0 or idx2 == 0:
+            return
+        if idx1 >= len(self.viewers) or idx2 >= len(self.viewers):
+            return
+        viewer1 = self.viewers[idx1]
+        viewer2 = self.viewers[idx2]
+        if not viewer1.layers or not viewer2.layers:
+            return
+        layer1 = viewer1.layers[0].name
+        layer2 = viewer2.layers[0].name
+        self.display_layer_in_viewer(layer2, viewer_index=idx1)
+        self.display_layer_in_viewer(layer1, viewer_index=idx2)
+        if hasattr(self, 'viewer_manager_tab'):
+            self.viewer_manager_tab.update_layer_info()
+
+    def sync_layer_properties(self, event):
+        src_layer = event.source
+        name = src_layer.name
+        for viewer in self.viewers:
+            if viewer == self.main_viewer:
+                continue
+            if name in viewer.layers:
+                target_layer = viewer.layers[name]
+                if hasattr(src_layer, 'contrast_limits') and hasattr(
+                        target_layer, 'contrast_limits'):
+                    target_layer.contrast_limits = src_layer.contrast_limits
+                if hasattr(src_layer, 'colormap') and hasattr(
+                        target_layer, 'colormap'):
+                    target_layer.colormap = src_layer.colormap
+                target_layer.opacity = src_layer.opacity
+
+    def sync_contrast_slider_to_minmax(self):
+        """
+        Connect the control panel contrast slider to update all min/max sliders.
+
+        Parameters:
+        - control_panel: the ControlPanel instance
+        - min_max_sliders: list of LayerMinMaxSlider instances
+        """
+
+        def sync_all_minmax():
+            active_layer = self.main_viewer.layers.selection.active
+            if not active_layer or active_layer._type_string != 'image':
+                return
+
+            contrast_min, contrast_max = active_layer.contrast_limits
+            for mms in self.min_max_sliders:
+                if mms.layer == active_layer:
+                    mms.update_contrast_limits(mms.data_min, mms.data_max,
+                                               contrast_min, contrast_max)
+
+        # Hook the signal connection
+        self.control_panel.contrast_slider.valuesChanged.connect(
+            sync_all_minmax)
+        self.control_panel.min_textbox.returnPressed.connect(sync_all_minmax)
+        self.control_panel.max_textbox.returnPressed.connect(sync_all_minmax)
+
+    def sync_all_viewers(self):
+        """Synchronize all viewers with each other for camera position"""
+        # Loop through all viewers and sync to all other viewers
+        for src_viewer in self.viewers:
+            for dst_viewer in self.viewers:
+                if src_viewer != dst_viewer:
+                    # sync camera center
+                    src_viewer.camera.events.center.connect(
+                        lambda e, src=src_viewer, dst=dst_viewer: self.
+                        sync_camera(src, dst))
+                    # sync camera zoom amount
+                    src_viewer.camera.events.zoom.connect(
+                        lambda e, src=src_viewer, dst=dst_viewer: self.
+                        sync_camera(src, dst))
+
+    def sync_camera(self, src_viewer, dst_viewer):
+        """Synchronize camera position from a source to a destination viewer"""
+        dst_viewer.camera.center = src_viewer.camera.center
+        dst_viewer.camera.zoom = src_viewer.camera.zoom
+
+
 def create_tool(label_mode,
                 data_layer_dict,
                 shape,
@@ -474,224 +1088,18 @@ def create_tool(label_mode,
     with open(config_filepath, "r") as file:
         config = json.load(file)
 
-    # Set-up Napari Viewer as back-end
-    viewer = napari.Viewer(show=False)
-    #viewer.window._qt_window.showFullScreen()
-    viewer.show()
-
-    # Create Area layouts for tool widgets
-    # Create top area and add to viewer
-    #top_widget = QWidget()
-    #top_layout = QVBoxLayout()
-    #top_widget.setLayout(top_layout)
-    #viewer.window.add_dock_widget(
-    #    top_widget,
-    #    #name="Point of View Navigator",
-    #    area="top")
-    ## Create bottom area for tabs and add to viewer
-    bottom_tabs = QTabWidget()
-    bottom_tabs.setTabPosition(QTabWidget.North)
-    viewer.window.add_dock_widget(bottom_tabs, area="bottom")
-
-    # Set-up custom Layer Manager and remove the default dock layer list from napari
-    layer_manager = LayerManager(
-        napari_viewer=viewer,
-        shape=(shape[-1], shape[0], shape[1]),
-        init_groups=[layer.value for layer in LayerType])
-    viewer.window.add_dock_widget(layer_manager, area='left')
-
-    # Add the instrument layer data to the viewer
-    (edit_np, edit_layer), \
-        (im_np, im_layers), \
-        (label_list, label_layers) = add_layers(data_layer_dict,
-                                               layer_manager,
-                                               shape,
-                                               viewer,
-                                               config,
-                                               load_labels_name=load_labels_name if label_mode else '',
-                                               label_mode=label_mode)
-
-    # Add Min/Max Slider for Image Layers
-    min_max_slider, min_max_layout = create_sliders(
-        option=int(config["min_max_slider_option"]),
-        # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
-        viewer=viewer,
-        layers=im_layers,
-        data=im_np)
-    viewer.window.add_dock_widget(min_max_layout,
-                                  name="Min-Max Range Slider",
-                                  area='right')
-
-    # Create a function to search for a layer to rename from LayerManager event
-    def update_sliders_name(old_name, new_name):
-        """Loops through alll Min/Max Sliders to check for if they have the name
-        of old_name. If so, call their update_layer_name() with the new_name
-
-        Args:
-            old_name: a string representing the old name of a renamed layer
-            new_name: a string representing the new name of a renamed layer
-        """
-        for mms in min_max_slider:
-            if old_name == mms.name:
-                mms.update_layer_name()
-
-    # Connect the renaming event call to this function
-    layer_manager.layer_renamed.connect(update_sliders_name)
-
-    # If there are multiple view-angles found, add a POV Slider to navigate them
-    if im_np.shape[-1] > 1:
-
-        # Access the slider widget
-        qt_dims = viewer.window._qt_viewer.dims
-        # Grab the first slider widget
-        slider_widget = qt_dims.slider_widgets[0]
-
-        # Create a formatted string and label to present
-        # the camera and VZA strings to the user
-        view_indicator_string = "Camera: {0} ; VZA: {1}"
-        view_indicator_label = QLabel(
-            view_indicator_string.format(views[slider_widget.slider.value()],
-                                         angles[slider_widget.slider.value()]))
-
-        # Add a new QLabel to replace the numeric text
-        slider_widget.layout().insertWidget(0, view_indicator_label)
-
-        # Define a callback function to update the label dynamically
-        def update_view_label(view_dim):
-            """Update the custom text next to the view dim slider
-
-            Args:
-                view_dim: integer representing the index of the view we
-                          are currently presenting in the view panel from
-                          the slider.
-            """
-            if 0 <= view_dim < len(views):  # Ensure within bounds
-                view_indicator_label.setText(
-                    view_indicator_string.format(views[view_dim],
-                                                 angles[view_dim]))
-
-        # Connect the slider's valueChanged signal to the callback
-        slider_widget.slider.valueChanged.connect(update_view_label)
-
-        # Configure the slider default settings
-        slider_widget.axis = 0
-        slider_widget.fps = 2
-        slider_widget.loop_mode = "back_and_forth"
-
-    #    # Create Tab widget & layout
-    #    POV_tab_widget = QWidget()
-    #    POV_tab_layout = QVBoxLayout()
-    #    POV_tab_widget.setLayout(POV_tab_layout)
-    #    # create title for top of POV nav widget
-    #    POV_title = QLabel("Point of View Navigator",
-    #                       alignment=Qt.AlignCenter,
-    #                       font=QFont("Arial", weight=QFont.Bold))
-    #    POV_tab_layout.addWidget(POV_title)
-
-    #    #top_layout.addWidget(POV_title)  # add to top layout
-
-    #    # Create the POV nav to iterate through view angles
-    #    POV_nav = PointOfViewNavigator(im_layers=im_layers,
-    #                                   min_max_slider=min_max_slider,
-    #                                   im_data=im_np,
-    #                                   label_layers=label_layers,
-    #                                   label_data=label_list,
-    #                                   view_text=views,
-    #                                   angles=angles)
-    #    # Connect viewer's key events to this widget
-    #    # left arrow -> goes to next left view
-    #    # right arrow -> goes to next right view
-    #    viewer.bind_key('Left', POV_nav.go_left)
-    #    viewer.bind_key('Right', POV_nav.go_right)
-    #    #top_layout.addWidget(POV_nav)  # add POV nav to the top widget area
-    #    POV_tab_layout.addWidget(POV_nav)
-    #    bottom_tabs.addTab(POV_tab_widget, "Point of View Navigator")
-
-    # Create and add the Notes Tab to the bottom tab area
-    bottom_tabs.addTab(get_notes_tab(output_filepath, prior_notes=notes),
-                       "Notes")
-
-    # Create Scene Labeling Dropdown Tab
-    if scene_attrs:
-        bottom_tabs.addTab(get_scene_label_tab(output_filepath, scene_attrs),
-                           "Scene Labeling")
-
-    # Get the dock layer controls from the napari window
-    # NOTE: this will be depreciated in napari 0.6.0
-    # TODO: Open up an issue on GitHub and update for future napari versions
-    dock_layer_controls = viewer.window.qt_viewer.dockLayerControls
-    dock_layer_controls.setMaximumHeight(300)
-    # Create a scroll area for the dock layer controls and add it to this widget
-    #layer_controls_scroll_area = QScrollArea()
-    #layer_controls_scroll_area.setMaximumWidth(300)
-    #layer_controls_scroll_area.setWidgetResizable(True)
-    #layer_controls_scroll_area.setWidget(dock_layer_controls)
-    layer_controls_scroll_area = None
-
-    # If Label/Editing Mode, load the Labeling Tool tab
-    if label_mode:
-        bottom_tabs.addTab(
-            get_pixellabel_tool_tab(output_filepath,
-                                    edit_np,
-                                    views,
-                                    dataset_name,
-                                    controls=layer_controls_scroll_area),
-            "Pixel Tools")
-
-        # Create and add a tab for the ThresholdWidget
-        threshold_gate_widget = QWidget()
-        threshold_gate_layout = QHBoxLayout()
-        # Remove extra spacing and margins from the layout
-        threshold_gate_layout.setSpacing(0)
-        threshold_gate_layout.setContentsMargins(0, 0, 0, 0)
-        # Create the ThresholdWidget and LogicGatesWidget
-        thresh_widget = ThresholdWidget(viewer, layer_manager, views=views)
-        logic_gate_widget = LogicGatesWidget(viewer, layer_manager)
-        # Set size policies to allow both widgets to share space equally
-        thresh_widget.setSizePolicy(QSizePolicy.Expanding,
-                                    QSizePolicy.Preferred)
-        logic_gate_widget.setSizePolicy(QSizePolicy.Expanding,
-                                        QSizePolicy.Preferred)
-        # Create a vertical line
-        vertical_line = QFrame()
-        vertical_line.setFrameShape(QFrame.VLine)
-        vertical_line.setFrameShadow(QFrame.Sunken)
-        vertical_line.setLineWidth(
-            10)  # Set the width of the line for visibility
-        vertical_line.setStyleSheet("background-color: #414851;")
-
-        # Add widgets to the layout
-        threshold_gate_layout.addWidget(
-            thresh_widget, stretch=1)  # Assign equal stretch factor
-        threshold_gate_layout.addWidget(vertical_line)  # Add vertical line
-        threshold_gate_layout.addWidget(logic_gate_widget, stretch=1)
-        # Set the layout for the container widget
-        threshold_gate_widget.setLayout(threshold_gate_layout)
-        # Add the tab to the bottom_tabs
-        bottom_tabs.addTab(threshold_gate_widget, "Thresholding & Logic Gates")
-
-    # Otherwise, load the Review Mode tab
-    else:
-        if isinstance(config["grade_slider_min"], int) and \
-        isinstance(config["grade_slider_max"],int) and \
-        config["grade_slider_min"] < config["grade_slider_max"]:
-            bottom_tabs.addTab(
-                get_review_mode_tab(output_filepath,
-                                    csv_filepath,
-                                    review_data=review_data,
-                                    min_val=config["grade_slider_min"],
-                                    max_val=config["grade_slider_max"],
-                                    controls=layer_controls_scroll_area),
-                "Review Grading")
-        else:
-            bottom_tabs.addTab(
-                get_review_mode_tab(output_filepath,
-                                    csv_filepath,
-                                    review_data=review_data,
-                                    controls=layer_controls_scroll_area), \
-                "Review Grading")
-
-    bottom_tabs.setMaximumHeight(200)
-
-    # Open the viewer window to the user
-    napari.run()
+    app = QApplication(sys.argv)
+    viewer_app = AdaptiveSplitViewer(data_layer_dict=data_layer_dict,
+                                     config=config,
+                                     views=views,
+                                     angles=angles,
+                                     shape=shape,
+                                     label_mode=label_mode,
+                                     load_labels_name=load_labels_name,
+                                     scene_attrs=scene_attrs,
+                                     csv_filepath=csv_filepath,
+                                     review_data=review_data,
+                                     notes=notes,
+                                     output_file_info=output_file_info)
+    viewer_app.show()
+    sys.exit(app.exec_())

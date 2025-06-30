@@ -29,7 +29,7 @@
 ### Key Features:
 - **Universal Satellite Data Compatibility**:
   - Open satellite images from various instruments (e.g., MAIA, MODIS, MISR) using pre-built or user-defined file reader scripts.
-  - Easily extend support for additional imagers by following guidelines provided in section <b>INSERT</b>
+  - Easily extend support for additional imagers by following the guidelines outlined below.
 
 - **Multi-Angle Visualization**:
   - Supports data visualization for multi-angle imagers, including upcoming missions like MAIA and existing ones like MISR (once developed).
@@ -45,8 +45,8 @@
 ## Installation
 
 ### Prerequisites
-- Python 3.7 or later
-- Conda or a Python virtual environment for dependency management
+- Python 3.12 or later
+- Conda (or another environment manager) for dependency management
 
 ### Steps
 1. Clone the repository:
@@ -58,55 +58,67 @@
 2. Install dependencies using Conda:
    ```bash
    conda env create -f environment.yml
-   conda activate pl-rs
-   ```
-
-3. Alternatively, install dependencies via pip:
-   ```bash
-   pip install -r requirements.txt
+   conda activate pl2
    ```
 
 ## Usage
 
 ### Repository Structure
-```bash 
+```bash
 .
 ├── LICENSE
 ├── README.md
 ├── environment.yml
-├── file_readers
-│   ├── MAIA.py
-│   ├── MISR.py
-│   ├── MODIS.py
-├── get_numpy_data.py
-├── licenses
-│   └── Napari-BSD-3-Clause.txt
-├── pl2.py
-├── util_files
-│   ├── MAIA_ma.json
-│   ├── MAIA_readerconfig_1.json
-│   ├── MAIA_readerconfig_2.json
-│   ├── MAIA_sv.json
-│   ├── custom_colormaps.json
-│   ├── default_vizconfig.json
-│   └── output_settings_default.json
-├── visualize.py
-└── widgets
-    ├── LayerMinMaxSlider.py
-    ├── LegendWidget.py
-    ├── PointOfViewNavigator.py
-    ├── SelectionMinMaxSlider.py
-    ├── SubmitButtons.py
-    ├── colormaps.py
-    ├── create_sliders.py
-    └── read_write_outputs.py
+├── labels/
+│   └── csv/
+│       └── cloud_mask_review.csv
+├── licenses/
+│   └── Napari-BSD-3-Clause.txt
+└── src/
+    ├── file_readers/
+    │   ├── MAIA.py
+    │   ├── MISR.py
+    │   ├── ML_64x64.py
+    │   ├── MODIS.py
+    │   └── __init__.py
+    ├── run.py
+    ├── settings/
+    │   ├── MAIA_loc.json
+    │   ├── MAIA_ma.json
+    │   ├── MAIA_proxy.json
+    │   ├── ML_64x64.json
+    │   ├── custom_colormaps.json
+    │   ├── default_vizconfig.json
+    │   └── output_settings_default.json
+    ├── util/
+    │   ├── LayerType.py
+    │   ├── colormaps.py
+    │   ├── create_tool.py
+    │   ├── get_data.py
+    │   └── read_write_outputs.py
+    └── widgets/
+        ├── ControlPanel.py
+        ├── GradeSlider.py
+        ├── LabelLegendWidget.py
+        ├── LayerManager.py
+        ├── LayerMinMaxSlider.py
+        ├── LegendWidget.py
+        ├── LogicGatesPanel.py
+        ├── PointOfViewNavigator.py
+        ├── SceneLabelGrid.py
+        ├── SelectionMinMaxSlider.py
+        ├── Sliders.py
+        ├── SubmitButtons.py
+        ├── ThresholdPanel.py
+        ├── ThresholdPanel_old.py
+        └── ViewerManagerTab.py
 ```
 
 
 ### Running the Main Tool
-To process, visualize, and label satellite data, run the main script `pl2.py`:
+To process, visualize, and label satellite data, run the main script `src/run.py`:
 ```bash
-python pl2.py [-h] [-m] [-o OUTPUT_SETTINGS_FILE] [-r READER_CONFIG] [-v VIS_CONFIG] [-c] [-l LOAD_LABELS] [-V] dir instrument_name 
+python src/run.py [-h] [-m] [-o OUTPUT_SETTINGS_FILE] [-r READER_CONFIG] [-v VIS_CONFIG] [-c] [-l LOAD_LABELS] [-V] dir instrument_name
 ```
 
 
@@ -184,7 +196,7 @@ To support a new satellite instrument, follow these steps to create a file reade
 
 ### File Reader Requirements
 1. **File Structure and Location**:
-   - Place the new file reader script in the `file_readers/` directory.
+   - Place the new file reader script in the `src/file_readers/` directory.
    - Name the file descriptively (e.g., `NEW_INSTRUMENT.py`).
    - NEW_INSTRUMENT.py needs to have a read() function (see below for more details. The file can of course have other functions but needs a read() function to be called from get_data()
 
@@ -196,12 +208,12 @@ To support a new satellite instrument, follow these steps to create a file reade
      - config     : a dictionary of config options that may be useful for your data ingestion for a instrument data.
 
    - Required Outputs:
-     - a "data" dictionary: The keys are the name of the layers to add into the tool. The values are tuple, where entry [0] is a LayerType (see file_readers/LayerType.py) that indicates how this data layer will be used... entry [1] is a NumPy array of the data layer to be added.
+     - a "data" dictionary: The keys are the name of the layers to add into the tool. The values are tuple, where entry [0] is a LayerType (see `src/util/LayerType.py`) that indicates how this data layer will be used... entry [1] is a NumPy array of the data layer to be added.
      - a string : that represents the filename of the output file. Should contain sub-string '<view>' if there are multiple views so that each view can be saved out seperately by replacing this sub-string when file writing.
      - a tuple : that represents the NumPy shape for layers that will be added as image layers (not labels)
        
 3. **Integration**:
-   - Add the new file reader to `get_numpy_data.py` in the `reader_dict`:
+   - Add the new file reader to `src/util/get_data.py` in the `reader_dict`:
    ```python
    reader_dict = {
        "MAIA": file_readers.MAIA.read,
@@ -226,12 +238,16 @@ To support a new satellite instrument, follow these steps to create a file reade
     - [x] Notes Widget Development 
 - [x] Reading in & Visualizing Meta-data
     - [x] Re-work `read()` for file readers 
-    - [x] Adjustments to `visualize.py`
+    - [x] Adjustments to the visualization pipeline
     - [x] Add metadata attributes to pipeline
-- [ ] Visual Additions & Fixes 
-    - [ ] RGB Visualization
-    - [ ] Grid View Indicators
-    - [ ] Grid View Enhancements
+- [x] Visual Additions & Fixes 
+    - [x] RGB Visualization
+    - [x] Adaptive Split Viewers
+    - [x] Viewer Manager
+    - [x] Colormap Selection & Visual Enhancments
+    - [x] MAIA Aerosol Proxy Data
+    - [x] Customizable Control Panel
+    - [x] Customizable Legend Widget
 - [ ] Tutorial & Manuals 
     - [ ] Outline pictures to describe widgets
     - [ ] Create a tutorial video

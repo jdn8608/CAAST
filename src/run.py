@@ -45,6 +45,11 @@ if __name__ == "__main__":
         help=
         "instrument that we will be reading in data for. This will determine how to read in data, (i.e., determine the file reader). See the README for more details."
     )
+    parser.add_argument(
+        'scene_identifier',
+        help=
+        "A string to indicate file(s) to retrieve within the provided 'dir'. Furthermore, wildcards are acceptable as the character '*'. Note: for multiangle viewers, such as MAIA, <views> vars may be retrieved from the settings files and are thus not needed in this search string."
+    )
 
     # Optional arguments
     parser.add_argument(
@@ -94,6 +99,7 @@ if __name__ == "__main__":
         scene_attrs, review_csv_filepath, review_data, notes = get_data(
             parent_dir=args.dir,
             instrument_name=args.instrument_name,
+            search_string=args.scene_identifier,
             output_settings_filepath=args.output_settings_file,
             reader_config_filepath=args.reader_config,
             label_mode=args.label_mode,

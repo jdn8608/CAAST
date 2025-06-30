@@ -27,11 +27,16 @@ class LayerManager(QWidget):
     # PyQt signal for other widgets when layer name changes
     layer_renamed = pyqtSignal(str, str)
 
-    def __init__(self, napari_viewer, shape, init_groups=None):
+    def __init__(self, napari_viewer, shape, init_groups=None, viewers=None, display_callback=None):
         super().__init__(None)
         self.viewer = napari_viewer
         self.image_shape = shape
         self.groups = {}  # Dictionary to store groups and their layers
+
+        # Reference to the viewer list from the parent application
+        self.viewers = viewers if viewers is not None else []
+        # Callback for displaying layers in other viewers
+        self.display_callback = display_callback
 
         # Main layout for the widget
         main_layout = QVBoxLayout()
@@ -66,8 +71,6 @@ class LayerManager(QWidget):
 
         # Re-order Layers
         self.reorder_layers_button = QPushButton("Re-Order Visual")
-        default_dock_layer_list = self.viewer.window.qt_viewer.dockLayerList  # Override the Dock Layer list
-        default_dock_layer_list.setVisible(False)
         self.reorder_layers_button.clicked.connect(self.toggle_layer_list)
         button_mid_layout.addWidget(self.reorder_layers_button)
 
@@ -188,10 +191,25 @@ class LayerManager(QWidget):
     def show_context_menu(self, position):
         item = self.tree_widget.itemAt(position)
         if item and item.parent():  # Only show context menu for layers
+            layer_name = item.text(0)
             menu = QMenu()
+
             rename_action = QAction("Rename", self)
             rename_action.triggered.connect(lambda: self.rename_layer(item))
             menu.addAction(rename_action)
+
+            if self.display_callback is not None:
+                new_viewer_action = QAction("Show in New Viewer", self)
+                new_viewer_action.triggered.connect(
+                    lambda checked=False, ln=layer_name: self.display_callback(ln, None))
+                menu.addAction(new_viewer_action)
+
+                for idx, _ in enumerate(self.viewers[1:]):
+                    action = QAction(f"Display in Viewer {idx + 2}", self)
+                    action.triggered.connect(
+                        lambda checked=False, ln=layer_name, i=idx + 1: self.display_callback(ln, i))
+                    menu.addAction(action)
+
             menu.exec_(self.tree_widget.viewport().mapToGlobal(position))
 
     def rename_layer(self, item):

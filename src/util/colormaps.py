@@ -38,6 +38,46 @@ def get_colormap(option):
     return colormap
 
 
+def build_label_colormap(name, labels):
+    """Return a label colormap dictionary for the given labels.
+
+    Parameters
+    ----------
+    name : str
+        Name of the colormap. If it starts with ``"custom_"`` the mapping is
+        read from ``custom_colormaps.json``.  ``"random"`` will generate a
+        random colormap using :func:`napari.utils.colormaps.label_colormap`.
+        Otherwise the name is interpreted as a matplotlib colormap.
+    labels : Iterable[int]
+        Collection of label values that need colors.
+
+    Returns
+    -------
+    dict
+        Mapping from label values to RGBA color tuples in ``[0, 1]`` range.
+    """
+    import numpy as np
+    from matplotlib import cm
+    from napari.utils.colormaps import label_colormap as np_label_colormap
+
+    labels = sorted(set(int(l) for l in labels))
+    if labels:
+        label_range = list(range(min(labels), max(labels) + 1))
+    else:
+        label_range = []
+    if name.startswith('custom_'):
+        cmap = _get_custom_colormap(name[7:])
+        return {lbl: tuple(cmap.get(lbl, (1.0, 1.0, 1.0, 1.0))) for lbl in label_range}
+    if name == 'random':
+        cmap = np_label_colormap(num_colors=len(label_range))
+        colors = cmap.colors
+    else:
+        mpl_cmap = cm.get_cmap(name, len(label_range))
+        colors = [mpl_cmap(i / max(len(label_range) - 1, 1)) for i in range(len(label_range))]
+
+    return {lbl: tuple(map(float, colors[i])) for i, lbl in enumerate(label_range)}
+
+
 def get_colormaps_from_config(config, option_name):
     """Gets the colormaps for a specific use from the config file and name of the colormap
 
