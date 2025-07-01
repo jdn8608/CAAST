@@ -296,7 +296,7 @@ class DTTSliderTab(QWidget):
             val = values.get(name, 0)
             slider.blockSignals(True)
             self.text_boxes[name].blockSignals(True)
-            slider.setValue(val)
+            slider.setValue(int(val))
             self.text_boxes[name].setText(str(val))
             slider.blockSignals(False)
             self.text_boxes[name].blockSignals(False)
