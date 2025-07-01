@@ -148,35 +148,39 @@ class DTTSliderTab(QWidget):
 
         for layer in self.viewer.layers:
             if layer.name.startswith("DTT"):
-                self.layer_dict[layer.name] = layer
+                if "mask" in layer.name.lower():
+                    print("DTT mask found")
+                    continue
+                else:
+                    self.layer_dict[layer.name] = layer
 
-                layer_layout = QHBoxLayout()
-                layer_layout.setSpacing(5)
+                    layer_layout = QHBoxLayout()
+                    layer_layout.setSpacing(5)
 
-                slider = QSlider(Qt.Vertical)
-                slider.setRange(*self.slider_range)
-                start_val = self.view_values.get(self.current_view,
-                                                 {}).get(layer.name, 0)
-                slider.setValue(start_val)
-                slider.valueChanged.connect(self._slider_changed)
+                    slider = QSlider(Qt.Vertical)
+                    slider.setRange(*self.slider_range)
+                    start_val = self.view_values.get(self.current_view,
+                                                     {}).get(layer.name, 0)
+                    slider.setValue(start_val)
+                    slider.valueChanged.connect(self._slider_changed)
 
-                info_layout = QVBoxLayout()
-                label = QLabel(layer.name)
-                label.setAlignment(Qt.AlignCenter)
-                text = QLineEdit(str(start_val))
-                text.setFixedWidth(50)
-                text.editingFinished.connect(self._text_changed)
-                info_layout.addWidget(label)
-                info_layout.addWidget(text)
+                    info_layout = QVBoxLayout()
+                    label = QLabel(layer.name)
+                    label.setAlignment(Qt.AlignCenter)
+                    text = QLineEdit(str(start_val))
+                    text.setFixedWidth(50)
+                    text.editingFinished.connect(self._text_changed)
+                    info_layout.addWidget(label)
+                    info_layout.addWidget(text)
 
-                layer_layout.addWidget(slider)
-                layer_layout.addLayout(info_layout)
+                    layer_layout.addWidget(slider)
+                    layer_layout.addLayout(info_layout)
 
-                sliders_layout.addLayout(layer_layout)
-                self.sliders[layer.name] = slider
-                self.text_boxes[layer.name] = text
-                self.view_values.setdefault(self.current_view,
-                                            {})[layer.name] = start_val
+                    sliders_layout.addLayout(layer_layout)
+                    self.sliders[layer.name] = slider
+                    self.text_boxes[layer.name] = text
+                    self.view_values.setdefault(self.current_view,
+                                                {})[layer.name] = start_val
 
         # Layout for radio buttons and button on the right
         button_layout = QVBoxLayout()
