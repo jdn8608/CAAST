@@ -149,8 +149,7 @@ class DTTSliderTab(QWidget):
         for layer in self.viewer.layers:
             if layer.name.startswith("DTT"):
                 if "mask" in layer.name.lower():
-                    print("DTT mask found")
-                    continue
+                    self.dtt_mask_layer = layer
                 else:
                     self.layer_dict[layer.name] = layer
 
@@ -181,6 +180,8 @@ class DTTSliderTab(QWidget):
                     self.text_boxes[layer.name] = text
                     self.view_values.setdefault(self.current_view,
                                                 {})[layer.name] = start_val
+
+        assert self.dtt_mask_layer is not None, "DTT MASK was not found in main_viewer.layers"
 
         # Layout for radio buttons and button on the right
         button_layout = QVBoxLayout()
