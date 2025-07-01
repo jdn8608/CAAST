@@ -30,6 +30,7 @@ from widgets.SceneLabelGrid import create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
 from widgets.ThresholdPanel import ThresholdWidget
 from widgets.LogicGatesPanel import LogicGatesWidget
+from widgets.DTTSliderTab import DTTSliderTab
 from widgets.LabelLegendWidget import LabelLegendWidget
 
 
@@ -609,6 +610,10 @@ class AdaptiveSplitViewer(QMainWindow):
             # Add the tab to the bottom_tabs
             self.bottom_tabs.addTab(threshold_gate_widget,
                                     "Thresholding & Logic Gates")
+
+            # Add DTT sliders tab
+            self.bottom_tabs.addTab(DTTSliderTab(self.main_viewer),
+                                    "DTT Sliders")
         # Otherwise, load the Review Mode tab
         else:
             if isinstance(config["grade_slider_min"], int) and \
