@@ -13,6 +13,108 @@ from qtpy.QtWidgets import (
 from qtpy.QtCore import Qt
 
 
+# Author(s) Guangyu Zhao and Michie De Vera
+# From the JPL MCM V5 code
+def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
+    """calculates final cloud mask based of the DTT, the activation value, and
+       N tests needed to activate.
+
+    [Section N/A]
+
+    Arguments:
+        DTT {3D narray} -- first 2 axies are granule dimesions, 3rd axies contains
+                           DTT for each observable in this order:
+                           WI, NDVI, NDSI, VIS Ref, NIR Ref, SVI, Cirrus
+        activation {1D narray} -- values for each observable's DTT to exceed to
+                                  be called cloudy
+        N {integer} -- number of observables which have to activate to be called
+                       cloudy.
+        fill_val_1 {integer} -- defined in congifg file; not applied due to surface type
+        fill_val_2 {integer} -- defined in congifg file; low quality radiance
+        fill_val_3 {integer} -- defined in congifg file; no data
+
+    Returns:
+        2D narray -- cloud mask; cloudy (0) clear(1) bad data (2) no data (3)
+
+    """
+    #create the mask only considering the activation & fill values, not N yet
+    #this creates a stack of cloud masks, 7 observables deep, with fill values
+    #untouched
+
+    #cloudy_idx contains indicies where each observable independently returned
+    #cloudy. The array it refers to is (X,Y,7) for 7 observables calculated over
+    #the swath of MAIA
+    #essentailly the format is of numpy.where() for 3D array to use later
+    # [[    0.     0.     0. ...,  1265.  1265.  1267.]
+    #  [   39.    42.    43. ...,   318.   319.   317.]
+    #  [    0.     0.     0. ...,     6.     6.     6.]]
+
+    #we must do it like this since each observable has a unique activation value
+
+    #execute above comment blocks
+    num_tests = activation.size
+    cloudy_idx = np.where(DTT[:, :, 0] >= activation[0])
+    #stack the 2D cloudy_idx with a 1D array of zeros denoting 0th element along
+    #3rd axis
+    zeroth_axis = np.zeros((np.shape(cloudy_idx)[1]))
+    cloudy_idx = np.vstack((cloudy_idx, zeroth_axis))
+
+    #do the same as above in the loop but with the rest of the observables
+    #which are stored along the 3rd axis
+    for test_num in range(1, num_tests):
+        new_cloudy_idx = np.where(DTT[:, :, test_num] >= activation[test_num])
+        nth_axis = np.ones((np.shape(new_cloudy_idx)[1])) * test_num
+        new_cloudy_idx = np.vstack((new_cloudy_idx, nth_axis))
+        cloudy_idx = np.concatenate((cloudy_idx, new_cloudy_idx), axis=1)
+
+    cloudy_idx = cloudy_idx.astype(int)  #so we can index with this result
+
+    #find indicies where fill values are
+    failed_retrieval_idx = np.where(DTT == fill_val_2)
+    no_data_idx = np.where(DTT == fill_val_3)
+
+    DTT_ = np.copy(DTT)
+    DTT_[cloudy_idx[0], cloudy_idx[1], cloudy_idx[2]] = 0
+    DTT_[failed_retrieval_idx] = 2
+    DTT_[no_data_idx] = 3
+    #can't assign value to 'maybe_cloudy' yet since it would override 'cloudy'
+    #we must check the N condition before proceeding on this
+
+    #check N condition to distinguish 'maybe_cloudy' from 'cloudy'
+    #count howmany tests returned DTT >= activation value for each pixel
+    #To do this, simply add along the third axis each return type for the final
+    #cloud mask, 0-3 inclusive
+    #check if all tests failed with DTT = -126 <- bad quality data
+    #check if all tests failed with DTT = -127 <- no data
+    shape = DTT[:, :, 0].shape
+    cloudy_test_count = np.zeros(shape)
+    failed_retrieval_count = np.zeros(shape)
+    no_data_count = np.zeros(shape)
+
+    for i in range(num_tests):
+        cloudy_idx = np.where(DTT_[:, :, i] == 0)
+        cloudy_test_count[cloudy_idx] += 1
+        failed_retrieval_idx = np.where(DTT_[:, :, i] == 2)
+        failed_retrieval_count[failed_retrieval_idx] += 1
+
+        no_data_idx = np.where(DTT_[:, :, i] == 3)
+        no_data_count[no_data_idx] += 1
+
+    #populate final cloud mask; default of one assumes 'maybe cloudy' at all pixels
+    final_cm = np.ones(shape)
+
+    cloudy_idx = np.where(cloudy_test_count >= N)
+    final_cm[cloudy_idx] = 0
+
+    failed_retrieval_idx = np.where(failed_retrieval_count == num_tests)
+    final_cm[failed_retrieval_idx] = 2
+
+    no_data_idx = np.where(no_data_count == num_tests)
+    final_cm[no_data_idx] = 3
+
+    return final_cm
+
+
 class DTTSliderTab(QWidget):
     """Tab widget with vertical sliders for each DTT layer.
 
