@@ -89,7 +89,10 @@ class DTTSliderTab(QWidget):
 
         separator = QFrame()
         separator.setFrameShape(QFrame.VLine)
-        separator.setFrameShadow(QFrame.Sunken)
+        separator.setFrameShadow(QFrame.Plain)
+        separator.setMidLineWidth(3)
+        separator.setLineWidth(3)
+        separator.setStyleSheet("color: #323232 ")
 
         main_layout.addLayout(sliders_layout, stretch=9)
         main_layout.addWidget(separator)
