@@ -12,6 +12,8 @@ from qtpy.QtWidgets import (
 )
 from qtpy.QtCore import Qt
 
+import numpy as np
+
 
 # Author(s) Guangyu Zhao and Michie De Vera
 # From the JPL MCM V5 code
@@ -115,6 +117,17 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
     return final_cm
 
 
+ORDERED_DTT_NAMES = [
+    "DTT WI",
+    "DTT NDVI",
+    "DTT NDSI",
+    "DTT visRef",
+    "DTT nirRef",
+    "DTT SVI",
+    "DTT Cirrus",
+]
+
+
 class DTTSliderTab(QWidget):
     """Tab widget with vertical sliders for each DTT layer.
 
@@ -157,8 +170,9 @@ class DTTSliderTab(QWidget):
         sliders_layout = QHBoxLayout()
         sliders_layout.setSpacing(80)
 
+        # Gather layer references
         self.layer_dict = {}
-
+        self.dtt_mask_layer = None
         for layer in self.viewer.layers:
             if layer.name.startswith("DTT"):
                 if "mask" in layer.name.lower():
@@ -166,35 +180,48 @@ class DTTSliderTab(QWidget):
                 else:
                     self.layer_dict[layer.name] = layer
 
-                    layer_layout = QHBoxLayout()
-                    layer_layout.setSpacing(5)
-
-                    slider = QSlider(Qt.Vertical)
-                    slider.setRange(*self.slider_range)
-                    start_val = self.view_values.get(self.current_view,
-                                                     {}).get(layer.name, 0)
-                    slider.setValue(start_val)
-                    slider.valueChanged.connect(self._slider_changed)
-
-                    info_layout = QVBoxLayout()
-                    label = QLabel(layer.name)
-                    label.setAlignment(Qt.AlignCenter)
-                    text = QLineEdit(str(start_val))
-                    text.setFixedWidth(50)
-                    text.editingFinished.connect(self._text_changed)
-                    info_layout.addWidget(label)
-                    info_layout.addWidget(text)
-
-                    layer_layout.addWidget(slider)
-                    layer_layout.addLayout(info_layout)
-
-                    sliders_layout.addLayout(layer_layout)
-                    self.sliders[layer.name] = slider
-                    self.text_boxes[layer.name] = text
-                    self.view_values.setdefault(self.current_view,
-                                                {})[layer.name] = start_val
-
         assert self.dtt_mask_layer is not None, "DTT MASK was not found in main_viewer.layers"
+
+        # Determine display order for sliders
+        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
+
+        # Populate view_values with activation thresholds if provided
+        if self.activation_values is not None:
+            for view_idx in range(self.activation_values.shape[1]):
+                for obs_idx, name in enumerate(ordered_names):
+                    val = float(self.activation_values[obs_idx, view_idx])
+                    self.view_values.setdefault(view_idx, {})
+                    self.view_values[view_idx].setdefault(name, val)
+
+        # Build slider widgets
+        for name in ordered_names:
+            layer = self.layer_dict[name]
+
+            layer_layout = QHBoxLayout()
+            layer_layout.setSpacing(5)
+
+            slider = QSlider(Qt.Vertical)
+            slider.setRange(*self.slider_range)
+            start_val = self.view_values.get(self.current_view, {}).get(name, 0)
+            slider.setValue(int(start_val))
+            slider.valueChanged.connect(self._slider_changed)
+
+            info_layout = QVBoxLayout()
+            label = QLabel(name)
+            label.setAlignment(Qt.AlignCenter)
+            text = QLineEdit(str(start_val))
+            text.setFixedWidth(50)
+            text.editingFinished.connect(self._text_changed)
+            info_layout.addWidget(label)
+            info_layout.addWidget(text)
+
+            layer_layout.addWidget(slider)
+            layer_layout.addLayout(info_layout)
+
+            sliders_layout.addLayout(layer_layout)
+            self.sliders[name] = slider
+            self.text_boxes[name] = text
+            self.view_values.setdefault(self.current_view, {})[name] = start_val
 
         # Layout for radio buttons and button on the right
         button_layout = QVBoxLayout()
@@ -210,7 +237,7 @@ class DTTSliderTab(QWidget):
         btn = QPushButton("Generate Config File\nSave Cloud Mask")
         btn.setFixedWidth(200)
         btn.setFixedHeight(100)
-        btn.clicked.connect(self.print_values)
+        btn.clicked.connect(self._apply_mask)
         button_layout.addWidget(btn)
 
         separator = QFrame()
@@ -278,3 +305,29 @@ class DTTSliderTab(QWidget):
         self._save_current_values()
         self.current_view = self.viewer.dims.current_step[0]
         self._load_view_values()
+
+    def _apply_mask(self):
+        """Compute and update the DTT cloud mask for the current view."""
+        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
+        dtt_stack = []
+        for name in ordered_names:
+            layer = self.layer_dict[name]
+            dtt_stack.append(layer.data[self.current_view])
+        if not dtt_stack:
+            return
+        dtt_array = np.stack(dtt_stack, axis=-1)
+
+        thresholds = np.array([
+            self.view_values.get(self.current_view, {}).get(name, 0)
+            for name in ordered_names
+        ])
+
+        n_tests = int(self.num_tests[self.current_view]) if self.num_tests is not None else thresholds.size
+        fv2 = float(self.fill_val_2[self.current_view]) if self.fill_val_2 is not None else -126
+        fv3 = float(self.fill_val_3[self.current_view]) if self.fill_val_3 is not None else -127
+
+        cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
+
+        mask_data = self.dtt_mask_layer.data.copy()
+        mask_data[self.current_view] = cm
+        self.dtt_mask_layer.data = mask_data
