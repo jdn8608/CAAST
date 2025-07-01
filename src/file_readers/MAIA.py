@@ -127,6 +127,8 @@ def get_dtt(hdf_file):
     dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
     dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
 
+    dtt_obs[dtt_obs < -124] = -1
+
     return dtt, dtt_obs
 
 
