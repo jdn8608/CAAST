@@ -22,10 +22,12 @@ class DTTSliderTab(QWidget):
 
         main_layout = QHBoxLayout()
         sliders_layout = QHBoxLayout()
+        sliders_layout.setSpacing(15)
 
         for layer in self.viewer.layers:
             if layer.name.startswith("DTT"):
                 layer_layout = QHBoxLayout()
+                layer_layout.setSpacing(5)
 
                 slider = QSlider(Qt.Vertical)
                 slider.setRange(*self.slider_range)
@@ -36,6 +38,7 @@ class DTTSliderTab(QWidget):
                 label = QLabel(layer.name)
                 label.setAlignment(Qt.AlignCenter)
                 text = QLineEdit("0")
+                text.setFixedWidth(50)
                 text.editingFinished.connect(self._text_changed)
                 info_layout.addWidget(label)
                 info_layout.addWidget(text)
@@ -47,7 +50,9 @@ class DTTSliderTab(QWidget):
                 self.sliders[layer.name] = slider
                 self.text_boxes[layer.name] = text
 
-        btn = QPushButton("Generate Config File and Save Cloud Mask")
+        btn = QPushButton("Generate Config File\nSave Cloud Mask")
+        btn.setFixedWidth(120)
+        btn.setFixedHeight(80)
         btn.clicked.connect(self.print_values)
 
         main_layout.addLayout(sliders_layout, stretch=9)
