@@ -131,22 +131,22 @@ def add_layers(data_layer_dict,
             data = np.transpose(data_temp, (2, 0, 1))
 
             if layer_type in (
-                LayerType.GRAY_BAND,
-                LayerType.AEROSOL,
-                LayerType.VIEW_GEO,
-                LayerType.LAT_LON,
-                LayerType.DTT,
-                LayerType.OBSERVABLE,
+                    LayerType.GRAY_BAND,
+                    LayerType.AEROSOL,
+                    LayerType.VIEW_GEO,
+                    LayerType.LAT_LON,
+                    LayerType.DTT,
+                    LayerType.OBSERVABLE,
             ):
-                current_layer = viewer.add_image(
-                    data[...], name=layer_name, colormap=band_colormap
-                )
+                current_layer = viewer.add_image(data[...],
+                                                 name=layer_name,
+                                                 colormap=band_colormap)
                 manager.add_layer_to_group(layer_type.value, current_layer)
 
                 if layer_type in (
-                    LayerType.GRAY_BAND,
-                    LayerType.AEROSOL,
-                    LayerType.OBSERVABLE,
+                        LayerType.GRAY_BAND,
+                        LayerType.AEROSOL,
+                        LayerType.OBSERVABLE,
                 ):
                     current_layer.contrast_limits = (0, float(np.nanmax(data)))
                 elif layer_type is LayerType.DTT:
