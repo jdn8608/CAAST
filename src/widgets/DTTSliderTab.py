@@ -6,23 +6,35 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QSlider,
     QPushButton,
-    QCheckBox,
+    QRadioButton,
+    QButtonGroup,
+    QFrame,
 )
 from qtpy.QtCore import Qt
 
 
 class DTTSliderTab(QWidget):
-    """Tab widget with vertical sliders for each DTT layer."""
+    """Tab widget with vertical sliders for each DTT layer.
 
-    def __init__(self, viewer):
+    Parameters
+    ----------
+    viewer : napari.Viewer
+        Viewer instance used to track current view.
+    initial_values : dict[int, dict[str, int]], optional
+        Mapping of view index to slider values by layer name.
+    """
+
+    def __init__(self, viewer, initial_values=None):
         super().__init__()
         self.viewer = viewer
         self.sliders = {}
         self.text_boxes = {}
         self.slider_range = (-101, 101)
-        self.view_values = {}
-        self.current_view = (self.viewer.dims.current_step[0]
-                             if self.viewer.dims.ndim > 0 else 0)
+        # Storage for slider values per view
+        self.view_values = {k: dict(v) for k, v in (initial_values or {}).items()}
+        self.current_view = (
+            self.viewer.dims.current_step[0] if self.viewer.dims.ndim > 0 else 0
+        )
 
         main_layout = QHBoxLayout()
         sliders_layout = QHBoxLayout()
@@ -35,13 +47,16 @@ class DTTSliderTab(QWidget):
 
                 slider = QSlider(Qt.Vertical)
                 slider.setRange(*self.slider_range)
-                slider.setValue(0)
+                start_val = self.view_values.get(self.current_view, {}).get(
+                    layer.name, 0
+                )
+                slider.setValue(start_val)
                 slider.valueChanged.connect(self._slider_changed)
 
                 info_layout = QVBoxLayout()
                 label = QLabel(layer.name)
                 label.setAlignment(Qt.AlignCenter)
-                text = QLineEdit("0")
+                text = QLineEdit(str(start_val))
                 text.setFixedWidth(50)
                 text.editingFinished.connect(self._text_changed)
                 info_layout.addWidget(label)
@@ -53,11 +68,18 @@ class DTTSliderTab(QWidget):
                 sliders_layout.addLayout(layer_layout)
                 self.sliders[layer.name] = slider
                 self.text_boxes[layer.name] = text
+                self.view_values.setdefault(self.current_view, {})[layer.name] = start_val
 
-        # Layout for button and checkbox on the right
+        # Layout for radio buttons and button on the right
         button_layout = QVBoxLayout()
-        self.save_all_checkbox = QCheckBox("Save All Views Configs")
-        button_layout.addWidget(self.save_all_checkbox)
+        self.radio_group = QButtonGroup(self)
+        self.save_current_radio = QRadioButton("Save current view's config")
+        self.save_all_radio = QRadioButton("Save all views' config")
+        self.radio_group.addButton(self.save_current_radio)
+        self.radio_group.addButton(self.save_all_radio)
+        self.save_current_radio.setChecked(True)
+        button_layout.addWidget(self.save_current_radio)
+        button_layout.addWidget(self.save_all_radio)
 
         btn = QPushButton("Generate Config File\nSave Cloud Mask")
         btn.setFixedWidth(120)
@@ -65,7 +87,12 @@ class DTTSliderTab(QWidget):
         btn.clicked.connect(self.print_values)
         button_layout.addWidget(btn)
 
+        separator = QFrame()
+        separator.setFrameShape(QFrame.VLine)
+        separator.setFrameShadow(QFrame.Sunken)
+
         main_layout.addLayout(sliders_layout, stretch=9)
+        main_layout.addWidget(separator)
         main_layout.addLayout(button_layout, stretch=1)
         self.setLayout(main_layout)
 
