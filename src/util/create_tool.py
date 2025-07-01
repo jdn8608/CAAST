@@ -455,7 +455,7 @@ def get_review_mode_tab(output_filepath,
 class AdaptiveSplitViewer(QMainWindow):
 
     def __init__(self, data_layer_dict, config, views, angles, shape,
-                 label_mode, load_labels_name, scene_attrs, output_file_info,
+                 ancillary_config, label_mode, load_labels_name, scene_attrs, output_file_info,
                  csv_filepath, review_data, notes):
         # call super init for a QMainWindow
         super().__init__()
@@ -467,6 +467,7 @@ class AdaptiveSplitViewer(QMainWindow):
         self.views = views
         self.angles = angles
         self.output_filepath, self.dataset_name = output_file_info
+        self.ancillary_config = ancillary_config
 
         # Set window name and aspect geometry
         self.setWindowTitle("Napari Multi-Viewer")
@@ -633,8 +634,15 @@ class AdaptiveSplitViewer(QMainWindow):
                                     "Thresholding & Logic Gates")
 
             # Add DTT sliders tab
-            self.bottom_tabs.addTab(DTTSliderTab(self.main_viewer),
-                                    "DTT Sliders")
+            self.bottom_tabs.addTab(
+                DTTSliderTab(
+                    self.main_viewer,
+                    activation_values=(self.ancillary_config or {}).get('activation_values'),
+                    num_tests=(self.ancillary_config or {}).get('number_of_activations_needed'),
+                    fill_val_2=(self.ancillary_config or {}).get('fill_val_2'),
+                    fill_val_3=(self.ancillary_config or {}).get('fill_val_3'),
+                ),
+                "DTT Sliders")
         # Otherwise, load the Review Mode tab
         else:
             if isinstance(config["grade_slider_min"], int) and \
@@ -1056,6 +1064,7 @@ def create_tool(label_mode,
                 output_file_info,
                 views,
                 angles,
+                ancillary_config,
                 scene_attrs,
                 csv_filepath,
                 review_data,
@@ -1076,7 +1085,10 @@ def create_tool(label_mode,
                             is the dataset name
         views               : a list of the names of the views for the instrument data loaded
         angles              : the viewing angles for each view
-        scene_attrs         : a list or dict of the scene attributes to load. If None, the 
+        ancillary_config    : dictionary of ancillary DTT configuration values
+                            returned from the file reader. Can be None if not
+                            provided.
+        scene_attrs         : a list or dict of the scene attributes to load. If None, the
                             scene labeling tab will not be loaded
         csv_filpeath        : the filepath the csv file to record the review mode entries from
                             the user.
@@ -1105,6 +1117,7 @@ def create_tool(label_mode,
                                      views=views,
                                      angles=angles,
                                      shape=shape,
+                                     ancillary_config=ancillary_config,
                                      label_mode=label_mode,
                                      load_labels_name=load_labels_name,
                                      scene_attrs=scene_attrs,

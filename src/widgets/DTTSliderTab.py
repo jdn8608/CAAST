@@ -124,11 +124,24 @@ class DTTSliderTab(QWidget):
         Viewer instance used to track current view.
     initial_values : dict[int, dict[str, int]], optional
         Mapping of view index to slider values by layer name.
+    activation_values : np.ndarray, optional
+        Activation thresholds for each observable per view.
+    num_tests : np.ndarray or None, optional
+        Minimum number of tests required to activate per view.
+    fill_val_2 : np.ndarray or None, optional
+        Fill value 2 for each view.
+    fill_val_3 : np.ndarray or None, optional
+        Fill value 3 for each view.
     """
 
-    def __init__(self, viewer, initial_values=None):
+    def __init__(self, viewer, initial_values=None, activation_values=None,
+                 num_tests=None, fill_val_2=None, fill_val_3=None):
         super().__init__()
         self.viewer = viewer
+        self.activation_values = activation_values
+        self.num_tests = num_tests
+        self.fill_val_2 = fill_val_2
+        self.fill_val_3 = fill_val_3
         self.sliders = {}
         self.text_boxes = {}
         self.slider_range = (-101, 101)
