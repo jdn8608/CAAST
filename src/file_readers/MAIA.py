@@ -446,13 +446,17 @@ def read(parent_dir, search, views, config=None):
         # Open file
         hdf_file = h5.File(filepath, 'r')
 
+        # Get MCM ancillary configuration
+        # TODO: Open an issue about MCM Proxy data key for number of tests
         number_of_activations_need = hdf_file['Ancillary'][
             'configuration_file'][
-                'Min_num_of_activated_testsMin_num_of_activated_tests']
+                'Min_num_of_activated_testsMin_num_of_activated_tests'][()]
         activation_values = hdf_file['Ancillary']['configuration_file'][
-            'activation_values']
-        fill_val_2 = hdf_file['Ancillary']['configuration_file']['fill_val_2']
-        fill_val_3 = hdf_file['Ancillary']['configuration_file']['fill_val_3']
+            'activation_values'][()]
+        fill_val_2 = hdf_file['Ancillary']['configuration_file']['fill_val_2'][
+            ()]
+        fill_val_3 = hdf_file['Ancillary']['configuration_file']['fill_val_3'][
+            ()]
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
         if band_names is None:
