@@ -1,15 +1,6 @@
-from qtpy.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QSlider,
-    QPushButton,
-    QRadioButton,
-    QButtonGroup,
-    QFrame,
-)
+from qtpy.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                            QLineEdit, QSlider, QPushButton, QRadioButton,
+                            QButtonGroup, QFrame, QComboBox)
 from qtpy.QtCore import Qt
 
 import numpy as np
