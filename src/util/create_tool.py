@@ -70,6 +70,7 @@ def add_layers(data_layer_dict,
 
     # Track the cloud mask data for creating a DTT editing layer later
     cloud_mask_data = None
+    DTT_found = False  # flag to signify DTT data found, and thus widget will be needed
 
     if not label_mode:
         editing_data = None
@@ -154,6 +155,7 @@ def add_layers(data_layer_dict,
                 ):
                     current_layer.contrast_limits = (0, float(np.nanmax(data)))
                 elif layer_type is LayerType.DTT:
+                    DTT_found = True
                     current_layer.contrast_limits = (-101, 101)
 
                 im_layers[im_iter] = current_layer
@@ -228,11 +230,10 @@ def add_layers(data_layer_dict,
         label_list.append(editing_data)
 
         # Create a layer for DTTWidget output initialized with the cloud mask
-        if cloud_mask_data is not None:
-            dtt_layer = viewer.add_labels(
-                cloud_mask_data[...],
-                name='DTT Mask',
-                colormap=label_colormap)
+        if DTT_found and cloud_mask_data is not None:
+            dtt_layer = viewer.add_labels(cloud_mask_data[...],
+                                          name='DTT Mask',
+                                          colormap=label_colormap)
             dtt_layer.editable = False
             dtt_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
             if config.get('label_colormap') is not None:
