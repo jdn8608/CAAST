@@ -68,6 +68,9 @@ def add_layers(data_layer_dict,
     (band_colormap, label_colormap, mask_colormap, nan_colormap,
      surf_colormap) = get_all_colormaps(config)
 
+    # Track the cloud mask data for creating a DTT editing layer later
+    cloud_mask_data = None
+
     if not label_mode:
         editing_data = None
         editing_layer = None
@@ -163,6 +166,7 @@ def add_layers(data_layer_dict,
                 if layer_type is LayerType.CLOUD_MASK:
                     current_colormap = mask_colormap
                     cmap_name = config.get('mask_colormap')
+                    cloud_mask_data = data  # store for DTT editing layer
                 elif layer_type is LayerType.MANUAL_LABELS:
                     current_colormap = label_colormap
                     cmap_name = config.get('label_colormap')
@@ -222,6 +226,22 @@ def add_layers(data_layer_dict,
 
         label_layers.append(editing_layer)
         label_list.append(editing_data)
+
+        # Create a layer for DTTWidget output initialized with the cloud mask
+        if cloud_mask_data is not None:
+            dtt_layer = viewer.add_labels(
+                cloud_mask_data[...],
+                name='DTT Mask',
+                colormap=label_colormap)
+            dtt_layer.editable = False
+            dtt_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
+            if config.get('label_colormap') is not None:
+                dtt_layer.metadata['label_colormap_name'] = config.get(
+                    'label_colormap')
+            manager.add_layer_to_group(LayerType.MANUAL_LABELS.value,
+                                       dtt_layer)
+            label_layers.append(dtt_layer)
+            label_list.append(cloud_mask_data)
 
     return (editing_data, editing_layer), (im_data, im_layers), \
         (label_list, label_layers)
