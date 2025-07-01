@@ -31,14 +31,16 @@ class DTTSliderTab(QWidget):
         self.text_boxes = {}
         self.slider_range = (-101, 101)
         # Storage for slider values per view
-        self.view_values = {k: dict(v) for k, v in (initial_values or {}).items()}
-        self.current_view = (
-            self.viewer.dims.current_step[0] if self.viewer.dims.ndim > 0 else 0
-        )
+        self.view_values = {
+            k: dict(v)
+            for k, v in (initial_values or {}).items()
+        }
+        self.current_view = (self.viewer.dims.current_step[0]
+                             if self.viewer.dims.ndim > 0 else 0)
 
         main_layout = QHBoxLayout()
         sliders_layout = QHBoxLayout()
-        sliders_layout.setSpacing(15)
+        sliders_layout.setSpacing(80)
 
         for layer in self.viewer.layers:
             if layer.name.startswith("DTT"):
@@ -47,9 +49,8 @@ class DTTSliderTab(QWidget):
 
                 slider = QSlider(Qt.Vertical)
                 slider.setRange(*self.slider_range)
-                start_val = self.view_values.get(self.current_view, {}).get(
-                    layer.name, 0
-                )
+                start_val = self.view_values.get(self.current_view,
+                                                 {}).get(layer.name, 0)
                 slider.setValue(start_val)
                 slider.valueChanged.connect(self._slider_changed)
 
@@ -68,7 +69,8 @@ class DTTSliderTab(QWidget):
                 sliders_layout.addLayout(layer_layout)
                 self.sliders[layer.name] = slider
                 self.text_boxes[layer.name] = text
-                self.view_values.setdefault(self.current_view, {})[layer.name] = start_val
+                self.view_values.setdefault(self.current_view,
+                                            {})[layer.name] = start_val
 
         # Layout for radio buttons and button on the right
         button_layout = QVBoxLayout()
@@ -82,8 +84,8 @@ class DTTSliderTab(QWidget):
         button_layout.addWidget(self.save_all_radio)
 
         btn = QPushButton("Generate Config File\nSave Cloud Mask")
-        btn.setFixedWidth(120)
-        btn.setFixedHeight(80)
+        btn.setFixedWidth(200)
+        btn.setFixedHeight(100)
         btn.clicked.connect(self.print_values)
         button_layout.addWidget(btn)
 
@@ -107,7 +109,8 @@ class DTTSliderTab(QWidget):
         for name, s in self.sliders.items():
             if s is slider:
                 self.text_boxes[name].setText(str(value))
-                self.view_values.setdefault(self.current_view, {})[name] = value
+                self.view_values.setdefault(self.current_view,
+                                            {})[name] = value
                 break
         self.print_values()
 
@@ -119,9 +122,11 @@ class DTTSliderTab(QWidget):
                     value = float(t.text())
                 except ValueError:
                     return
-                value = max(self.slider_range[0], min(self.slider_range[1], value))
+                value = max(self.slider_range[0],
+                            min(self.slider_range[1], value))
                 self.sliders[name].setValue(int(value))
-                self.view_values.setdefault(self.current_view, {})[name] = int(value)
+                self.view_values.setdefault(self.current_view,
+                                            {})[name] = int(value)
                 break
         self.print_values()
 
