@@ -144,8 +144,12 @@ class DTTSliderTab(QWidget):
         sliders_layout = QHBoxLayout()
         sliders_layout.setSpacing(80)
 
+        self.layer_dict = {}
+
         for layer in self.viewer.layers:
             if layer.name.startswith("DTT"):
+                self.layer_dict[layer.name] = layer
+
                 layer_layout = QHBoxLayout()
                 layer_layout.setSpacing(5)
 
