@@ -1,27 +1,21 @@
 """
 This module is used to create a min max slider for a specific layer
 """
-import napari
 import numpy as np
-from qtpy.QtWidgets import QVBoxLayout, QWidget, QLabel, QLineEdit
+from qtpy.QtWidgets import (QVBoxLayout, QWidget, QLabel, QLineEdit,
+                            QScrollArea)
 from superqt import QRangeSlider  # Import QRangeSlider from superqt
 
 
 class LayerMinMaxSlider(QWidget):
     """Individual min/max slider for each layer."""
 
-    def __init__(self,
-                 layer,
-                 slider_scale=1000,
-                 override_max=None,
-                 override_min=None):
+    def __init__(self, layer, slider_scale=1000):
         super().__init__()
         self.layer = layer  # Specific layer for this slider
         self.slider_scale = slider_scale
-        self.data_max = override_max if override_max is not None else np.nanmax(
-            layer.data)
-        self.data_min = override_min if override_min is not None else np.nanmin(
-            layer.data)
+        self.data_max = np.nanmax(layer.data)
+        self.data_min = np.nanmin(layer.data)
         self.layer_name_label = QLabel(f"Layer: {self.layer.name}")
         self.name = self.layer.name
 
@@ -117,3 +111,36 @@ class LayerMinMaxSlider(QWidget):
         """Update the layer name displayed on the slider."""
         self.name = self.layer.name
         self.layer_name_label.setText(f"Layer: {self.name}")
+
+
+def create_layer_sliders(layers):
+    """Create LayerMinMaxSlider widgets for each provided layer.
+
+    Parameters
+    ----------
+    layers : list[napari.layers.Image]
+        List of image layers to create sliders for. ``None`` entries are
+        ignored.
+
+    Returns
+    -------
+    tuple[list[LayerMinMaxSlider], QWidget]
+        The list of sliders created and a scrollable QWidget containing them.
+    """
+    sliders = []
+    layout = QVBoxLayout()
+    for layer in layers:
+        if layer is None:
+            continue
+        slider_widget = LayerMinMaxSlider(layer)
+        layout.addWidget(slider_widget)
+        sliders.append(slider_widget)
+
+    container = QWidget()
+    container.setLayout(layout)
+
+    scroll_area_widget = QScrollArea()
+    scroll_area_widget.setWidgetResizable(True)
+    scroll_area_widget.setWidget(container)
+
+    return sliders, scroll_area_widget
