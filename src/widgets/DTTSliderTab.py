@@ -94,16 +94,16 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
         no_data_count[no_data_idx] += 1
 
     #populate final cloud mask; default of one assumes 'maybe cloudy' at all pixels
-    final_cm = np.ones(shape)
+    final_cm = np.ones(shape) + 2
 
     cloudy_idx = np.where(cloudy_test_count >= N)
     final_cm[cloudy_idx] = 0
 
     failed_retrieval_idx = np.where(failed_retrieval_count == num_tests)
-    final_cm[failed_retrieval_idx] = 2
+    final_cm[failed_retrieval_idx] = -1
 
     no_data_idx = np.where(no_data_count == num_tests)
-    final_cm[no_data_idx] = 3
+    final_cm[no_data_idx] = -1
 
     return final_cm
 
