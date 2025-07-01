@@ -106,8 +106,6 @@
         ├── LogicGatesPanel.py
         ├── PointOfViewNavigator.py
         ├── SceneLabelGrid.py
-        ├── SelectionMinMaxSlider.py
-        ├── Sliders.py
         ├── SubmitButtons.py
         ├── ThresholdPanel.py
         ├── ThresholdPanel_old.py

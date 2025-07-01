@@ -20,7 +20,7 @@ from qtpy.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from util.LayerType import LayerType
 from util.colormaps import get_all_colormaps
 
-from widgets.Sliders import create_sliders
+from widgets.LayerMinMaxSlider import create_layer_sliders
 from widgets.LayerManager import LayerManager
 from widgets.ControlPanel import ControlPanel
 from widgets.ViewerManagerTab import ViewerManagerTab
@@ -130,44 +130,31 @@ def add_layers(data_layer_dict,
         else:
             data = np.transpose(data_temp, (2, 0, 1))
 
-            # If regular image layer, add a layer with a gray-scale colormap
-            if layer_type in (LayerType.GRAY_BAND, LayerType.AEROSOL,
-                              LayerType.VIEW_GEO, LayerType.LAT_LON):
-
+            if layer_type in (
+                    LayerType.GRAY_BAND,
+                    LayerType.AEROSOL,
+                    LayerType.VIEW_GEO,
+                    LayerType.LAT_LON,
+                    LayerType.DTT,
+                    LayerType.OBSERVABLE,
+            ):
                 current_layer = viewer.add_image(data[...],
                                                  name=layer_name,
                                                  colormap=band_colormap)
-                # Add the layer to the correct group in the layer manager
                 manager.add_layer_to_group(layer_type.value, current_layer)
+
+                if layer_type in (
+                        LayerType.GRAY_BAND,
+                        LayerType.AEROSOL,
+                        LayerType.OBSERVABLE,
+                ):
+                    current_layer.contrast_limits = (0, float(np.nanmax(data)))
+                elif layer_type is LayerType.DTT:
+                    current_layer.contrast_limits = (-101, 101)
 
                 im_layers[im_iter] = current_layer
                 im_data[..., im_iter] = data
                 im_iter += 1
-
-            # DTT layers will have additional functionality later on
-            elif layer_type is LayerType.DTT:
-                current_layer = viewer.add_image(data[...],
-                                                 name=layer_name,
-                                                 colormap=band_colormap)
-                # Add the layer to the correct group in the layer manager
-                manager.add_layer_to_group(layer_type.value, current_layer)
-
-                im_layers[im_iter] = current_layer
-                im_data[..., im_iter] = data
-                im_iter += 1
-            # OBSERVABLE layers will have additional functionality later on
-            elif layer_type is LayerType.OBSERVABLE:
-                current_layer = viewer.add_image(data[...],
-                                                 name=layer_name,
-                                                 colormap=band_colormap)
-                # Add the layer to the correct group in the layer manager
-                manager.add_layer_to_group(layer_type.value, current_layer)
-
-                im_layers[im_iter] = current_layer
-                im_data[..., im_iter] = data
-                im_iter += 1
-
-            # If not an image-type layer, process as labels
             else:
                 data = data.astype(int)
                 cmap_name = None
@@ -544,12 +531,8 @@ class AdaptiveSplitViewer(QMainWindow):
         left_tabs.addTab(self.label_legend, "Label Legend")
 
         # Create min/max sliders for image layers
-        self.min_max_sliders, self.min_max_layout = create_sliders(
-            option=int(config["min_max_slider_option"]),
-            viewer=self.
-            main_viewer,  # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
-            layers=im_layers,
-            data=im_np)
+        self.min_max_sliders, self.min_max_layout = create_layer_sliders(
+            im_layers)
         self.layer_manager.layer_renamed.connect(
             self.update_sliders_name
         )  # Connect the renaming event call to this function
