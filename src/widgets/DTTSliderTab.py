@@ -1,4 +1,12 @@
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QSlider, QPushButton
+from qtpy.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QSlider,
+    QPushButton,
+)
 from qtpy.QtCore import Qt
 
 
@@ -10,33 +18,40 @@ class DTTSliderTab(QWidget):
         self.viewer = viewer
         self.sliders = {}
         self.text_boxes = {}
-        self.slider_range = (-100, 100)
+        self.slider_range = (-101, 101)
 
-        main_layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
         sliders_layout = QHBoxLayout()
 
         for layer in self.viewer.layers:
             if layer.name.startswith("DTT"):
-                vbox = QVBoxLayout()
-                label = QLabel(layer.name)
-                label.setAlignment(Qt.AlignCenter)
+                layer_layout = QHBoxLayout()
+
                 slider = QSlider(Qt.Vertical)
                 slider.setRange(*self.slider_range)
                 slider.setValue(0)
                 slider.valueChanged.connect(self._slider_changed)
+
+                info_layout = QVBoxLayout()
+                label = QLabel(layer.name)
+                label.setAlignment(Qt.AlignCenter)
                 text = QLineEdit("0")
                 text.editingFinished.connect(self._text_changed)
-                vbox.addWidget(label)
-                vbox.addWidget(slider, stretch=1)
-                vbox.addWidget(text)
-                sliders_layout.addLayout(vbox)
+                info_layout.addWidget(label)
+                info_layout.addWidget(text)
+
+                layer_layout.addWidget(slider)
+                layer_layout.addLayout(info_layout)
+
+                sliders_layout.addLayout(layer_layout)
                 self.sliders[layer.name] = slider
                 self.text_boxes[layer.name] = text
 
-        main_layout.addLayout(sliders_layout)
         btn = QPushButton("Generate Config File and Save Cloud Mask")
         btn.clicked.connect(self.print_values)
-        main_layout.addWidget(btn)
+
+        main_layout.addLayout(sliders_layout, stretch=9)
+        main_layout.addWidget(btn, stretch=1)
         self.setLayout(main_layout)
 
     def _slider_changed(self, value):
