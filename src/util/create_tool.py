@@ -641,6 +641,7 @@ class AdaptiveSplitViewer(QMainWindow):
                     num_tests=(self.ancillary_config or {}).get('number_of_activations_needed'),
                     fill_val_2=(self.ancillary_config or {}).get('fill_val_2'),
                     fill_val_3=(self.ancillary_config or {}).get('fill_val_3'),
+                    viewers=self.viewers,
                 ),
                 "DTT Sliders")
         # Otherwise, load the Review Mode tab

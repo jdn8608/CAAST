@@ -148,27 +148,50 @@ class DTTSliderTab(QWidget):
     """
 
     def __init__(self, viewer, initial_values=None, activation_values=None,
-                 num_tests=None, fill_val_2=None, fill_val_3=None):
+                 num_tests=None, fill_val_2=None, fill_val_3=None, viewers=None):
         super().__init__()
         self.viewer = viewer
+        # list of viewers to update when the mask changes
+        self.viewers = viewers if viewers is not None else [viewer]
         self.activation_values = activation_values
         self.num_tests = num_tests
         self.fill_val_2 = fill_val_2
         self.fill_val_3 = fill_val_3
         self.sliders = {}
         self.text_boxes = {}
-        self.slider_range = (-101, 101)
+        # Slider operates in tenths to mimic float precision
+        self.slider_range = (-1010, 1010)
         # Storage for slider values per view
         self.view_values = {
             k: dict(v)
             for k, v in (initial_values or {}).items()
         }
+        # Storage for per-view number of tests
+        self.num_tests_values = {}
         self.current_view = (self.viewer.dims.current_step[0]
                              if self.viewer.dims.ndim > 0 else 0)
 
         main_layout = QHBoxLayout()
         sliders_layout = QHBoxLayout()
         sliders_layout.setSpacing(80)
+
+        # Dropdown for number of tests needed
+        tests_layout = QVBoxLayout()
+        tests_label = QLabel("Tests Needed")
+        tests_label.setAlignment(Qt.AlignCenter)
+        self.num_tests_dropdown = QComboBox()
+        for i in range(1, 8):
+            self.num_tests_dropdown.addItem(str(i))
+        self.num_tests_dropdown.currentIndexChanged.connect(self._num_tests_changed)
+        tests_layout.addWidget(tests_label)
+        tests_layout.addWidget(self.num_tests_dropdown)
+        init_tests = None
+        if self.num_tests is not None and len(self.num_tests) > self.current_view:
+            init_tests = int(self.num_tests[self.current_view])
+        init_tests = self.num_tests_values.get(self.current_view, init_tests)
+        if init_tests is None:
+            init_tests = 1
+        self.num_tests_dropdown.setCurrentIndex(max(1, int(init_tests)) - 1)
 
         # Gather layer references
         self.layer_dict = {}
@@ -193,6 +216,10 @@ class DTTSliderTab(QWidget):
                     self.view_values.setdefault(view_idx, {})
                     self.view_values[view_idx].setdefault(name, val)
 
+        if self.num_tests is not None:
+            for view_idx in range(len(self.num_tests)):
+                self.num_tests_values[view_idx] = int(self.num_tests[view_idx])
+
         # Build slider widgets
         for name in ordered_names:
             layer = self.layer_dict[name]
@@ -202,14 +229,14 @@ class DTTSliderTab(QWidget):
 
             slider = QSlider(Qt.Vertical)
             slider.setRange(*self.slider_range)
-            start_val = self.view_values.get(self.current_view, {}).get(name, 0)
-            slider.setValue(int(start_val))
+            start_val = float(self.view_values.get(self.current_view, {}).get(name, 0.0))
+            slider.setValue(int(round(start_val * 10)))
             slider.valueChanged.connect(self._slider_changed)
 
             info_layout = QVBoxLayout()
             label = QLabel(name)
             label.setAlignment(Qt.AlignCenter)
-            text = QLineEdit(str(start_val))
+            text = QLineEdit(f"{start_val:.1f}")
             text.setFixedWidth(50)
             text.editingFinished.connect(self._text_changed)
             info_layout.addWidget(label)
@@ -247,6 +274,7 @@ class DTTSliderTab(QWidget):
         separator.setLineWidth(3)
         separator.setStyleSheet("color: #323232 ")
 
+        main_layout.addLayout(tests_layout, stretch=1)
         main_layout.addLayout(sliders_layout, stretch=9)
         main_layout.addWidget(separator)
         main_layout.addLayout(button_layout, stretch=1)
@@ -259,11 +287,15 @@ class DTTSliderTab(QWidget):
         slider = self.sender()
         for name, s in self.sliders.items():
             if s is slider:
-                self.text_boxes[name].setText(str(value))
+                fval = value / 10.0
+                self.text_boxes[name].setText(f"{fval:.1f}")
                 self.view_values.setdefault(self.current_view,
-                                            {})[name] = value
+                                            {})[name] = fval
                 break
         self.print_values()
+
+    def _num_tests_changed(self, index):
+        self.num_tests_values[self.current_view] = index + 1
 
     def _text_changed(self):
         text = self.sender()
@@ -273,11 +305,11 @@ class DTTSliderTab(QWidget):
                     value = float(t.text())
                 except ValueError:
                     return
-                value = max(self.slider_range[0],
-                            min(self.slider_range[1], value))
-                self.sliders[name].setValue(int(value))
+                value = max(self.slider_range[0] / 10,
+                            min(self.slider_range[1] / 10, value))
+                self.sliders[name].setValue(int(round(value * 10)))
                 self.view_values.setdefault(self.current_view,
-                                            {})[name] = int(value)
+                                            {})[name] = value
                 break
         self.print_values()
 
@@ -288,18 +320,29 @@ class DTTSliderTab(QWidget):
     def _save_current_values(self):
         self.view_values.setdefault(self.current_view, {})
         for name, slider in self.sliders.items():
-            self.view_values[self.current_view][name] = slider.value()
+            self.view_values[self.current_view][name] = slider.value() / 10.0
+        if hasattr(self, 'num_tests_dropdown'):
+            self.num_tests_values[self.current_view] = (
+                self.num_tests_dropdown.currentIndex() + 1)
 
     def _load_view_values(self):
         values = self.view_values.get(self.current_view, {})
         for name, slider in self.sliders.items():
-            val = values.get(name, 0)
+            val = float(values.get(name, 0.0))
             slider.blockSignals(True)
             self.text_boxes[name].blockSignals(True)
-            slider.setValue(int(val))
-            self.text_boxes[name].setText(str(val))
+            slider.setValue(int(round(val * 10)))
+            self.text_boxes[name].setText(f"{val:.1f}")
             slider.blockSignals(False)
             self.text_boxes[name].blockSignals(False)
+        if hasattr(self, 'num_tests_dropdown'):
+            default = None
+            if self.num_tests is not None and len(self.num_tests) > self.current_view:
+                default = int(self.num_tests[self.current_view])
+            val = self.num_tests_values.get(self.current_view, default)
+            if val is None:
+                val = 1
+            self.num_tests_dropdown.setCurrentIndex(max(1, int(val)) - 1)
 
     def _view_changed(self, event):
         self._save_current_values()
@@ -322,7 +365,13 @@ class DTTSliderTab(QWidget):
             for name in ordered_names
         ])
 
-        n_tests = int(self.num_tests[self.current_view]) if self.num_tests is not None else thresholds.size
+        if self.num_tests_values:
+            n_tests = int(self.num_tests_values.get(
+                self.current_view,
+                self.num_tests[self.current_view] if self.num_tests is not None else thresholds.size
+            ))
+        else:
+            n_tests = int(self.num_tests[self.current_view]) if self.num_tests is not None else thresholds.size
         fv2 = float(self.fill_val_2[self.current_view]) if self.fill_val_2 is not None else -126
         fv3 = float(self.fill_val_3[self.current_view]) if self.fill_val_3 is not None else -127
 
@@ -331,3 +380,10 @@ class DTTSliderTab(QWidget):
         mask_data = self.dtt_mask_layer.data.copy()
         mask_data[self.current_view] = cm
         self.dtt_mask_layer.data = mask_data
+
+        # Update mask layer in any additional viewers
+        for viewer in self.viewers:
+            if viewer is self.viewer:
+                continue
+            if self.dtt_mask_layer.name in viewer.layers:
+                viewer.layers[self.dtt_mask_layer.name].data = mask_data
