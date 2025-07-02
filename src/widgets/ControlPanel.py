@@ -31,6 +31,7 @@ class ControlPanel(QFrame):
 
         # Create the grid layout
         self.setFixedWidth(300)
+        self.setFixedHeight(400)
         self.control_layout = QGridLayout()
         self.setLayout(self.control_layout)
 
