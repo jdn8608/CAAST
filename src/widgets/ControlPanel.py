@@ -253,9 +253,11 @@ class ControlPanel(QFrame):
             is_labels = all(l._type_string == 'labels' for l in self.active_layers)
             is_image = all(l._type_string == 'image' for l in self.active_layers)
             layer = self.active_layers[0]
+            is_rgb = is_image and all(getattr(l, 'rgb', False) for l in self.active_layers)
         else:
             is_labels = False
             is_image = False
+            is_rgb = False
             layer = None
 
         is_single_labels = is_labels and len(self.active_layers) == 1
@@ -279,9 +281,9 @@ class ControlPanel(QFrame):
 
         self.opacity_slider.setVisible(is_labels or is_image)
         self.opacity_label.setVisible(is_labels or is_image)
-        self.colormap_label.setVisible(is_image)
-        self.colormap_dropdown.setVisible(is_image)
-        self.colormap_preview.setVisible(is_image)
+        self.colormap_label.setVisible(is_image and not is_rgb)
+        self.colormap_dropdown.setVisible(is_image and not is_rgb)
+        self.colormap_preview.setVisible(is_image and not is_rgb)
         self.label_colormap_label.setVisible(is_labels)
         self.label_colormap_dropdown.setVisible(is_labels)
         self.label_colormap_preview.setVisible(is_labels)
