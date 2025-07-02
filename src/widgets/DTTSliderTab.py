@@ -148,8 +148,14 @@ class DTTSliderTab(QWidget):
         Fill value 3 for each view.
     """
 
-    def __init__(self, viewer, initial_values=None, activation_values=None,
-                 num_tests=None, fill_val_2=None, fill_val_3=None, viewers=None):
+    def __init__(self,
+                 viewer,
+                 initial_values=None,
+                 activation_values=None,
+                 num_tests=None,
+                 fill_val_2=None,
+                 fill_val_3=None,
+                 viewers=None):
         super().__init__()
         self.viewer = viewer
         # list of viewers to update when the mask changes
@@ -183,11 +189,13 @@ class DTTSliderTab(QWidget):
         self.num_tests_dropdown = QComboBox()
         for i in range(1, 8):
             self.num_tests_dropdown.addItem(str(i))
-        self.num_tests_dropdown.currentIndexChanged.connect(self._num_tests_changed)
+        self.num_tests_dropdown.currentIndexChanged.connect(
+            self._num_tests_changed)
         tests_layout.addWidget(tests_label)
         tests_layout.addWidget(self.num_tests_dropdown)
         init_tests = None
-        if self.num_tests is not None and len(self.num_tests) > self.current_view:
+        if self.num_tests is not None and len(
+                self.num_tests) > self.current_view:
             init_tests = int(self.num_tests[self.current_view])
         init_tests = self.num_tests_values.get(self.current_view, init_tests)
         if init_tests is None:
@@ -231,7 +239,8 @@ class DTTSliderTab(QWidget):
 
             slider = QSlider(Qt.Vertical)
             slider.setRange(*self.slider_range)
-            start_val = float(self.view_values.get(self.current_view, {}).get(name, 0.0))
+            start_val = float(
+                self.view_values.get(self.current_view, {}).get(name, 0.0))
             slider.setValue(int(round(start_val * 10)))
             slider.valueChanged.connect(self._slider_changed)
 
@@ -250,7 +259,8 @@ class DTTSliderTab(QWidget):
             sliders_layout.addLayout(layer_layout)
             self.sliders[name] = slider
             self.text_boxes[name] = text
-            self.view_values.setdefault(self.current_view, {})[name] = start_val
+            self.view_values.setdefault(self.current_view,
+                                        {})[name] = start_val
 
         # Layout for radio buttons and button on the right
         button_layout = QVBoxLayout()
@@ -298,8 +308,7 @@ class DTTSliderTab(QWidget):
             if s is slider:
                 fval = value / 10.0
                 self.text_boxes[name].setText(f"{fval:.1f}")
-                self.view_values.setdefault(self.current_view,
-                                            {})[name] = fval
+                self.view_values.setdefault(self.current_view, {})[name] = fval
                 break
         self._apply_mask()
 
@@ -347,7 +356,8 @@ class DTTSliderTab(QWidget):
             self.text_boxes[name].blockSignals(False)
         if hasattr(self, 'num_tests_dropdown'):
             default = None
-            if self.num_tests is not None and len(self.num_tests) > self.current_view:
+            if self.num_tests is not None and len(
+                    self.num_tests) > self.current_view:
                 default = int(self.num_tests[self.current_view])
             val = self.num_tests_values.get(self.current_view, default)
             if val is None:
@@ -376,14 +386,17 @@ class DTTSliderTab(QWidget):
         ])
 
         if self.num_tests_values:
-            n_tests = int(self.num_tests_values.get(
-                self.current_view,
-                self.num_tests[self.current_view] if self.num_tests is not None else thresholds.size
-            ))
+            n_tests = int(
+                self.num_tests_values.get(
+                    self.current_view, self.num_tests[self.current_view]
+                    if self.num_tests is not None else thresholds.size))
         else:
-            n_tests = int(self.num_tests[self.current_view]) if self.num_tests is not None else thresholds.size
-        fv2 = float(self.fill_val_2[self.current_view]) if self.fill_val_2 is not None else -126
-        fv3 = float(self.fill_val_3[self.current_view]) if self.fill_val_3 is not None else -127
+            n_tests = int(self.num_tests[self.current_view]
+                          ) if self.num_tests is not None else thresholds.size
+        fv2 = float(self.fill_val_2[
+            self.current_view]) if self.fill_val_2 is not None else -126
+        fv3 = float(self.fill_val_3[
+            self.current_view]) if self.fill_val_3 is not None else -127
 
         cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
 
