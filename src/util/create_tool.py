@@ -216,7 +216,7 @@ def add_layers(data_layer_dict,
     # Add editing_data as an editing layer to the viewer
     if label_mode and load_labels_name:
         editing_layer = viewer.add_labels(editing_data[...],
-                                          name='Editing',
+                                          name='Manual Cloud Mask Edits',
                                           colormap=label_colormap)
         editing_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
         if config.get('label_colormap') is not None:
