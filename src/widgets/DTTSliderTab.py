@@ -9,6 +9,7 @@ from qtpy.QtWidgets import (
     QRadioButton,
     QButtonGroup,
     QFrame,
+    QComboBox,
 )
 from qtpy.QtCore import Qt
 
