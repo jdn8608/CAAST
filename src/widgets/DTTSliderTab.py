@@ -193,6 +193,7 @@ class DTTSliderTab(QWidget):
         if init_tests is None:
             init_tests = 1
         self.num_tests_dropdown.setCurrentIndex(max(1, int(init_tests)) - 1)
+        self.num_tests_dropdown.setFixedWidth(100)
 
         # Gather layer references
         self.layer_dict = {}
