@@ -644,7 +644,7 @@ class AdaptiveSplitViewer(QMainWindow):
             threshold_gate_widget.setLayout(threshold_gate_layout)
             # Add the tab to the bottom_tabs
             self.bottom_tabs.addTab(threshold_gate_widget,
-                                    "Thresholding & Logic Gates")
+                                    "Thresholding + Logic Gates")
 
             # Add DTT sliders tab
             self.bottom_tabs.addTab(
@@ -657,7 +657,7 @@ class AdaptiveSplitViewer(QMainWindow):
                     fill_val_2=(self.ancillary_config or {}).get('fill_val_2'),
                     fill_val_3=(self.ancillary_config or {}).get('fill_val_3'),
                     viewers=self.viewers,
-                ), "DTT Sliders")
+                ), "Adjust DTT Activation Values")
         # Otherwise, load the Review Mode tab
         else:
             if isinstance(config["grade_slider_min"], int) and \
