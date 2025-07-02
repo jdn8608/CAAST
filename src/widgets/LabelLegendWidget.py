@@ -31,13 +31,36 @@ class LabelLegendWidget(QWidget):
         layout.addStretch()
 
         self.layer_dropdown.currentIndexChanged.connect(self.update_rows)
-        viewer.layers.events.inserted.connect(lambda e: self.refresh_layers())
-        viewer.layers.events.removed.connect(lambda e: self.refresh_layers())
+        viewer.layers.events.inserted.connect(self._on_layer_inserted)
+        viewer.layers.events.removed.connect(self._on_layer_removed)
         viewer.layers.selection.events.active.connect(
             lambda e: self.sync_selection())
 
+        self._name_listeners = set()
+
         self._current_layer = None
 
+        self.refresh_layers()
+
+    def _on_layer_inserted(self, event):
+        layer = getattr(event, 'value', None)
+        if layer is None:
+            return
+        if layer._type_string == 'labels' and layer not in self._name_listeners:
+            layer.events.name.connect(self.refresh_layers)
+            self._name_listeners.add(layer)
+        self.refresh_layers()
+
+    def _on_layer_removed(self, event):
+        layer = getattr(event, 'value', None)
+        if layer is None:
+            return
+        if layer in self._name_listeners:
+            try:
+                layer.events.name.disconnect(self.refresh_layers)
+            except Exception:
+                pass
+            self._name_listeners.remove(layer)
         self.refresh_layers()
 
     def sync_selection(self):
@@ -51,9 +74,22 @@ class LabelLegendWidget(QWidget):
         current = self.layer_dropdown.currentText()
         self.layer_dropdown.blockSignals(True)
         self.layer_dropdown.clear()
+
+        # Reset name listeners and repopulate dropdown
+        for lyr in list(self._name_listeners):
+            if lyr not in self.viewer.layers:
+                try:
+                    lyr.events.name.disconnect(self.refresh_layers)
+                except Exception:
+                    pass
+                self._name_listeners.discard(lyr)
+
         for layer in self.viewer.layers:
             if layer._type_string == 'labels':
                 self.layer_dropdown.addItem(layer.name)
+                if layer not in self._name_listeners:
+                    layer.events.name.connect(self.refresh_layers)
+                    self._name_listeners.add(layer)
         idx = self.layer_dropdown.findText(current)
         if idx >= 0:
             self.layer_dropdown.setCurrentIndex(idx)
@@ -69,7 +105,12 @@ class LabelLegendWidget(QWidget):
         layer_name = self.layer_dropdown.currentText()
         if not layer_name:
             return
-        layer = self.viewer.layers[layer_name]
+        try:
+            layer = self.viewer.layers[layer_name]
+        except KeyError:
+            # Layer might have been renamed; refresh and exit
+            self.refresh_layers()
+            return
         if self._current_layer is not None:
             try:
                 self._current_layer.events.colormap.disconnect(
