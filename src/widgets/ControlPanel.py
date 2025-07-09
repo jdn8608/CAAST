@@ -251,10 +251,13 @@ class ControlPanel(QFrame):
             self.active_layers = list(layers)
 
         if self.active_layers:
-            is_labels = all(l._type_string == 'labels' for l in self.active_layers)
-            is_image = all(l._type_string == 'image' for l in self.active_layers)
+            is_labels = all(l._type_string == 'labels'
+                            for l in self.active_layers)
+            is_image = all(l._type_string == 'image'
+                           for l in self.active_layers)
             layer = self.active_layers[0]
-            is_rgb = is_image and all(getattr(l, 'rgb', False) for l in self.active_layers)
+            is_rgb = is_image and all(
+                getattr(l, 'rgb', False) for l in self.active_layers)
         else:
             is_labels = False
             is_image = False
@@ -432,7 +435,8 @@ class ControlPanel(QFrame):
                             other.colormap = cmap
                             other.metadata['label_colormap_name'] = cmap_name
         self._update_label_colormap_preview(cmap_name)
-        if self.active_layers and self.active_layers[0]._type_string == 'labels':
+        if self.active_layers and self.active_layers[
+                0]._type_string == 'labels':
             self.update_label_color()
 
     def _create_label_colormap_icon(self, cmap_name, width=100, height=20):
