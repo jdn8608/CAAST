@@ -277,20 +277,20 @@ class ControlPanel(QFrame):
         self.label_spin.setVisible(is_single_labels)
         self.label_color.setVisible(is_single_labels)
         self.brush_size_label.setVisible(is_single_labels)
-
-        self.contrast_slider.setVisible(is_image)
-        self.contrast_slider_label.setVisible(is_image)
-        self.min_textbox.setVisible(is_image)
-        self.max_textbox.setVisible(is_image)
+        self.label_colormap_label.setVisible(is_labels)
+        self.label_colormap_dropdown.setVisible(is_labels)
+        self.label_colormap_preview.setVisible(is_labels)
 
         self.opacity_slider.setVisible(is_labels or is_image)
         self.opacity_label.setVisible(is_labels or is_image)
         self.colormap_label.setVisible(is_image and not is_rgb)
         self.colormap_dropdown.setVisible(is_image and not is_rgb)
         self.colormap_preview.setVisible(is_image and not is_rgb)
-        self.label_colormap_label.setVisible(is_labels)
-        self.label_colormap_dropdown.setVisible(is_labels)
-        self.label_colormap_preview.setVisible(is_labels)
+
+        self.contrast_slider.setVisible(is_image)
+        self.contrast_slider_label.setVisible(is_image)
+        self.min_textbox.setVisible(is_image)
+        self.max_textbox.setVisible(is_image)
 
         if is_single_labels:
             self.update_label_color()
