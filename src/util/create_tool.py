@@ -128,6 +128,7 @@ def add_layers(data_layer_dict,
             data_temp = np.transpose(data_temp, (3, 0, 1, 2))
             current_layer = viewer.add_image(data_temp,
                                              name=layer_name,
+                                             opacity=1.0,
                                              rgb=True)
             # Add the layer to the correct group in the layer manager
             manager.add_layer_to_group(layer_type.value, current_layer)
@@ -143,10 +144,16 @@ def add_layers(data_layer_dict,
                     LayerType.DTT,
                     LayerType.OBSERVABLE,
             ):
-                current_layer = viewer.add_image(data[...],
-                                                 name=layer_name,
-                                                 colormap=band_colormap)
+                current_layer = viewer.add_image(
+                    data[...],
+                    name=layer_name,
+                    colormap=band_colormap,
+                    opacity=1.0,
+                )
                 manager.add_layer_to_group(layer_type.value, current_layer)
+
+                if layer_type == LayerType.AEROSOL:
+                    current_layer.colormap = 'magma'
 
                 if layer_type in (
                         LayerType.GRAY_BAND,
@@ -182,7 +189,11 @@ def add_layers(data_layer_dict,
                 if current_colormap is not None:
                     # Add labels layer to viewer
                     current_layer = viewer.add_labels(
-                        data[...], name=layer_name, colormap=current_colormap)
+                        data[...],
+                        name=layer_name,
+                        colormap=current_colormap,
+                        opacity=1.0,
+                    )
                     current_layer.editable = False  # do not allow for editing
                     current_layer.metadata['layer_type'] = layer_type.value
                     if cmap_name is not None:
@@ -216,7 +227,8 @@ def add_layers(data_layer_dict,
     # Add editing_data as an editing layer to the viewer
     if label_mode and load_labels_name:
         editing_layer = viewer.add_labels(editing_data[...],
-                                          name='Editing',
+                                          name='Manual Cloud Mask Edits',
+                                          opacity=1.0,
                                           colormap=label_colormap)
         editing_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
         if config.get('label_colormap') is not None:
@@ -233,6 +245,7 @@ def add_layers(data_layer_dict,
         if DTT_found and cloud_mask_data is not None:
             dtt_layer = viewer.add_labels(cloud_mask_data[...],
                                           name='DTT Mask',
+                                          opacity=1.0,
                                           colormap=label_colormap)
             dtt_layer.editable = False
             dtt_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
@@ -455,8 +468,8 @@ def get_review_mode_tab(output_filepath,
 class AdaptiveSplitViewer(QMainWindow):
 
     def __init__(self, data_layer_dict, config, views, angles, shape,
-                 ancillary_config, label_mode, load_labels_name, scene_attrs, output_file_info,
-                 csv_filepath, review_data, notes):
+                 ancillary_config, label_mode, load_labels_name, scene_attrs,
+                 output_file_info, csv_filepath, review_data, notes):
         # call super init for a QMainWindow
         super().__init__()
 
@@ -470,7 +483,7 @@ class AdaptiveSplitViewer(QMainWindow):
         self.ancillary_config = ancillary_config
 
         # Set window name and aspect geometry
-        self.setWindowTitle("Napari Multi-Viewer")
+        self.setWindowTitle("MAIA Satellite Labeling Toolkit (SLT)")
         self.setGeometry(100, 100, 1600, 800)
 
         # Create parent/main layout
@@ -631,19 +644,20 @@ class AdaptiveSplitViewer(QMainWindow):
             threshold_gate_widget.setLayout(threshold_gate_layout)
             # Add the tab to the bottom_tabs
             self.bottom_tabs.addTab(threshold_gate_widget,
-                                    "Thresholding & Logic Gates")
+                                    "Thresholding + Logic Gates")
 
             # Add DTT sliders tab
             self.bottom_tabs.addTab(
                 DTTSliderTab(
                     self.main_viewer,
-                    activation_values=(self.ancillary_config or {}).get('activation_values'),
-                    num_tests=(self.ancillary_config or {}).get('number_of_activations_needed'),
+                    activation_values=(self.ancillary_config
+                                       or {}).get('activation_values'),
+                    num_tests=(self.ancillary_config
+                               or {}).get('number_of_activations_needed'),
                     fill_val_2=(self.ancillary_config or {}).get('fill_val_2'),
                     fill_val_3=(self.ancillary_config or {}).get('fill_val_3'),
                     viewers=self.viewers,
-                ),
-                "DTT Sliders")
+                ), "Adjust DTT Activation Values")
         # Otherwise, load the Review Mode tab
         else:
             if isinstance(config["grade_slider_min"], int) and \

@@ -31,6 +31,7 @@ class ControlPanel(QFrame):
 
         # Create the grid layout
         self.setFixedWidth(300)
+        self.setFixedHeight(400)
         self.control_layout = QGridLayout()
         self.setLayout(self.control_layout)
 
@@ -250,12 +251,17 @@ class ControlPanel(QFrame):
             self.active_layers = list(layers)
 
         if self.active_layers:
-            is_labels = all(l._type_string == 'labels' for l in self.active_layers)
-            is_image = all(l._type_string == 'image' for l in self.active_layers)
+            is_labels = all(l._type_string == 'labels'
+                            for l in self.active_layers)
+            is_image = all(l._type_string == 'image'
+                           for l in self.active_layers)
             layer = self.active_layers[0]
+            is_rgb = is_image and all(
+                getattr(l, 'rgb', False) for l in self.active_layers)
         else:
             is_labels = False
             is_image = False
+            is_rgb = False
             layer = None
 
         is_single_labels = is_labels and len(self.active_layers) == 1
@@ -271,20 +277,20 @@ class ControlPanel(QFrame):
         self.label_spin.setVisible(is_single_labels)
         self.label_color.setVisible(is_single_labels)
         self.brush_size_label.setVisible(is_single_labels)
+        self.label_colormap_label.setVisible(is_labels)
+        self.label_colormap_dropdown.setVisible(is_labels)
+        self.label_colormap_preview.setVisible(is_labels)
+
+        self.opacity_slider.setVisible(is_labels or is_image)
+        self.opacity_label.setVisible(is_labels or is_image)
+        self.colormap_label.setVisible(is_image and not is_rgb)
+        self.colormap_dropdown.setVisible(is_image and not is_rgb)
+        self.colormap_preview.setVisible(is_image and not is_rgb)
 
         self.contrast_slider.setVisible(is_image)
         self.contrast_slider_label.setVisible(is_image)
         self.min_textbox.setVisible(is_image)
         self.max_textbox.setVisible(is_image)
-
-        self.opacity_slider.setVisible(is_labels or is_image)
-        self.opacity_label.setVisible(is_labels or is_image)
-        self.colormap_label.setVisible(is_image)
-        self.colormap_dropdown.setVisible(is_image)
-        self.colormap_preview.setVisible(is_image)
-        self.label_colormap_label.setVisible(is_labels)
-        self.label_colormap_dropdown.setVisible(is_labels)
-        self.label_colormap_preview.setVisible(is_labels)
 
         if is_single_labels:
             self.update_label_color()
@@ -429,7 +435,8 @@ class ControlPanel(QFrame):
                             other.colormap = cmap
                             other.metadata['label_colormap_name'] = cmap_name
         self._update_label_colormap_preview(cmap_name)
-        if self.active_layers and self.active_layers[0]._type_string == 'labels':
+        if self.active_layers and self.active_layers[
+                0]._type_string == 'labels':
             self.update_label_color()
 
     def _create_label_colormap_icon(self, cmap_name, width=100, height=20):
