@@ -799,11 +799,13 @@ class AdaptiveSplitViewer(QMainWindow):
             cursor_layer = self.cursor_layers.get(v)
             if cursor_layer:
                 if len(cursor_layer.data) < num_times:
-                    cursor_layer.data = [[t_, 0, 0] for t_ in range(num_times)]
-                new_data = cursor_layer.data.copy()
-                for t in range(num_times):
-                    new_data[t] = [t, y, x]
-                cursor_layer.data = new_data
+                    cursor_layer.data = np.column_stack([
+                        np.arange(num_times),
+                        np.zeros(num_times),
+                        np.zeros(num_times)
+                    ])
+                cursor_layer.data[:, 1] = y
+                cursor_layer.data[:, 2] = x
 
     def add_border_shape(self, viewer, shape_dims):
         """Add a border shape around the imagery to differeniate between viewers"""
