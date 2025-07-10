@@ -20,12 +20,18 @@ class ControlPanel(QFrame):
         self.main_viewer = main_viewer
         self.viewers = viewers
 
+        # Keep track of the layers the panel should operate on. By default this
+        # is just the currently selected layer in the main viewer, but can be
+        # overridden (e.g. when a group is selected).
+        self.active_layers = []
+
         self._contrast_data_min = 0.0
         self._contrast_data_max = 1.0
         self._slider_steps = 1000
 
         # Create the grid layout
         self.setFixedWidth(300)
+        self.setFixedHeight(400)
         self.control_layout = QGridLayout()
         self.setLayout(self.control_layout)
 
@@ -194,6 +200,11 @@ class ControlPanel(QFrame):
         self.main_viewer.layers.selection.events.active.connect(
             lambda e: self.update_tool_visibility())
 
+    def set_target_layers(self, layers):
+        """Set the layers that should be modified by the control panel."""
+        self.active_layers = layers if layers is not None else []
+        self.update_tool_visibility(layers)
+
     def update_viewer_labels(self):
         active_layer = self.main_viewer.layers.selection.active
         if not active_layer or active_layer._type_string != 'labels':
@@ -232,41 +243,56 @@ class ControlPanel(QFrame):
         else:
             print("Unvalid Mode Selected")
 
-    def update_tool_visibility(self):
-        layer = self.main_viewer.layers.selection.active
-        is_labels = layer and layer._type_string == 'labels'
-        if is_labels is None:
-            is_labels = False
-        is_image = layer and layer._type_string == 'image'
-        if is_image is None:
-            is_image = False
+    def update_tool_visibility(self, layers=None):
+        if layers is None:
+            layer = self.main_viewer.layers.selection.active
+            self.active_layers = [layer] if layer else []
+        else:
+            self.active_layers = list(layers)
 
-        self.paint_button.setVisible(is_labels)
-        self.fill_button.setVisible(is_labels)
-        self.erase_button.setVisible(is_labels)
-        self.pick_button.setVisible(is_labels)
-        self.polygon_button.setVisible(is_labels)
-        self.brush_size_slider.setVisible(is_labels)
-        self.label_controls_label.setVisible(is_labels)
-        self.label_spin.setVisible(is_labels)
-        self.label_color.setVisible(is_labels)
-        self.brush_size_label.setVisible(is_labels)
+        if self.active_layers:
+            is_labels = all(l._type_string == 'labels'
+                            for l in self.active_layers)
+            is_image = all(l._type_string == 'image'
+                           for l in self.active_layers)
+            layer = self.active_layers[0]
+            is_rgb = is_image and all(
+                getattr(l, 'rgb', False) for l in self.active_layers)
+        else:
+            is_labels = False
+            is_image = False
+            is_rgb = False
+            layer = None
+
+        is_single_labels = is_labels and len(self.active_layers) == 1
+        is_single_image = is_image and len(self.active_layers) == 1
+
+        self.paint_button.setVisible(is_single_labels)
+        self.fill_button.setVisible(is_single_labels)
+        self.erase_button.setVisible(is_single_labels)
+        self.pick_button.setVisible(is_single_labels)
+        self.polygon_button.setVisible(is_single_labels)
+        self.brush_size_slider.setVisible(is_single_labels)
+        self.label_controls_label.setVisible(is_single_labels)
+        self.label_spin.setVisible(is_single_labels)
+        self.label_color.setVisible(is_single_labels)
+        self.brush_size_label.setVisible(is_single_labels)
+        self.label_colormap_label.setVisible(is_labels)
+        self.label_colormap_dropdown.setVisible(is_labels)
+        self.label_colormap_preview.setVisible(is_labels)
+
+        self.opacity_slider.setVisible(is_labels or is_image)
+        self.opacity_label.setVisible(is_labels or is_image)
+        self.colormap_label.setVisible(is_image and not is_rgb)
+        self.colormap_dropdown.setVisible(is_image and not is_rgb)
+        self.colormap_preview.setVisible(is_image and not is_rgb)
 
         self.contrast_slider.setVisible(is_image)
         self.contrast_slider_label.setVisible(is_image)
         self.min_textbox.setVisible(is_image)
         self.max_textbox.setVisible(is_image)
 
-        self.opacity_slider.setVisible(is_labels or is_image)
-        self.opacity_label.setVisible(is_labels or is_image)
-        self.colormap_label.setVisible(is_image)
-        self.colormap_dropdown.setVisible(is_image)
-        self.colormap_preview.setVisible(is_image)
-        self.label_colormap_label.setVisible(is_labels)
-        self.label_colormap_dropdown.setVisible(is_labels)
-        self.label_colormap_preview.setVisible(is_labels)
-
-        if is_labels:
+        if is_single_labels:
             self.update_label_color()
             self.label_spin.setValue(layer.selected_label or 0)
             self.brush_size_slider.setValue(layer.brush_size)
@@ -309,32 +335,34 @@ class ControlPanel(QFrame):
             min_val = float(self.min_textbox.text())
             max_val = float(self.max_textbox.text())
             if min_val < max_val:
-                layer = self.main_viewer.layers.selection.active
-                if layer and layer._type_string == 'image':
-                    layer.contrast_limits = (min_val, max_val)
-                    self.update_contrast_slider(layer)
+                for layer in self.active_layers:
+                    if layer._type_string == 'image':
+                        layer.contrast_limits = (min_val, max_val)
+                        self.update_contrast_slider(layer)
         except ValueError:
             pass
 
     def set_contrast_limits(self):
-        active_layer = self.main_viewer.layers.selection.active
-        if active_layer and active_layer._type_string == 'image':
-            smin, smax = self.contrast_slider.value()
-            data_min, data_max = self._contrast_data_min, self._contrast_data_max
-            fmin = data_min + (smin / self._slider_steps) * (data_max -
-                                                             data_min)
-            fmax = data_min + (smax / self._slider_steps) * (data_max -
-                                                             data_min)
-            if fmin < fmax:
-                active_layer.contrast_limits = (fmin, fmax)
-                self.min_textbox.setText(f"{fmin:.4g}")
-                self.max_textbox.setText(f"{fmax:.4g}")
+        if not self.active_layers:
+            return
+        smin, smax = self.contrast_slider.value()
+        data_min, data_max = self._contrast_data_min, self._contrast_data_max
+        fmin = data_min + (smin / self._slider_steps) * (data_max - data_min)
+        fmax = data_min + (smax / self._slider_steps) * (data_max - data_min)
+        if fmin < fmax:
+            for layer in self.active_layers:
+                if layer._type_string == 'image':
+                    layer.contrast_limits = (fmin, fmax)
+            self.min_textbox.setText(f"{fmin:.4g}")
+            self.max_textbox.setText(f"{fmax:.4g}")
 
     def update_label_color(self):
-        active_layer = self.main_viewer.layers.selection.active
-        if active_layer and active_layer._type_string == 'labels':
-            label = active_layer.selected_label
-            color = active_layer.get_color(label)
+        if not self.active_layers:
+            return
+        layer = self.active_layers[0]
+        if layer and layer._type_string == 'labels':
+            label = layer.selected_label
+            color = layer.get_color(label)
             if color is None:
                 color = [1., 1., 1.]
             self.label_color.setStyleSheet(
@@ -342,29 +370,27 @@ class ControlPanel(QFrame):
             )
 
     def set_brush_size(self):
-        active_layer = self.main_viewer.layers.selection.active
-        if active_layer and active_layer._type_string == 'labels':
-            active_layer.brush_size = self.brush_size_slider.value()
+        for layer in self.active_layers:
+            if layer._type_string == 'labels':
+                layer.brush_size = self.brush_size_slider.value()
 
     def set_opacity(self):
-        active_layer = self.main_viewer.layers.selection.active
-        if active_layer and active_layer._type_string in ['labels', 'image']:
-            active_layer.opacity = self.opacity_slider.value() / 100
+        for layer in self.active_layers:
+            if layer._type_string in ['labels', 'image']:
+                layer.opacity = self.opacity_slider.value() / 100
 
     def change_colormap(self):
-        layer = self.main_viewer.layers.selection.active
-        if layer and layer._type_string == 'image':
-            cmap = self.colormap_dropdown.currentText()
-            layer.colormap = cmap
-            self._update_colormap_preview(cmap)
-            # Propagate the colormap change to matching layers in the other
-            # viewers so that they stay synchronized.
-            for viewer in self.viewers:
-                if viewer is self.main_viewer:
-                    continue
-                for other in viewer.layers:
-                    if other._type_string == 'image' and other.name == layer.name:
-                        other.colormap = cmap
+        cmap = self.colormap_dropdown.currentText()
+        for layer in self.active_layers:
+            if layer._type_string == 'image':
+                layer.colormap = cmap
+                for viewer in self.viewers:
+                    if viewer is self.main_viewer:
+                        continue
+                    for other in viewer.layers:
+                        if other._type_string == 'image' and other.name == layer.name:
+                            other.colormap = cmap
+        self._update_colormap_preview(cmap)
 
     def _create_colormap_icon(self, cmap_name, width=100, height=20):
         import matplotlib.cm as cm
@@ -395,21 +421,23 @@ class ControlPanel(QFrame):
         self._update_colormap_preview(cmap_name)
 
     def change_label_colormap(self):
-        layer = self.main_viewer.layers.selection.active
-        if layer and layer._type_string == 'labels':
-            cmap_name = self.label_colormap_dropdown.currentText()
-            cmap = build_label_colormap(cmap_name, np.unique(layer.data))
-            layer.colormap = cmap
-            layer.metadata['label_colormap_name'] = cmap_name
-            self._update_label_colormap_preview(cmap_name)
+        cmap_name = self.label_colormap_dropdown.currentText()
+        for layer in self.active_layers:
+            if layer._type_string == 'labels':
+                cmap = build_label_colormap(cmap_name, np.unique(layer.data))
+                layer.colormap = cmap
+                layer.metadata['label_colormap_name'] = cmap_name
+                for viewer in self.viewers:
+                    if viewer is self.main_viewer:
+                        continue
+                    for other in viewer.layers:
+                        if other._type_string == 'labels' and other.name == layer.name:
+                            other.colormap = cmap
+                            other.metadata['label_colormap_name'] = cmap_name
+        self._update_label_colormap_preview(cmap_name)
+        if self.active_layers and self.active_layers[
+                0]._type_string == 'labels':
             self.update_label_color()
-            for viewer in self.viewers:
-                if viewer is self.main_viewer:
-                    continue
-                for other in viewer.layers:
-                    if other._type_string == 'labels' and other.name == layer.name:
-                        other.colormap = cmap
-                        other.metadata['label_colormap_name'] = cmap_name
 
     def _create_label_colormap_icon(self, cmap_name, width=100, height=20):
         cmap = build_label_colormap(cmap_name, range(6))

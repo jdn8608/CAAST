@@ -127,9 +127,7 @@ def get_dtt(hdf_file):
     dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
     dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
 
-    # Filter out NaN values within the MAIA product and set to 0
-    dtt[dtt < 0] = 0
-    dtt_obs[dtt_obs < 0] = 0
+    dtt_obs[dtt_obs < -124] = -1
 
     return dtt, dtt_obs
 
@@ -438,6 +436,12 @@ def read(parent_dir, search, views, config=None):
         view_geometry = np.zeros(
             (Y_DIM, X_DIM, len(view_geometry_names), len(views)))
 
+    # Intialize arrays for ancillary configuration values per view
+    activations_needed = np.zeros(len(views))
+    activation_values_arr = None
+    fill_val_2_list = np.zeros(len(views))
+    fill_val_3_list = np.zeros(len(views))
+
     # Loop through all views
     for i, view in enumerate(views):
         # Find the file
@@ -447,6 +451,26 @@ def read(parent_dir, search, views, config=None):
 
         # Open file
         hdf_file = h5.File(filepath, 'r')
+
+        # Get MCM ancillary configuration
+        # TODO: Open an issue about MCM Proxy data key for number of tests
+        number_of_activations_need = hdf_file['Ancillary'][
+            'configuration_file'][
+                'Min_num_of_activated_testsMin_num_of_activated_tests'][()]
+        activation_values = hdf_file['Ancillary']['configuration_file'][
+            'activation_values'][()]
+        fill_val_2 = hdf_file['Ancillary']['configuration_file']['fill_val_2'][
+            ()]
+        fill_val_3 = hdf_file['Ancillary']['configuration_file']['fill_val_3'][
+            ()]
+
+        activations_needed[i] = number_of_activations_need
+        fill_val_2_list[i] = fill_val_2
+        fill_val_3_list[i] = fill_val_3
+        if activation_values_arr is None:
+            activation_values_arr = np.zeros((len(activation_values),
+                                             len(views)))
+        activation_values_arr[:, i] = activation_values
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
         if band_names is None:
@@ -543,4 +567,11 @@ def read(parent_dir, search, views, config=None):
     # Reset shape to an immutable tuple
     shape = tuple(shape)
 
-    return data_layer_dict, filepath.replace(view, '<view>'), shape
+    ancillary_config = {
+        'number_of_activations_needed': activations_needed,
+        'activation_values': activation_values_arr,
+        'fill_val_2': fill_val_2_list,
+        'fill_val_3': fill_val_3_list,
+    }
+
+    return data_layer_dict, filepath.replace(view, '<view>'), shape, ancillary_config

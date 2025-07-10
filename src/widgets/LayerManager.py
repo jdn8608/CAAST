@@ -26,6 +26,8 @@ class LayerManager(QWidget):
 
     # PyQt signal for other widgets when layer name changes
     layer_renamed = pyqtSignal(str, str)
+    # PyQt signal emitted when a group is selected
+    group_selected = pyqtSignal(list)
 
     def __init__(self, napari_viewer, shape, init_groups=None, viewers=None, display_callback=None):
         super().__init__(None)
@@ -95,6 +97,8 @@ class LayerManager(QWidget):
         # Connect tree widget events
         self.tree_widget.itemChanged.connect(self.on_item_changed)
         self.tree_widget.itemClicked.connect(self.on_item_clicked)
+        self.tree_widget.itemSelectionChanged.connect(
+            self.on_selection_changed)
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(
             self.show_context_menu)
@@ -174,11 +178,27 @@ class LayerManager(QWidget):
 
     def on_item_clicked(self, item, column):
         """Handle layer selection."""
-        if item.parent():  # Only handle clicks on layers
+        if item.parent():  # Click on a layer
             layer_name = item.text(0)
             for layer in self.viewer.layers:
                 if layer.name == layer_name:
                     self.viewer.layers.selection = [layer]  # Select the layer
+                    self.group_selected.emit([layer])
+                    break
+        else:  # Click on a group
+            group_name = item.text(0)
+            layers = [l for l, _ in self.groups.get(group_name, {}).get("layers", [])]
+            if layers:
+                self.group_selected.emit(layers)
+
+    def on_selection_changed(self):
+        """Emit group_selected when the tree selection changes."""
+        items = self.tree_widget.selectedItems()
+        if not items:
+            self.group_selected.emit([])
+            return
+        item = items[0]
+        self.on_item_clicked(item, 0)
 
     def toggle_grid_mode(self):
         """Toggle grid mode in the viewer."""

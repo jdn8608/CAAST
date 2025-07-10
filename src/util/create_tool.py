@@ -20,7 +20,7 @@ from qtpy.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from util.LayerType import LayerType
 from util.colormaps import get_all_colormaps
 
-from widgets.Sliders import create_sliders
+from widgets.LayerMinMaxSlider import create_layer_sliders
 from widgets.LayerManager import LayerManager
 from widgets.ControlPanel import ControlPanel
 from widgets.ViewerManagerTab import ViewerManagerTab
@@ -30,6 +30,7 @@ from widgets.SceneLabelGrid import create_scene_dropdowns
 from widgets.GradeSlider import GradeSlider
 from widgets.ThresholdPanel import ThresholdWidget
 from widgets.LogicGatesPanel import LogicGatesWidget
+from widgets.DTTSliderTab import DTTSliderTab
 from widgets.LabelLegendWidget import LabelLegendWidget
 
 
@@ -66,6 +67,10 @@ def add_layers(data_layer_dict,
 
     (band_colormap, label_colormap, mask_colormap, nan_colormap,
      surf_colormap) = get_all_colormaps(config)
+
+    # Track the cloud mask data for creating a DTT editing layer later
+    cloud_mask_data = None
+    DTT_found = False  # flag to signify DTT data found, and thus widget will be needed
 
     if not label_mode:
         editing_data = None
@@ -123,6 +128,7 @@ def add_layers(data_layer_dict,
             data_temp = np.transpose(data_temp, (3, 0, 1, 2))
             current_layer = viewer.add_image(data_temp,
                                              name=layer_name,
+                                             opacity=1.0,
                                              rgb=True)
             # Add the layer to the correct group in the layer manager
             manager.add_layer_to_group(layer_type.value, current_layer)
@@ -130,44 +136,38 @@ def add_layers(data_layer_dict,
         else:
             data = np.transpose(data_temp, (2, 0, 1))
 
-            # If regular image layer, add a layer with a gray-scale colormap
-            if layer_type in (LayerType.GRAY_BAND, LayerType.AEROSOL,
-                              LayerType.VIEW_GEO, LayerType.LAT_LON):
-
-                current_layer = viewer.add_image(data[...],
-                                                 name=layer_name,
-                                                 colormap=band_colormap)
-                # Add the layer to the correct group in the layer manager
+            if layer_type in (
+                    LayerType.GRAY_BAND,
+                    LayerType.AEROSOL,
+                    LayerType.VIEW_GEO,
+                    LayerType.LAT_LON,
+                    LayerType.DTT,
+                    LayerType.OBSERVABLE,
+            ):
+                current_layer = viewer.add_image(
+                    data[...],
+                    name=layer_name,
+                    colormap=band_colormap,
+                    opacity=1.0,
+                )
                 manager.add_layer_to_group(layer_type.value, current_layer)
+
+                if layer_type == LayerType.AEROSOL:
+                    current_layer.colormap = 'magma'
+
+                if layer_type in (
+                        LayerType.GRAY_BAND,
+                        LayerType.AEROSOL,
+                        LayerType.OBSERVABLE,
+                ):
+                    current_layer.contrast_limits = (0, float(np.nanmax(data)))
+                elif layer_type is LayerType.DTT:
+                    DTT_found = True
+                    current_layer.contrast_limits = (-101, 101)
 
                 im_layers[im_iter] = current_layer
                 im_data[..., im_iter] = data
                 im_iter += 1
-
-            # DTT layers will have additional functionality later on
-            elif layer_type is LayerType.DTT:
-                current_layer = viewer.add_image(data[...],
-                                                 name=layer_name,
-                                                 colormap=band_colormap)
-                # Add the layer to the correct group in the layer manager
-                manager.add_layer_to_group(layer_type.value, current_layer)
-
-                im_layers[im_iter] = current_layer
-                im_data[..., im_iter] = data
-                im_iter += 1
-            # OBSERVABLE layers will have additional functionality later on
-            elif layer_type is LayerType.OBSERVABLE:
-                current_layer = viewer.add_image(data[...],
-                                                 name=layer_name,
-                                                 colormap=band_colormap)
-                # Add the layer to the correct group in the layer manager
-                manager.add_layer_to_group(layer_type.value, current_layer)
-
-                im_layers[im_iter] = current_layer
-                im_data[..., im_iter] = data
-                im_iter += 1
-
-            # If not an image-type layer, process as labels
             else:
                 data = data.astype(int)
                 cmap_name = None
@@ -175,6 +175,7 @@ def add_layers(data_layer_dict,
                 if layer_type is LayerType.CLOUD_MASK:
                     current_colormap = mask_colormap
                     cmap_name = config.get('mask_colormap')
+                    cloud_mask_data = data  # store for DTT editing layer
                 elif layer_type is LayerType.MANUAL_LABELS:
                     current_colormap = label_colormap
                     cmap_name = config.get('label_colormap')
@@ -188,7 +189,11 @@ def add_layers(data_layer_dict,
                 if current_colormap is not None:
                     # Add labels layer to viewer
                     current_layer = viewer.add_labels(
-                        data[...], name=layer_name, colormap=current_colormap)
+                        data[...],
+                        name=layer_name,
+                        colormap=current_colormap,
+                        opacity=1.0,
+                    )
                     current_layer.editable = False  # do not allow for editing
                     current_layer.metadata['layer_type'] = layer_type.value
                     if cmap_name is not None:
@@ -222,7 +227,8 @@ def add_layers(data_layer_dict,
     # Add editing_data as an editing layer to the viewer
     if label_mode and load_labels_name:
         editing_layer = viewer.add_labels(editing_data[...],
-                                          name='Editing',
+                                          name='Manual Cloud Mask Edits',
+                                          opacity=1.0,
                                           colormap=label_colormap)
         editing_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
         if config.get('label_colormap') is not None:
@@ -234,6 +240,22 @@ def add_layers(data_layer_dict,
 
         label_layers.append(editing_layer)
         label_list.append(editing_data)
+
+        # Create a layer for DTTWidget output initialized with the cloud mask
+        if DTT_found and cloud_mask_data is not None:
+            dtt_layer = viewer.add_labels(cloud_mask_data[...],
+                                          name='DTT Mask',
+                                          opacity=1.0,
+                                          colormap=label_colormap)
+            dtt_layer.editable = False
+            dtt_layer.metadata['layer_type'] = LayerType.MANUAL_LABELS.value
+            if config.get('label_colormap') is not None:
+                dtt_layer.metadata['label_colormap_name'] = config.get(
+                    'label_colormap')
+            manager.add_layer_to_group(LayerType.MANUAL_LABELS.value,
+                                       dtt_layer)
+            label_layers.append(dtt_layer)
+            label_list.append(cloud_mask_data)
 
     return (editing_data, editing_layer), (im_data, im_layers), \
         (label_list, label_layers)
@@ -446,8 +468,8 @@ def get_review_mode_tab(output_filepath,
 class AdaptiveSplitViewer(QMainWindow):
 
     def __init__(self, data_layer_dict, config, views, angles, shape,
-                 label_mode, load_labels_name, scene_attrs, output_file_info,
-                 csv_filepath, review_data, notes):
+                 ancillary_config, label_mode, load_labels_name, scene_attrs,
+                 output_file_info, csv_filepath, review_data, notes):
         # call super init for a QMainWindow
         super().__init__()
 
@@ -458,9 +480,10 @@ class AdaptiveSplitViewer(QMainWindow):
         self.views = views
         self.angles = angles
         self.output_filepath, self.dataset_name = output_file_info
+        self.ancillary_config = ancillary_config
 
         # Set window name and aspect geometry
-        self.setWindowTitle("Napari Multi-Viewer")
+        self.setWindowTitle("MAIA Satellite Labeling Toolkit (SLT)")
         self.setGeometry(100, 100, 1600, 800)
 
         # Create parent/main layout
@@ -510,6 +533,8 @@ class AdaptiveSplitViewer(QMainWindow):
         self.layer_manager.setMinimumHeight(350)
         self.layer_manager.setSizePolicy(QSizePolicy.Expanding,
                                          QSizePolicy.Preferred)
+        self.layer_manager.group_selected.connect(
+            self.control_panel.set_target_layers)
 
         # Add layer and controls to a scroll-able tab
         layers_and_controls_scroll_area = QScrollArea()
@@ -542,12 +567,8 @@ class AdaptiveSplitViewer(QMainWindow):
         left_tabs.addTab(self.label_legend, "Label Legend")
 
         # Create min/max sliders for image layers
-        self.min_max_sliders, self.min_max_layout = create_sliders(
-            option=int(config["min_max_slider_option"]),
-            viewer=self.
-            main_viewer,  # viewer stil needs to be passed for SelectionMinMaxSlider() dependent on viewer event changes
-            layers=im_layers,
-            data=im_np)
+        self.min_max_sliders, self.min_max_layout = create_layer_sliders(
+            im_layers)
         self.layer_manager.layer_renamed.connect(
             self.update_sliders_name
         )  # Connect the renaming event call to this function
@@ -609,10 +630,10 @@ class AdaptiveSplitViewer(QMainWindow):
             # Create a vertical line
             vertical_line = QFrame()
             vertical_line.setFrameShape(QFrame.VLine)
-            vertical_line.setFrameShadow(QFrame.Sunken)
-            vertical_line.setLineWidth(
-                10)  # Set the width of the line for visibility
-            vertical_line.setStyleSheet("background-color: #414851;")
+            vertical_line.setFrameShadow(QFrame.Plain)
+            vertical_line.setMidLineWidth(3)
+            vertical_line.setLineWidth(3)
+            vertical_line.setStyleSheet("color: #323232 ")
 
             # Add widgets to the layout
             threshold_gate_layout.addWidget(
@@ -623,7 +644,20 @@ class AdaptiveSplitViewer(QMainWindow):
             threshold_gate_widget.setLayout(threshold_gate_layout)
             # Add the tab to the bottom_tabs
             self.bottom_tabs.addTab(threshold_gate_widget,
-                                    "Thresholding & Logic Gates")
+                                    "Thresholding + Logic Gates")
+
+            # Add DTT sliders tab
+            self.bottom_tabs.addTab(
+                DTTSliderTab(
+                    self.main_viewer,
+                    activation_values=(self.ancillary_config
+                                       or {}).get('activation_values'),
+                    num_tests=(self.ancillary_config
+                               or {}).get('number_of_activations_needed'),
+                    fill_val_2=(self.ancillary_config or {}).get('fill_val_2'),
+                    fill_val_3=(self.ancillary_config or {}).get('fill_val_3'),
+                    viewers=self.viewers,
+                ), "Adjust DTT Activation Values")
         # Otherwise, load the Review Mode tab
         else:
             if isinstance(config["grade_slider_min"], int) and \
@@ -1045,6 +1079,7 @@ def create_tool(label_mode,
                 output_file_info,
                 views,
                 angles,
+                ancillary_config,
                 scene_attrs,
                 csv_filepath,
                 review_data,
@@ -1065,7 +1100,10 @@ def create_tool(label_mode,
                             is the dataset name
         views               : a list of the names of the views for the instrument data loaded
         angles              : the viewing angles for each view
-        scene_attrs         : a list or dict of the scene attributes to load. If None, the 
+        ancillary_config    : dictionary of ancillary DTT configuration values
+                            returned from the file reader. Can be None if not
+                            provided.
+        scene_attrs         : a list or dict of the scene attributes to load. If None, the
                             scene labeling tab will not be loaded
         csv_filpeath        : the filepath the csv file to record the review mode entries from
                             the user.
@@ -1094,6 +1132,7 @@ def create_tool(label_mode,
                                      views=views,
                                      angles=angles,
                                      shape=shape,
+                                     ancillary_config=ancillary_config,
                                      label_mode=label_mode,
                                      load_labels_name=load_labels_name,
                                      scene_attrs=scene_attrs,

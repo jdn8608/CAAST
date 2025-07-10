@@ -40,7 +40,6 @@
 	"button_location"	:	"bottom",
 	"slider_location"	:	"right",
 	"legend_location"	:	"top",
-	"min_max_slider_option"	:	2,
     "grade_slider_min" : 1,
     "grade_slider_max" : 6
 }
