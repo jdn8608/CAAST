@@ -3,6 +3,7 @@ import os
 
 import h5py as h5
 import numpy as np
+import dask.array as da
 from tqdm import tqdm
 
 from util.LayerType import LayerType
@@ -75,7 +76,7 @@ def format_band_names(bands_to_get):
     return band_names
 
 
-def get_bands(hdf_file, band_names, num_of_channels):
+def get_bands(hdf_file, band_names, num_of_channels, lazy=False):
     """Get the band data imagery from the MAIA hdf file
 
     Args:
@@ -86,16 +87,23 @@ def get_bands(hdf_file, band_names, num_of_channels):
     Returns:
         a NumPy array of the MAIA band imagery data of shape (HEIGHT,WIDTH,num_of_channels)
     """
-    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels))
+    if lazy:
+        arrays = [da.from_array(hdf_file['Reflectance'][name], chunks="auto")
+                  for name in band_names]
+        band_data = da.stack(arrays, axis=2)
+        band_data = da.where(band_data < 0, 0, band_data)
+        return band_data
+    else:
+        band_data = np.zeros((Y_DIM, X_DIM, num_of_channels))
 
-    for i, name in enumerate(band_names):
-        band_data[:, :, i] = np.array(hdf_file['Reflectance'][name])
-    band_data[band_data < 0] = 0
+        for i, name in enumerate(band_names):
+            band_data[:, :, i] = np.array(hdf_file['Reflectance'][name])
+        band_data[band_data < 0] = 0
 
-    return band_data
+        return band_data
 
 
-def get_cloud_mask(hdf_file):
+def get_cloud_mask(hdf_file, lazy=False):
     """Get the cloud mask from the MAIA hdf file
 
     Args:
@@ -105,16 +113,24 @@ def get_cloud_mask(hdf_file):
         the MAIA cloud mask of shape (HEIGHT, WIDTH) with NaN values replaced with the value 3
     """
     # Open and load the cloud mask
-    cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
-    # Convet NaN mask values (3) to -1 for the purpose of colormap formatting
-    cloud_mask[cloud_mask < -100] = -1
-    cloud_mask[cloud_mask == 3] = -1
-    cloud_mask[cloud_mask == 2] = -1
-    cloud_mask[cloud_mask == 1] = 3  # temp for 4 color colormap
-    return cloud_mask
+    if lazy:
+        cloud_mask = da.from_array(
+            hdf_file['cloud_mask_output']['final_cloud_mask'], chunks="auto")
+        cloud_mask = da.where(cloud_mask < -100, -1, cloud_mask)
+        cloud_mask = da.where(cloud_mask == 3, -1, cloud_mask)
+        cloud_mask = da.where(cloud_mask == 2, -1, cloud_mask)
+        cloud_mask = da.where(cloud_mask == 1, 3, cloud_mask)
+        return cloud_mask
+    else:
+        cloud_mask = np.array(hdf_file['cloud_mask_output']['final_cloud_mask'])
+        cloud_mask[cloud_mask < -100] = -1
+        cloud_mask[cloud_mask == 3] = -1
+        cloud_mask[cloud_mask == 2] = -1
+        cloud_mask[cloud_mask == 1] = 3  # temp for 4 color colormap
+        return cloud_mask
 
 
-def get_dtt(hdf_file):
+def get_dtt(hdf_file, lazy=False):
     """Get the Distance to Threshold (DTT) data from the the MAIA file
 
     Args:
@@ -124,15 +140,22 @@ def get_dtt(hdf_file):
         the MAIA observables and their correspondind DTT used within the MAIAcloud mask algorithm,
         each of shape (HEIGHT, WIDTH, number of OBSERVABLES)
     """
-    dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
-    dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
+    if lazy:
+        dtt = da.from_array(hdf_file["cloud_mask_output"]["DTT"], chunks="auto")
+        dtt_obs = da.from_array(
+            hdf_file["cloud_mask_output"]["observable_data"], chunks="auto")
+        dtt_obs = da.where(dtt_obs < -124, -1, dtt_obs)
+        return dtt, dtt_obs
+    else:
+        dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
+        dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
 
-    dtt_obs[dtt_obs < -124] = -1
+        dtt_obs[dtt_obs < -124] = -1
 
-    return dtt, dtt_obs
+        return dtt, dtt_obs
 
 
-def get_sids(hdf_file):
+def get_sids(hdf_file, lazy=False):
     """Get the Surface Identifier (SID) data from the the MAIA file
 
     Args:
@@ -142,15 +165,17 @@ def get_sids(hdf_file):
         the MAIA SIDs of shape (HEIGHT, WIDTH)
     """
 
-    sid = np.array(hdf_file['Ancillary']['scene_type_identifier'])
+    if lazy:
+        sid = da.from_array(hdf_file['Ancillary']['scene_type_identifier'], chunks="auto")
+        sid = da.where(sid < 0, -1, sid)
+        return sid
+    else:
+        sid = np.array(hdf_file['Ancillary']['scene_type_identifier'])
+        sid[sid < 0] = -1
+        return sid
 
-    # Replace NaN values with -1
-    sid[sid < 0] = -1
 
-    return sid
-
-
-def get_view_geometry(hdf_file, attributes=[]):
+def get_view_geometry(hdf_file, attributes=[], lazy=False):
     """Get the viewing geometry data from the the MAIA file
 
     Args:
@@ -161,18 +186,23 @@ def get_view_geometry(hdf_file, attributes=[]):
         the MAIA viewing geometry NumPy array of shape (HEIGHT, WIDTH, len(attributes))
     """
 
-    vg = np.zeros((Y_DIM, X_DIM, len(attributes)))
+    if lazy:
+        arrays = [da.from_array(hdf_file['sun_view_geometry'][attr], chunks="auto")
+                  for attr in attributes]
+        vg = da.stack(arrays, axis=2)
+        vg = da.where(vg < 0, 0, vg)
+        return vg
+    else:
+        vg = np.zeros((Y_DIM, X_DIM, len(attributes)))
 
-    for a, attr in enumerate(attributes):
-        vg[..., a] = np.array(hdf_file['sun_view_geometry'][attr])
+        for a, attr in enumerate(attributes):
+            vg[..., a] = np.array(hdf_file['sun_view_geometry'][attr])
 
-    # replace NaN values
-    vg[vg < 0] = 0
-
-    return vg
+        vg[vg < 0] = 0
+        return vg
 
 
-def create_nan_mask(band_data):
+def create_nan_mask(band_data, lazy=False):
     """Create a mask indicating where any nan_values are found across the loaded band data.
     Note this is subjective to the data loaded... if there are nans in bands not loaded, this
     will not be indicated by this mask.
@@ -187,11 +217,17 @@ def create_nan_mask(band_data):
     # MAIA uses -999, -998, or NaN as values indicating no data present
     # Each value indicates different out of bound conditions
     # For the purpose of the NaN mask, they are all considered the same
-    nan_mask = (band_data == -999.0) | (band_data
-                                        == -998.0) | (np.isnan(band_data))
-    band_data[nan_mask] = 0
-    nan_mask = np.any(nan_mask, axis=2)
-    return nan_mask, band_data
+    if lazy:
+        nan_mask = (band_data == -999.0) | (band_data == -998.0) | da.isnan(band_data)
+        band_data = da.where(nan_mask, 0, band_data)
+        nan_mask = da.any(nan_mask, axis=2)
+        return nan_mask, band_data
+    else:
+        nan_mask = (band_data == -999.0) | (band_data
+                                            == -998.0) | (np.isnan(band_data))
+        band_data[nan_mask] = 0
+        nan_mask = np.any(nan_mask, axis=2)
+        return nan_mask, band_data
 
 
 # From Guangyu Zhao
@@ -373,7 +409,7 @@ def pad(arr, shape_to_pad):
     return padded_arr
 
 
-def read(parent_dir, search, views, config=None):
+def read(parent_dir, search, views, config=None, lazy=False):
     """Finds MAIA files and reads in required data for the tool
 
     Args:
@@ -412,29 +448,47 @@ def read(parent_dir, search, views, config=None):
         num_of_channels = len(bands_to_get)
         band_names = format_band_names(bands_to_get)
 
-    # Intialize NumPy arrays
-    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(views)))
-    if add_true_color:
-        rgb = np.zeros((Y_DIM, X_DIM, 3, len(views)))
-    if add_cloud_mask:
-        cloud_masks = np.zeros((Y_DIM, X_DIM, len(views)))
-    if add_nan_mask:
-        nan_masks = np.zeros((Y_DIM, X_DIM, len(views)))
-    if add_dtt:
-        obs_names = ["WI", "NDVI", "NDSI", "visRef", "nirRef", "SVI", "Cirrus"]
-        num_of_observables = len(obs_names)
-
-        dtt = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
-        dtt_obs = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
+    # Intialize arrays
+    if lazy:
+        band_data_list = []
+        if add_true_color:
+            rgb_list = []
+        if add_cloud_mask:
+            cloud_masks_list = []
+        if add_nan_mask:
+            nan_masks_list = []
+        if add_dtt:
+            obs_names = ["WI", "NDVI", "NDSI", "visRef", "nirRef", "SVI", "Cirrus"]
+            dtt_list = []
+            dtt_obs_list = []
+    else:
+        band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(views)))
+        if add_true_color:
+            rgb = np.zeros((Y_DIM, X_DIM, 3, len(views)))
+        if add_cloud_mask:
+            cloud_masks = np.zeros((Y_DIM, X_DIM, len(views)))
+        if add_nan_mask:
+            nan_masks = np.zeros((Y_DIM, X_DIM, len(views)))
+        if add_dtt:
+            obs_names = ["WI", "NDVI", "NDSI", "visRef", "nirRef", "SVI", "Cirrus"]
+            num_of_observables = len(obs_names)
+            dtt = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
+            dtt_obs = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
     if add_sid:
-        sid = np.zeros((Y_DIM, X_DIM, len(views)))
+        if lazy:
+            sid_list = []
+        else:
+            sid = np.zeros((Y_DIM, X_DIM, len(views)))
     if add_geom:
         view_geometry_names = [
             'solar_azimuth_angle', 'solar_zenith_angle',
             'viewing_azimuth_angle', 'viewing_zenith_angle'
         ]
-        view_geometry = np.zeros(
-            (Y_DIM, X_DIM, len(view_geometry_names), len(views)))
+        if lazy:
+            view_geometry_list = []
+        else:
+            view_geometry = np.zeros(
+                (Y_DIM, X_DIM, len(view_geometry_names), len(views)))
 
     # Intialize arrays for ancillary configuration values per view
     activations_needed = np.zeros(len(views))
@@ -477,37 +531,84 @@ def read(parent_dir, search, views, config=None):
             band_names = np.array(list(hdf_file['Reflectance'].keys()))
 
         # Get the band data
-        band_data[..., i] = get_bands(hdf_file, band_names, num_of_channels)
+        band_temp = get_bands(hdf_file, band_names, num_of_channels, lazy=lazy)
+        if lazy:
+            band_data_list.append(band_temp)
+        else:
+            band_data[..., i] = band_temp
 
         # Create a true color composite from bands 4 5 6
         if add_true_color:
-            rgb[..., i] = create_true_color(hdf_file)
+            if lazy:
+                rgb_list.append(create_true_color(hdf_file))
+            else:
+                rgb[..., i] = create_true_color(hdf_file)
 
         # Create a mask indicating where NaNs are found
         if add_nan_mask:
-            nan_masks[..., i], band_data[...,
-                                         i] = create_nan_mask(band_data[...,
-                                                                        i])
+            if lazy:
+                nan_mask, band_temp = create_nan_mask(band_temp, lazy=True)
+                nan_masks_list.append(nan_mask)
+                band_data_list[-1] = band_temp
+            else:
+                nan_masks[..., i], band_data[..., i] = create_nan_mask(
+                    band_data[..., i])
         # Get DTT and Observables from the MAIA file
         if add_dtt:
-            dtt[..., i], dtt_obs[..., i] = get_dtt(hdf_file)
+            dtt_temp, dtt_obs_temp = get_dtt(hdf_file, lazy=lazy)
+            if lazy:
+                dtt_list.append(dtt_temp)
+                dtt_obs_list.append(dtt_obs_temp)
+            else:
+                dtt[..., i] = dtt_temp
+                dtt_obs[..., i] = dtt_obs_temp
 
         # Get the Surface IDS from the MAIA file
         if add_sid:
-            sid[..., i] = get_sids(hdf_file)
+            sid_temp = get_sids(hdf_file, lazy=lazy)
+            if lazy:
+                sid_list.append(sid_temp)
+            else:
+                sid[..., i] = sid_temp
 
         # Get the Sun-View Geometery from the MAIA file
         if add_geom:
-            view_geometry[..., i] = get_view_geometry(hdf_file,
-                                                      view_geometry_names)
+            vg_temp = get_view_geometry(hdf_file, view_geometry_names, lazy=lazy)
+            if lazy:
+                view_geometry_list.append(vg_temp)
+            else:
+                view_geometry[..., i] = vg_temp
 
         # Get the cloud mask
         if add_cloud_mask:
-            cloud_masks[..., i] = get_cloud_mask(hdf_file)
+            cm_temp = get_cloud_mask(hdf_file, lazy=lazy)
+            if lazy:
+                cloud_masks_list.append(cm_temp)
+            else:
+                cloud_masks[..., i] = cm_temp
 
         # Close the hdf file to force garbage collection and limit memory needs
         # Also prevents h5py File load errors
-        hdf_file.close()
+        if not lazy:
+            hdf_file.close()
+
+    if lazy:
+        band_data = da.stack(band_data_list, axis=3)
+        shape = list(band_data.shape)
+        if add_true_color:
+            rgb = da.stack(rgb_list, axis=3)
+        if add_cloud_mask:
+            cloud_masks = da.stack(cloud_masks_list, axis=2)
+        if add_nan_mask:
+            nan_masks = da.stack(nan_masks_list, axis=2)
+        if add_dtt:
+            dtt = da.stack(dtt_list, axis=3)
+            dtt_obs = da.stack(dtt_obs_list, axis=3)
+        if add_sid:
+            sid = da.stack(sid_list, axis=2)
+        if add_geom:
+            view_geometry = da.stack(view_geometry_list, axis=3)
+
 
     # Create the returnable dictionary
     data_layer_dict = {}
@@ -515,8 +616,6 @@ def read(parent_dir, search, views, config=None):
     for i, name in enumerate(band_names):
         data_layer_dict[str(name)] = (LayerType.GRAY_BAND, band_data[...,
                                                                      i, :])
-    # Get the band_data shape and cast as a list if a dim needs to be edited
-    shape = list(band_data.shape)
 
     # Add True Color Composite
     if add_true_color:

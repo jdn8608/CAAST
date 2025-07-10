@@ -5,6 +5,7 @@ import math
 
 import h5py as h5
 import numpy as np
+import dask.array as da
 from tqdm import tqdm
 
 from util.LayerType import LayerType
@@ -45,7 +46,7 @@ def find_file(parent_dir, search, view=''):
     return search_result_files[0]
 
 
-def read(parent_dir, search, views, config=None):
+def read(parent_dir, search, views, config=None, lazy=False):
     """Finds MAIA files and reads in required data for the tool
 
     Args:
@@ -77,74 +78,83 @@ def read(parent_dir, search, views, config=None):
     add_geom = config["add_sun_view_geometry"]
 
     # Get the filepath
-    #filepath = find_file(parent_dir, search)
     filepath = parent_dir
 
     start_time = time.time()
-    # Open and load the file
-    with h5.File(filepath, 'r') as hdf_file:
+    hdf_file = h5.File(filepath, 'r')
 
-        bands_to_use = np.array([1, 2, 3, 4, 20, 26, 31], np.float32)
-        rad_index = []
-        all_band_nums = np.array(hdf_file["BAND_NUMS"], dtype=np.float64)
-        for b in bands_to_use:
-            rad_index.append(np.where(all_band_nums == b)[0][0])
+    bands_to_use = np.array([1, 2, 3, 4, 20, 26, 31], np.float32)
+    rad_index = []
+    all_band_nums = np.array(hdf_file["BAND_NUMS"], dtype=np.float64)
+    for b in bands_to_use:
+        rad_index.append(np.where(all_band_nums == b)[0][0])
 
+    if lazy:
+        all_rad = da.from_array(hdf_file["MOD02_RAD"], chunks="auto")
+        all_rad = da.swapaxes(da.swapaxes(all_rad, 0, 1), 1, 2)[..., np.newaxis]
+        all_rad = all_rad[..., rad_index, :]
+        ml_probs = da.from_array(hdf_file["ML_PROBS"], chunks="auto")
+        ml_masks = da.from_array(hdf_file["ML_MASKS"], chunks="auto")
+    else:
         all_rad = np.swapaxes(
             np.swapaxes(np.array(hdf_file["MOD02_RAD"]), 0, 1), 1,
             2)[..., np.newaxis]
         all_rad = all_rad[..., rad_index, :]
-
         ml_probs = np.array(hdf_file["ML_PROBS"])
         ml_masks = np.array(hdf_file["ML_MASKS"])
 
-        # Create the returnable dictionary
-        data_layer_dict = {}
+    # Create the returnable dictionary
+    data_layer_dict = {}
 
-        data_layer_dict["MOD35"] = (LayerType.CLOUD_MASK,
-                                    np.array(hdf_file["MOD35"])[...,
-                                                                np.newaxis])
+    if lazy:
+        data_layer_dict["MOD35"] = (
+            LayerType.CLOUD_MASK,
+            da.from_array(hdf_file["MOD35"], chunks="auto")[..., np.newaxis])
+        rccm = da.from_array(hdf_file["RCCM"], chunks="auto")[..., np.newaxis]
+    else:
+        data_layer_dict["MOD35"] = (
+            LayerType.CLOUD_MASK,
+            np.array(hdf_file["MOD35"])[..., np.newaxis])
         rccm = np.array(hdf_file["RCCM"])[..., np.newaxis]
-        rccm[rccm == 1] = 3
+    rccm[rccm == 1] = 3
 
-        def normalize(band):
-            return (band - np.min(band)) / (np.max(band) - np.min(band))
+    def normalize(band):
+        return (band - np.min(band)) / (np.max(band) - np.min(band))
 
-        data_layer_dict["RCCM"] = (LayerType.CLOUD_MASK, rccm)
-        for i, b in enumerate(bands_to_use):
-            data_layer_dict[f"Band {b}"] = (LayerType.GRAY_BAND, all_rad[...,
-                                                                         i, :])
-        print(np.array(hdf_file["TRUE_COLOR"]).shape)
-        data_layer_dict["RGB"] = (LayerType.RGB,
-                                  np.array(hdf_file["TRUE_COLOR"])[...,
-                                                                   np.newaxis])
+    data_layer_dict["RCCM"] = (LayerType.CLOUD_MASK, rccm)
+    for i, b in enumerate(bands_to_use):
+        data_layer_dict[f"Band {b}"] = (LayerType.GRAY_BAND, all_rad[..., i, :])
 
-        for i, name in enumerate(
-            ["MODIS E100", "MODIS E250", "MISR E100", "MISR E250"]):
-            ml_mask_temp = ml_masks[i][..., np.newaxis]
-            ml_mask_temp[ml_mask_temp == 1] = 3
-            data_layer_dict[f"{name} MASK"] = (LayerType.CLOUD_MASK,
-                                               ml_mask_temp)
+    if lazy:
+        rgb = da.from_array(hdf_file["TRUE_COLOR"], chunks="auto")[..., np.newaxis]
+    else:
+        rgb = np.array(hdf_file["TRUE_COLOR"])[..., np.newaxis]
+    data_layer_dict["RGB"] = (LayerType.RGB, rgb)
 
-            #data_layer_dict[f"{name} Cloud Probability"] = (
-            #    LayerType.OBSERVABLE, ml_probs[i, ..., 0][..., np.newaxis])
+    for i, name in enumerate(["MODIS E100", "MODIS E250", "MISR E100", "MISR E250"]):
+        ml_mask_temp = ml_masks[i][..., np.newaxis]
+        ml_mask_temp[ml_mask_temp == 1] = 3
+        data_layer_dict[f"{name} MASK"] = (LayerType.CLOUD_MASK, ml_mask_temp)
 
-        x, y = tuple(hdf_file["COORDS"])
-        x = int(x) - 1
-        y = int(y) - 1
-        dy, dx = 63, 63
-        width = 5
-        data_layer_dict[f"Bounding Box"] = (
-            LayerType.SHAPE,
-            np.array([
-                [x - math.ceil(width / 2), y - math.ceil(width / 2)],
-                [x - math.ceil(width / 2), y + dy + width],
-                [x + dx + width, y + dy + width],
-                [x + dx + width, y - math.ceil(width / 2)],
-            ]))
+    x, y = tuple(hdf_file["COORDS"])
+    x = int(x) - 1
+    y = int(y) - 1
+    dy, dx = 63, 63
+    width = 5
+    data_layer_dict[f"Bounding Box"] = (
+        LayerType.SHAPE,
+        np.array([
+            [x - math.ceil(width / 2), y - math.ceil(width / 2)],
+            [x - math.ceil(width / 2), y + dy + width],
+            [x + dx + width, y + dy + width],
+            [x + dx + width, y - math.ceil(width / 2)],
+        ]))
 
-        shape = all_rad.shape
-        shape = (shape[0], shape[1], shape[2], shape[3])
+    shape = all_rad.shape
+    shape = (shape[0], shape[1], shape[2], shape[3])
+
+    if not lazy:
+        hdf_file.close()
 
     print("DATA RETURNED")
     return data_layer_dict, filepath, shape

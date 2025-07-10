@@ -29,7 +29,8 @@ def create_instrument_dict():
 def get_instrument_layer_data(parent_dir,
                               instrument_name,
                               search_string,
-                              config=None):
+                              config=None,
+                              lazy=False):
     """Calls the corresponding module to ingest instrument imager data
 
      Args:
@@ -55,7 +56,8 @@ def get_instrument_layer_data(parent_dir,
         return file_reader(parent_dir,
                            search=search_string,
                            views=config["view"],
-                           config=config)
+                           config=config,
+                           lazy=lazy)
 
     else:
         # Raise an exception if no file reader is found for the given name
@@ -115,6 +117,7 @@ def get_data(
     reader_config_filepath,
     label_mode=False,
     load_prior_manual_labels=False,
+    lazy=False,
 ):
     """Calls get sub-functions to ingest various data(sets) for the toolkit
 
@@ -148,7 +151,7 @@ def get_data(
 
     # Get instrument NumPy Layer data (and input file location)
     reader_out = get_instrument_layer_data(
-        parent_dir, instrument_name, search_string, config)
+        parent_dir, instrument_name, search_string, config, lazy=lazy)
     if len(reader_out) == 4:
         data_layer_dict, input_filepath, shape, ancillary_config = reader_out
     else:

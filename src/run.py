@@ -89,6 +89,11 @@ if __name__ == "__main__":
         "Pass in argument to select what labels to load into the Editing layer. Values can be 'mask' or 'manual'. If not provided, Editing layer will be loaded with 1s or 0s. IF mask is selected: the file reader needs to return the mask and load_labels=True. IF manual selected, the -l parameter needs to be passed and the file needs to be detected. If either case fails, default settings of None are selected.",
         default=None)
     parser.add_argument('-V', '--verbose', action='store_true')
+    parser.add_argument(
+        '-z',
+        '--lazy',
+        help='Load data lazily using dask arrays to reduce memory usage.',
+        action='store_true')
 
     # Compile args passed in from the command line by the user
     args = parser.parse_args()
@@ -103,7 +108,8 @@ if __name__ == "__main__":
             output_settings_filepath=args.output_settings_file,
             reader_config_filepath=args.reader_config,
             label_mode=args.label_mode,
-            load_prior_manual_labels=args.check_manual_labels)
+            load_prior_manual_labels=args.check_manual_labels,
+            lazy=args.lazy)
 
     # Call create_tool to create and open the application
     create_tool(args.label_mode,

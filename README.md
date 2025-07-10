@@ -37,6 +37,8 @@
 - **Pixel-Based Labeling**:
   - Annotate individual pixels (e.g., for cloud masking) to create high-quality datasets for AI training.
   - Save labeled data in formats compatible with further processing or training pipelines.
+- **Efficient Lazy Loading**:
+  - Optional lazy loading with dask keeps memory usage low by fetching only visible slices.
 
 - **Interactive Tools**:
   - Integration with Napari for interactive visualization.
@@ -183,6 +185,10 @@ python src/run.py [-h] [-m] [-o OUTPUT_SETTINGS_FILE] [-r READER_CONFIG] [-v VIS
     <tr>
       <td><code>--verbose</code></td>
       <td>Flag to turn on software activity output to the terminal.</td>
+    </tr>
+    <tr>
+      <td><code>--lazy</code></td>
+      <td>Enable lazy loading using dask arrays to reduce memory use.</td>
     </tr>
   </tbody>
 </table>
