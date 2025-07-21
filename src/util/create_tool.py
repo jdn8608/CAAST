@@ -129,6 +129,7 @@ def add_layers(data_layer_dict,
             current_layer = viewer.add_image(data_temp,
                                              name=layer_name,
                                              opacity=1.0,
+                                             visible=False,
                                              rgb=True)
             # Add the layer to the correct group in the layer manager
             manager.add_layer_to_group(layer_type.value, current_layer)
