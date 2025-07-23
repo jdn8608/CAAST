@@ -348,11 +348,9 @@ def get_aerosol_data(parent_dir, location, date, shape):
 
 
 def pad(arr, shape_to_pad):
-    """
-    Add padding on the first two dims (height, width) to match the provided shape_to_pad
-    """
-    # Target shape: (480, 360, 8, 9)
-    H, W, O, V = shape_to_pad
+    """Add padding on the first two dims (height, width) to match ``shape_to_pad``."""
+
+    H, W, V = shape_to_pad
     # Calculate padding needed for each dimension
     pad_height = H - arr.shape[0]  # 16
     pad_width = W - arr.shape[1]  # 8
@@ -411,6 +409,9 @@ def read(parent_dir, search, views, config=None):
     else:
         num_of_channels = len(bands_to_get)
         band_names = format_band_names(bands_to_get)
+
+    # General image shape to return (H, W, V)
+    image_shape = (Y_DIM, X_DIM, len(views))
 
     # Intialize NumPy arrays
     band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(views)))
@@ -509,14 +510,30 @@ def read(parent_dir, search, views, config=None):
         # Also prevents h5py File load errors
         hdf_file.close()
 
+    # Reformat arrays to (V, H, W, C) or (V, H, W)
+    band_data = np.transpose(band_data, (3, 0, 1, 2))
+    if add_true_color:
+        rgb = np.transpose(rgb, (3, 0, 1, 2))
+    if add_cloud_mask:
+        cloud_masks = np.transpose(cloud_masks, (2, 0, 1))
+    if add_nan_mask:
+        nan_masks = np.transpose(nan_masks, (2, 0, 1))
+    if add_dtt:
+        dtt = np.transpose(dtt, (3, 0, 1, 2))
+        dtt_obs = np.transpose(dtt_obs, (3, 0, 1, 2))
+    if add_sid:
+        sid = np.transpose(sid, (2, 0, 1))
+    if add_geom:
+        view_geometry = np.transpose(view_geometry, (3, 0, 1, 2))
+
     # Create the returnable dictionary
     data_layer_dict = {}
     # Add the band data to the dict, one band at a time
     for i, name in enumerate(band_names):
-        data_layer_dict[str(name)] = (LayerType.GRAY_BAND, band_data[...,
-                                                                     i, :])
-    # Get the band_data shape and cast as a list if a dim needs to be edited
-    shape = list(band_data.shape)
+        data_layer_dict[str(name)] = (
+            LayerType.GRAY_BAND,
+            band_data[..., i],
+        )
 
     # Add True Color Composite
     if add_true_color:
@@ -524,12 +541,15 @@ def read(parent_dir, search, views, config=None):
 
     # Add DTT and OBSERVABLES to the dict
     if add_dtt:
-        shape[2] += 2 * len(obs_names)
         for i, name in enumerate(obs_names):
-            data_layer_dict[str(name)] = (LayerType.OBSERVABLE, dtt_obs[...,
-                                                                        i, :])
-            data_layer_dict['DTT ' + str(name)] = (LayerType.DTT, dtt[...,
-                                                                      i, :])
+            data_layer_dict[str(name)] = (
+                LayerType.OBSERVABLE,
+                dtt_obs[..., i],
+            )
+            data_layer_dict["DTT " + str(name)] = (
+                LayerType.DTT,
+                dtt[..., i],
+            )
 
     get_aerosol_product = True
     if get_aerosol_product:
@@ -538,20 +558,23 @@ def read(parent_dir, search, views, config=None):
         del parts
         date = date.split('T')[0]
         aerosol_data, aerosol_var_names = get_aerosol_data(
-            parent_dir, location, date, shape)
+            parent_dir, location, date, image_shape)
 
-        shape[2] += len(aerosol_var_names)
+        aerosol_data = np.transpose(aerosol_data, (3, 0, 1, 2))
 
         for w, name in enumerate(aerosol_var_names):
-            data_layer_dict[str(name)] = (LayerType.AEROSOL,
-                                          aerosol_data[..., w, :])
+            data_layer_dict[str(name)] = (
+                LayerType.AEROSOL,
+                aerosol_data[..., w],
+            )
 
     # Add Sun-View Geometry to the dict
     if add_geom:
-        shape[2] += len(view_geometry_names)
         for a, attr in enumerate(view_geometry_names):
-            data_layer_dict[attr] = (LayerType.VIEW_GEO, view_geometry[...,
-                                                                       a, :])
+            data_layer_dict[attr] = (
+                LayerType.VIEW_GEO,
+                view_geometry[..., a],
+            )
 
     # Add the nan mask to the dict
     if add_nan_mask:
@@ -564,9 +587,6 @@ def read(parent_dir, search, views, config=None):
     if add_cloud_mask:
         data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
 
-    # Reset shape to an immutable tuple
-    shape = tuple(shape)
-
     ancillary_config = {
         'number_of_activations_needed': activations_needed,
         'activation_values': activation_values_arr,
@@ -574,4 +594,4 @@ def read(parent_dir, search, views, config=None):
         'fill_val_3': fill_val_3_list,
     }
 
-    return data_layer_dict, filepath.replace(view, '<view>'), shape, ancillary_config
+    return data_layer_dict, filepath.replace(view, '<view>'), image_shape, ancillary_config
