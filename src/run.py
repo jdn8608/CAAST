@@ -26,6 +26,19 @@ __maintainer__ = "Joseph Nied"
 __email__ = "jdnied2@illinois.edu"
 __status__ = "Production"
 
+
+def get_from_GUI():
+    return
+
+
+def get_from_command_line():
+    return
+
+
+def get_from_settings_files():
+    return
+
+
 if __name__ == "__main__":
 
     # Set-up arge parser
@@ -109,6 +122,17 @@ if __name__ == "__main__":
 
     # Compile args passed in from the command line by the user
     args = parser.parse_args()
+    settings_mode = args.parameter_mode.upper()
+    if settings_mode == 'G' or 'GUI' in settings_mode:
+        pass
+    elif settings_mode == 'S' or 'SETTINGS' in settings_mode:
+        pass
+    elif settings_mode == 'C' or 'COMMAND' in settings_mode:
+        pass
+    else:
+        raise Exception("Invalid 'settings_mode' attribute value"
+                        "Please refer to --help for valid options")
+
 
     # Call get_data() to get the data to visualize. This calls the correct instrument filereader module to ingest the data
     # The filereader will create a formatted dict for the ingested data -> data_layer_dict
