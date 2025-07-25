@@ -399,10 +399,13 @@ def read(parent_dir, files, config=None):
      - a list               : the corresponding viewing angles
     """
     # Normalize file paths and separate by type
-    file_paths = [os.path.join(parent_dir, f) if not os.path.isabs(f) else f for f in files]
+    file_paths = [
+        os.path.join(parent_dir, f) if not os.path.isabs(f) else f
+        for f in files
+    ]
     file_paths = sorted(file_paths)
-    aerosol_files = [f for f in file_paths if f.lower().endswith('.nc')]
-    mask_files = [f for f in file_paths if f.lower().endswith('.h5')]
+    aerosol_files = [f for f in file_paths if "_AER_" in f.upper()]
+    mask_files = [f for f in file_paths if "MCM_" in f.upper()]
 
     # Determine views and angles from cloud mask filenames
     views = []
