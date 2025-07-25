@@ -160,18 +160,16 @@ def get_data(
         parent_dir, instrument_name, search_string, config)
 
     # Parse outputs from the file reader
-    if len(reader_out) == 6:
-        data_layer_dict, input_filepath, shape, ancillary_config, views, angles = reader_out
-    elif len(reader_out) == 5:
-        data_layer_dict, input_filepath, shape, ancillary_config, (views, angles) = reader_out
+    if len(reader_out) == 5:
+        data_layer_dict, input_filepath, shape, ancillary_config, (
+            views, angles) = reader_out
     elif len(reader_out) == 4:
         data_layer_dict, input_filepath, shape, (views, angles) = reader_out
         ancillary_config = None
     else:
-        data_layer_dict, input_filepath, shape = reader_out
-        ancillary_config = None
-        views = config.get("view") if config else None
-        angles = config.get("angle") if config else None
+        raise Exception(
+            f'''File reader:"{instrument_name}" provided unresolvable 
+            output paramters of length {len(reader_out)}''')
 
     # Get the filepath and dataset name to save out pixel labels
     output_filepath_convention, dataset_name = get_general_output_settings(

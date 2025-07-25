@@ -593,4 +593,4 @@ def read(parent_dir, files, config=None):
 
     output_template = mask_files[0].replace(views[0], '<view>') if mask_files else ''
 
-    return data_layer_dict, output_template, image_shape, ancillary_config, views, angles
+    return data_layer_dict, output_template, image_shape, ancillary_config, (views, angles)
