@@ -89,7 +89,7 @@ def get_bands(hdf_file, band_names, num_of_channels):
     band_data = np.zeros((Y_DIM, X_DIM, num_of_channels))
 
     for i, name in enumerate(band_names):
-        band_data[:, :, i] = np.array(hdf_file['Reflectance'][name])
+        band_data[..., i] = np.array(hdf_file['Reflectance'][name])
     band_data[band_data < 0] = 0
 
     return band_data
@@ -341,16 +341,15 @@ def get_aerosol_data(parent_dir, location, date, shape):
         names = [f"Total_AOD: {wl} nm" for wl in ds.getncattr('wavelengths')]
 
     # Expand to multiview dim and pad height width
-    expanded = np.repeat(formatted[..., np.newaxis], shape[-1], axis=-1)
-    padded = pad(expanded, shape)
+    expanded = np.repeat(formatted[..., np.newaxis], shape[0], axis=-1)
 
-    return padded, names
+    return pad(expanded, shape).transpose(3, 0, 1, 2), names
 
 
 def pad(arr, shape_to_pad):
     """Add padding on the first two dims (height, width) to match ``shape_to_pad``."""
 
-    H, W, V = shape_to_pad
+    V, H, W = shape_to_pad
     # Calculate padding needed for each dimension
     pad_height = H - arr.shape[0]  # 16
     pad_width = W - arr.shape[1]  # 8
@@ -411,31 +410,31 @@ def read(parent_dir, search, views, config=None):
         band_names = format_band_names(bands_to_get)
 
     # General image shape to return (H, W, V)
-    image_shape = (Y_DIM, X_DIM, len(views))
+    image_shape = (len(views), Y_DIM, X_DIM)
 
     # Intialize NumPy arrays
-    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(views)))
+    band_data = np.zeros((len(views), Y_DIM, X_DIM, num_of_channels))
     if add_true_color:
-        rgb = np.zeros((Y_DIM, X_DIM, 3, len(views)))
+        rgb = np.zeros((len(views), Y_DIM, X_DIM, 3))
     if add_cloud_mask:
-        cloud_masks = np.zeros((Y_DIM, X_DIM, len(views)))
+        cloud_masks = np.zeros((len(views), Y_DIM, X_DIM))
     if add_nan_mask:
-        nan_masks = np.zeros((Y_DIM, X_DIM, len(views)))
+        nan_masks = np.zeros((len(views), Y_DIM, X_DIM))
     if add_dtt:
         obs_names = ["WI", "NDVI", "NDSI", "visRef", "nirRef", "SVI", "Cirrus"]
         num_of_observables = len(obs_names)
 
-        dtt = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
-        dtt_obs = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
+        dtt = np.zeros((len(views), Y_DIM, X_DIM, num_of_observables))
+        dtt_obs = np.zeros((len(views), Y_DIM, X_DIM, num_of_observables))
     if add_sid:
-        sid = np.zeros((Y_DIM, X_DIM, len(views)))
+        sid = np.zeros((len(views), Y_DIM, X_DIM))
     if add_geom:
         view_geometry_names = [
             'solar_azimuth_angle', 'solar_zenith_angle',
             'viewing_azimuth_angle', 'viewing_zenith_angle'
         ]
         view_geometry = np.zeros(
-            (Y_DIM, X_DIM, len(view_geometry_names), len(views)))
+            (len(views), Y_DIM, X_DIM, len(view_geometry_names)))
 
     # Intialize arrays for ancillary configuration values per view
     activations_needed = np.zeros(len(views))
@@ -469,8 +468,8 @@ def read(parent_dir, search, views, config=None):
         fill_val_2_list[i] = fill_val_2
         fill_val_3_list[i] = fill_val_3
         if activation_values_arr is None:
-            activation_values_arr = np.zeros((len(activation_values),
-                                             len(views)))
+            activation_values_arr = np.zeros(
+                (len(activation_values), len(views)))
         activation_values_arr[:, i] = activation_values
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
@@ -478,53 +477,34 @@ def read(parent_dir, search, views, config=None):
             band_names = np.array(list(hdf_file['Reflectance'].keys()))
 
         # Get the band data
-        band_data[..., i] = get_bands(hdf_file, band_names, num_of_channels)
+        band_data[i] = get_bands(hdf_file, band_names, num_of_channels)
 
         # Create a true color composite from bands 4 5 6
         if add_true_color:
-            rgb[..., i] = create_true_color(hdf_file)
+            rgb[i] = create_true_color(hdf_file)
 
         # Create a mask indicating where NaNs are found
         if add_nan_mask:
-            nan_masks[..., i], band_data[...,
-                                         i] = create_nan_mask(band_data[...,
-                                                                        i])
+            nan_masks[i], band_data[i] = create_nan_mask(band_data[i])
         # Get DTT and Observables from the MAIA file
         if add_dtt:
-            dtt[..., i], dtt_obs[..., i] = get_dtt(hdf_file)
+            dtt[i], dtt_obs[i] = get_dtt(hdf_file)
 
         # Get the Surface IDS from the MAIA file
         if add_sid:
-            sid[..., i] = get_sids(hdf_file)
+            sid[i] = get_sids(hdf_file)
 
         # Get the Sun-View Geometery from the MAIA file
         if add_geom:
-            view_geometry[..., i] = get_view_geometry(hdf_file,
-                                                      view_geometry_names)
+            view_geometry[i] = get_view_geometry(hdf_file, view_geometry_names)
 
         # Get the cloud mask
         if add_cloud_mask:
-            cloud_masks[..., i] = get_cloud_mask(hdf_file)
+            cloud_masks[i] = get_cloud_mask(hdf_file)
 
         # Close the hdf file to force garbage collection and limit memory needs
         # Also prevents h5py File load errors
         hdf_file.close()
-
-    # Reformat arrays to (V, H, W, C) or (V, H, W)
-    band_data = np.transpose(band_data, (3, 0, 1, 2))
-    if add_true_color:
-        rgb = np.transpose(rgb, (3, 0, 1, 2))
-    if add_cloud_mask:
-        cloud_masks = np.transpose(cloud_masks, (2, 0, 1))
-    if add_nan_mask:
-        nan_masks = np.transpose(nan_masks, (2, 0, 1))
-    if add_dtt:
-        dtt = np.transpose(dtt, (3, 0, 1, 2))
-        dtt_obs = np.transpose(dtt_obs, (3, 0, 1, 2))
-    if add_sid:
-        sid = np.transpose(sid, (2, 0, 1))
-    if add_geom:
-        view_geometry = np.transpose(view_geometry, (3, 0, 1, 2))
 
     # Create the returnable dictionary
     data_layer_dict = {}
@@ -560,8 +540,6 @@ def read(parent_dir, search, views, config=None):
         aerosol_data, aerosol_var_names = get_aerosol_data(
             parent_dir, location, date, image_shape)
 
-        aerosol_data = np.transpose(aerosol_data, (3, 0, 1, 2))
-
         for w, name in enumerate(aerosol_var_names):
             data_layer_dict[str(name)] = (
                 LayerType.AEROSOL,
@@ -594,4 +572,5 @@ def read(parent_dir, search, views, config=None):
         'fill_val_3': fill_val_3_list,
     }
 
-    return data_layer_dict, filepath.replace(view, '<view>'), image_shape, ancillary_config
+    return data_layer_dict, filepath.replace(
+        view, '<view>'), image_shape, ancillary_config

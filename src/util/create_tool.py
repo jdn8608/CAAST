@@ -62,10 +62,9 @@ def add_layers(
     Returns:
         3 tuples:
             tuple[0] -> the editing data and layer
-            tuple[1] -> a NumPy array and a list of layers for image data 
+            tuple[1] -> a NumPy array and a list of layers for image data
             tuple[2] -> a list of label NumPy arrays and a list of label layers
     """
-    height, width, num_views = shape
 
     # Determine how many image layers we will add
     image_types = (
@@ -76,11 +75,8 @@ def add_layers(
         LayerType.DTT,
         LayerType.OBSERVABLE,
     )
-    num_image_layers = sum(
-        1 for lt, _ in data_layer_dict.values() if lt in image_types
-    )
-
-    image_shape = (num_views, height, width, num_image_layers)
+    num_image_layers = sum(1 for lt, _ in data_layer_dict.values()
+                           if lt in image_types)
 
     (band_colormap, label_colormap, mask_colormap, nan_colormap,
      surf_colormap) = get_all_colormaps(config)
@@ -100,9 +96,7 @@ def add_layers(
     # Check if the fill value is an int, if now, set-up for checking if layer to be
     # filled by a instrument layer
     try:
-        editing_data = np.zeros(
-            (num_views, height, width), dtype=int
-        ) + int(load_labels_name)
+        editing_data = np.zeros(shape, dtype=int) + int(load_labels_name)
         edit_data_override = True
     except:
         editing_data = None
@@ -117,7 +111,7 @@ def add_layers(
     # Empty list for all image type layers
     im_layers = [None] * num_image_layers
     # Image data NumPy array
-    im_data = np.zeros(image_shape)
+    im_data = np.zeros(shape + (num_image_layers, ))
     im_iter = 0
 
     # Create an empty lists for the points to the label layer objects
@@ -127,7 +121,7 @@ def add_layers(
     label_list = []
 
     # Loop through all layers by their name and add them to the viewer with the correct
-    # widget formatting/connections for other widgets
+    # widget formatting/connections for other widget
     for layer_name in data_layer_dict.keys():
         layer_type, data_temp = data_layer_dict[layer_name]
 
@@ -142,12 +136,11 @@ def add_layers(
                 name=layer_name)
             manager.add_layer_to_group(layer_type.value, current_layer)
         elif layer_type is LayerType.RGB:
-            current_layer = viewer.add_image(
-                data_temp,
-                 name=layer_name,
-                 opacity=1.0,
-                 visible=False,
-                 rgb=True)
+            current_layer = viewer.add_image(data_temp,
+                                             name=layer_name,
+                                             opacity=1.0,
+                                             visible=False,
+                                             rgb=True)
             # Add the layer to the correct group in the layer manager
             manager.add_layer_to_group(layer_type.value, current_layer)
 
@@ -163,7 +156,7 @@ def add_layers(
                     LayerType.OBSERVABLE,
             ):
                 current_layer = viewer.add_image(
-                    data[...],
+                    data,
                     name=layer_name,
                     colormap=band_colormap,
                     opacity=1.0,
@@ -492,8 +485,7 @@ class AdaptiveSplitViewer(QMainWindow):
         super().__init__()
 
         # Set image shape param for dimensionality references
-        self.image_shape = (shape[2], shape[0], shape[1])
-        print(self.image_shape)
+        self.image_shape = shape
         self.is_multiview_instrument = self.image_shape[0] > 1
         self.views = views
         self.angles = angles
@@ -542,7 +534,7 @@ class AdaptiveSplitViewer(QMainWindow):
         # Assign reference to layer_manager and add to main viewer
         self.layer_manager = LayerManager(
             napari_viewer=self.main_viewer,
-            shape=(shape[2], shape[0], shape[1]),
+            shape=self.image_shape,
             init_groups=[layer.value for layer in LayerType],
             viewers=self.viewers,
             display_callback=self.display_layer_in_viewer
@@ -570,7 +562,7 @@ class AdaptiveSplitViewer(QMainWindow):
         (im_np, im_layers), \
         (label_list, label_layers) = add_layers(data_layer_dict,
                                                self.layer_manager,
-                                               shape, # need to swap to self.image_shape once fixed
+                                               self.image_shape,
                                                self.main_viewer,
                                                config,
                                                load_labels_name=load_labels_name if label_mode else '',
