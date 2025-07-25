@@ -55,6 +55,7 @@ def get_instrument_layer_data(parent_dir,
 
     file_reader = reader_dict.get(instrument_name, None)
     if file_reader:
+        # TODO: Might remove search string altogether
         if config and "files" in config:
             return file_reader(parent_dir,
                                files=config["files"],

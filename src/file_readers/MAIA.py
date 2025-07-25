@@ -12,6 +12,7 @@ Y_DIM = 480
 # will need to fix once we have the other channels for MAIA
 MAX_CHANNELS = 6
 
+# TOOD: Delete this and connected logic for MAIA file format later
 VIEW_ORDER = ["DA", "CA", "BA", "AA", "AN", "AF", "BF", "CF", "DF"]
 VIEW_ANGLES = {
     "DA": -70.0,
@@ -439,8 +440,10 @@ def read(parent_dir, files, config=None):
         num_of_channels = len(bands_to_get)
         band_names = format_band_names(bands_to_get)
 
+    # Grab shape of V, H, W
     image_shape = (len(views), Y_DIM, X_DIM)
 
+    # Initialize NumPy arrays for data attributes
     band_data = np.zeros((len(views), Y_DIM, X_DIM, num_of_channels))
     if add_true_color:
         rgb = np.zeros((len(views), Y_DIM, X_DIM, 3))
