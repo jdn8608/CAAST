@@ -216,7 +216,7 @@ class ControlPanel(QFrame):
                 continue
             for layer in viewer.layers:
                 if layer._type_string == 'labels' and layer.name == main_labels.name:
-                    layer.data = main_labels.data.copy()
+                    layer.data = main_labels.data
 
     #function for layer controls
     def set_viewer_mode(self, mode: str):
