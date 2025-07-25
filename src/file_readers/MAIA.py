@@ -378,11 +378,10 @@ def pad(arr, shape_to_pad):
     return padded_arr
 
 
-def read(parent_dir, files, config=None):
+def read(files, config=None):
     """Read MAIA files and return data for the tool
 
     Args:
-        parent_dir : the root directory containing the files
         files      : list of filepaths (absolute or relative to ``parent_dir``)
         config     : optional configuration dictionary
 
@@ -400,13 +399,9 @@ def read(parent_dir, files, config=None):
      - a list               : the corresponding viewing angles
     """
     # Normalize file paths and separate by type
-    file_paths = [
-        os.path.join(parent_dir, f) if not os.path.isabs(f) else f
-        for f in files
-    ]
-    file_paths = sorted(file_paths)
-    aerosol_files = [f for f in file_paths if "_AER_" in f.upper()]
-    mask_files = [f for f in file_paths if "MCM_" in f.upper()]
+    files = sorted(files)
+    aerosol_files = [f for f in files if "_AER_" in f.upper()]
+    mask_files = [f for f in files if "MCM_" in f.upper()]
 
     # Determine views and angles from cloud mask filenames
     views = []
