@@ -39,31 +39,41 @@ if __name__ == "__main__":
     )
 
     # Required arguments
-    parser.add_argument('dir', help="root directory to retrieve files from")
     parser.add_argument(
-        'instrument_name',
+        'parameter_mode',
+        help=
+        """Tells the software in what mode to receive option selections from the user.
+                        Valid string options are 'GUI'(G), 'SETTINGS'(S), or 'COMMAND'(C), where the letters in parenthesis can be used for shortened indicators.
+                        GUI mode opens a GUI interface for the users to select options.\n
+                        SETTINGS mode opens the settings files provided under the attriburtes --reader_config --vis_config
+                        --output_config list below\n
+                        COMMAND mode uses all command line attributes below, and takes preference of information from command line over settings files""",
+    )
+
+    # Optional arguments
+    parser.add_argument(
+        '-d',
+        '--dir',
+        help="root directory to retrieve files from",
+    )
+    parser.add_argument(
+        '-i',
+        '--instrument_name',
         help=
         "instrument that we will be reading in data for. This will determine how to read in data, (i.e., determine the file reader). See the README for more details."
     )
     parser.add_argument(
-        'scene_identifier',
+        '-s',
+        '--scene_identifier',
         help=
         "A string to indicate file(s) to retrieve within the provided 'dir'. Furthermore, wildcards are acceptable as the character '*'. Note: for multiangle viewers, such as MAIA, <views> vars may be retrieved from the settings files and are thus not needed in this search string."
     )
-
-    # Optional arguments
     parser.add_argument(
         '-m',
         '--label_mode',
         help=
         "flag to set the tool in label mode. If not set, tool will be in review only mode. See README for more details",
         action='store_true')
-    parser.add_argument(
-        '-o',
-        '--output_settings_file',
-        help=
-        "file containing the output settings to save the labels created by the user. See the README for more details.",
-        default='./settings/output_settings_default.json')
     parser.add_argument(
         '-r',
         '--reader_config',
@@ -76,6 +86,13 @@ if __name__ == "__main__":
         help=
         "Path to a JSON file for additional information and options to use by the visualization script/software.",
         default='./settings/default_vizconfig.json')
+
+    parser.add_argument(
+        '-o',
+        '--output_config',
+        help=
+        "file containing the output settings to save the labels created by the user. See the README for more details.",
+        default='./settings/output_settings_default.json')
     parser.add_argument(
         '-c',
         '--check_manual_labels',
