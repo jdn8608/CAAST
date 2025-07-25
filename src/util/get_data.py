@@ -26,15 +26,10 @@ def create_instrument_dict():
     return reader_dict
 
 
-def get_instrument_layer_data(parent_dir,
-                              instrument_name,
-                              search_string,
-                              config=None):
+def get_instrument_layer_data(config):
     """Calls the corresponding module to ingest instrument imager data
 
      Args:
-        parent_dir: the directory for where the input file is located
-        instrument_name: the name of the instrument to select the corresponding file reader
         config: the config dict for ingesting instrument data. Provides settings like what views
             to load, what kind of data to load, etc. Config dict is passed if there are additional
             details need for an instrument besides the standardized pass-in vars.
@@ -55,16 +50,8 @@ def get_instrument_layer_data(parent_dir,
 
     file_reader = reader_dict.get(instrument_name, None)
     if file_reader:
-        # TODO: Might remove search string altogether
         if config and "files" in config:
-            return file_reader(parent_dir,
-                               files=config["files"],
-                               config=config)
-        else:
-            return file_reader(parent_dir,
-                               search=search_string,
-                               views=config["view"],
-                               config=config)
+            return file_reader(files=config["files"], config=config)
 
     else:
         # Raise an exception if no file reader is found for the given name
@@ -117,9 +104,6 @@ def get_review_mode_output_settings(json_filepath):
 
 
 def get_data(
-    parent_dir,
-    instrument_name,
-    search_string,
     output_settings_filepath,
     reader_config_filepath,
     label_mode=False,
@@ -156,8 +140,7 @@ def get_data(
             config = json.load(file)
 
     # Get instrument NumPy Layer data (and input file location)
-    reader_out = get_instrument_layer_data(
-        parent_dir, instrument_name, search_string, config)
+    reader_out = get_instrument_layer_data(config)
 
     # Parse outputs from the file reader
     if len(reader_out) == 5:
