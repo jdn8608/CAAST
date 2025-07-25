@@ -12,6 +12,19 @@ Y_DIM = 480
 # will need to fix once we have the other channels for MAIA
 MAX_CHANNELS = 6
 
+VIEW_ORDER = ["DA", "CA", "BA", "AA", "AN", "AF", "BF", "CF", "DF"]
+VIEW_ANGLES = {
+    "DA": -70.0,
+    "CA": -60.0,
+    "BA": -45.6,
+    "AA": -26.1,
+    "AN": 0.0,
+    "AF": 26.1,
+    "BF": 45.6,
+    "CF": 60.0,
+    "DF": 70.0,
+}
+
 
 def find_file(parent_dir, search, view=''):
     """Find the file to open within a directory based on a search string
@@ -318,15 +331,9 @@ def create_true_color(hdf_file):
     return RGB
 
 
-def get_aerosol_data(parent_dir, location, date, shape):
-    """
-    Find, get, and return Total AODs from the MAIA aerosol proxy data
-    """
+def get_aerosol_data_from_file(file_path, shape):
+    """Read Total AODs from a MAIA aerosol file"""
     import netCDF4 as nc
-
-    # Build path and find file
-    search_dir = os.path.join(parent_dir, 'MAIA_aerosol', f'*{location}')
-    file_path = find_file(search_dir, search=f'*{date}*.nc')
 
     # Load NetCDF data
     with nc.Dataset(file_path, 'r') as ds:
@@ -370,16 +377,13 @@ def pad(arr, shape_to_pad):
     return padded_arr
 
 
-def read(parent_dir, search, views, config=None):
-    """Finds MAIA files and reads in required data for the tool
+def read(parent_dir, files, config=None):
+    """Read MAIA files and return data for the tool
 
     Args:
-        parent_dir  : the root (parent) directory to search to find files within
-        search      : a comprehensive string to search for files with a pattern... '*' symbols are wildcards.
-        views       : a list of strings to represent the views for the instrument. If the instrument is not
-                    a multi-angle instrument, the list should be of lenght 1.
-        config      : a dictionary of config options that may be useful for your data ingestion for a instrument
-                    data.
+        parent_dir : the root directory containing the files
+        files      : list of filepaths (absolute or relative to ``parent_dir``)
+        config     : optional configuration dictionary
 
     Returns:
         a "data" dictionary : The keys are the name of the layers to add into the tool. The values are tuple,
@@ -391,7 +395,30 @@ def read(parent_dir, search, views, config=None):
                             by replacing this sub-string when file writing.
      - a tuple              : that represents the NumPy shape for layers that will be added as image layers (not
                             labels)
+     - a list               : the view names extracted from the filenames
+     - a list               : the corresponding viewing angles
     """
+    # Normalize file paths and separate by type
+    file_paths = [os.path.join(parent_dir, f) if not os.path.isabs(f) else f for f in files]
+    file_paths = sorted(file_paths)
+    aerosol_files = [f for f in file_paths if f.lower().endswith('.nc')]
+    mask_files = [f for f in file_paths if f.lower().endswith('.h5')]
+
+    # Determine views and angles from cloud mask filenames
+    views = []
+    angles = []
+    for f in mask_files:
+        base = os.path.basename(f)
+        view = None
+        for v in VIEW_ORDER:
+            if f"_{v}_" in base:
+                view = v
+                break
+        if view is None:
+            view = os.path.splitext(base)[0]
+        views.append(view)
+        angles.append(VIEW_ANGLES.get(view, np.nan))
+
     # Get additional attributes from config file
     bands_to_get = config["bands"]
     add_cloud_mask = config["add_cloud_mask"]
@@ -409,10 +436,8 @@ def read(parent_dir, search, views, config=None):
         num_of_channels = len(bands_to_get)
         band_names = format_band_names(bands_to_get)
 
-    # General image shape to return (H, W, V)
     image_shape = (len(views), Y_DIM, X_DIM)
 
-    # Intialize NumPy arrays
     band_data = np.zeros((len(views), Y_DIM, X_DIM, num_of_channels))
     if add_true_color:
         rgb = np.zeros((len(views), Y_DIM, X_DIM, 3))
@@ -436,20 +461,13 @@ def read(parent_dir, search, views, config=None):
         view_geometry = np.zeros(
             (len(views), Y_DIM, X_DIM, len(view_geometry_names)))
 
-    # Intialize arrays for ancillary configuration values per view
     activations_needed = np.zeros(len(views))
     activation_values_arr = None
     fill_val_2_list = np.zeros(len(views))
     fill_val_3_list = np.zeros(len(views))
 
-    # Loop through all views
-    for i, view in enumerate(views):
-        # Find the file
-        filepath = find_file(os.path.join(parent_dir, 'mcm_output'),
-                             search,
-                             view=view)
-
-        # Open file
+    # Loop through cloud mask files
+    for i, (view, filepath) in enumerate(zip(views, mask_files)):
         hdf_file = h5.File(filepath, 'r')
 
         # Get MCM ancillary configuration
@@ -531,14 +549,9 @@ def read(parent_dir, search, views, config=None):
                 dtt[..., i],
             )
 
-    get_aerosol_product = True
-    if get_aerosol_product:
-        parts = filepath.split('_')
-        location, date = parts[3], parts[6]
-        del parts
-        date = date.split('T')[0]
-        aerosol_data, aerosol_var_names = get_aerosol_data(
-            parent_dir, location, date, image_shape)
+    if aerosol_files:
+        aerosol_data, aerosol_var_names = get_aerosol_data_from_file(
+            aerosol_files[0], image_shape)
 
         for w, name in enumerate(aerosol_var_names):
             data_layer_dict[str(name)] = (
@@ -572,5 +585,6 @@ def read(parent_dir, search, views, config=None):
         'fill_val_3': fill_val_3_list,
     }
 
-    return data_layer_dict, filepath.replace(
-        view, '<view>'), image_shape, ancillary_config
+    output_template = mask_files[0].replace(views[0], '<view>') if mask_files else ''
+
+    return data_layer_dict, output_template, image_shape, ancillary_config, views, angles

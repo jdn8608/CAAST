@@ -49,13 +49,21 @@ def get_instrument_layer_data(parent_dir,
     # get the instrument dict (dict of sub-module function calls)
     reader_dict = create_instrument_dict()
 
-    # Select and call the file reader based on the str name
+    # Override instrument name from config if provided
+    if config and "file_reader" in config:
+        instrument_name = config["file_reader"]
+
     file_reader = reader_dict.get(instrument_name, None)
     if file_reader:
-        return file_reader(parent_dir,
-                           search=search_string,
-                           views=config["view"],
-                           config=config)
+        if config and "files" in config:
+            return file_reader(parent_dir,
+                               files=config["files"],
+                               config=config)
+        else:
+            return file_reader(parent_dir,
+                               search=search_string,
+                               views=config["view"],
+                               config=config)
 
     else:
         # Raise an exception if no file reader is found for the given name
@@ -149,11 +157,20 @@ def get_data(
     # Get instrument NumPy Layer data (and input file location)
     reader_out = get_instrument_layer_data(
         parent_dir, instrument_name, search_string, config)
-    if len(reader_out) == 4:
-        data_layer_dict, input_filepath, shape, ancillary_config = reader_out
+
+    # Parse outputs from the file reader
+    if len(reader_out) == 6:
+        data_layer_dict, input_filepath, shape, ancillary_config, views, angles = reader_out
+    elif len(reader_out) == 5:
+        data_layer_dict, input_filepath, shape, ancillary_config, (views, angles) = reader_out
+    elif len(reader_out) == 4:
+        data_layer_dict, input_filepath, shape, (views, angles) = reader_out
+        ancillary_config = None
     else:
         data_layer_dict, input_filepath, shape = reader_out
         ancillary_config = None
+        views = config.get("view") if config else None
+        angles = config.get("angle") if config else None
 
     # Get the filepath and dataset name to save out pixel labels
     output_filepath_convention, dataset_name = get_general_output_settings(
@@ -171,7 +188,7 @@ def get_data(
         manual_labels, scene_attrs, review_grade, review_status, notes = read_labels(
             output_filepath=output_filepath_convention,
             dataset_name=dataset_name,
-            views=config["view"],
+            views=views,
             review_filepath=review_csv_filepath,
             scene_attrs=config["scene_labels"])
 
@@ -186,5 +203,5 @@ def get_data(
         review_status = None
         notes = None
 
-    return (output_filepath_convention, dataset_name), config["view"], config["angle"], data_layer_dict, \
+    return (output_filepath_convention, dataset_name), views, angles, data_layer_dict, \
         shape, ancillary_config, scene_attrs, review_csv_filepath, (review_grade, review_status), notes
