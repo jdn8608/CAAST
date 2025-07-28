@@ -26,6 +26,15 @@ __maintainer__ = "Joseph Nied"
 __email__ = "jdnied2@illinois.edu"
 __status__ = "Production"
 
+
+def get_from_GUI():
+    return
+
+
+def get_from_settings_files():
+    return
+
+
 if __name__ == "__main__":
 
     # Set-up arge parser
@@ -39,16 +48,14 @@ if __name__ == "__main__":
     )
 
     # Required arguments
-    parser.add_argument('dir', help="root directory to retrieve files from")
     parser.add_argument(
-        'instrument_name',
+        'parameter_mode',
         help=
-        "instrument that we will be reading in data for. This will determine how to read in data, (i.e., determine the file reader). See the README for more details."
-    )
-    parser.add_argument(
-        'scene_identifier',
-        help=
-        "A string to indicate file(s) to retrieve within the provided 'dir'. Furthermore, wildcards are acceptable as the character '*'. Note: for multiangle viewers, such as MAIA, <views> vars may be retrieved from the settings files and are thus not needed in this search string."
+        """Tells the software in what mode to receive option selections from the user.
+                        Valid string options are 'GUI'(G) or 'SETTINGS'(S), where the letters in parenthesis can be used for shortened indicators.
+                        GUI mode opens a GUI interface for the users to select options.\n
+                        SETTINGS mode opens the settings files provided under the attriburtes --reader_config --vis_config
+                        --output_config list below\n""",
     )
 
     # Optional arguments
@@ -58,12 +65,6 @@ if __name__ == "__main__":
         help=
         "flag to set the tool in label mode. If not set, tool will be in review only mode. See README for more details",
         action='store_true')
-    parser.add_argument(
-        '-o',
-        '--output_settings_file',
-        help=
-        "file containing the output settings to save the labels created by the user. See the README for more details.",
-        default='./settings/output_settings_default.json')
     parser.add_argument(
         '-r',
         '--reader_config',
@@ -76,6 +77,13 @@ if __name__ == "__main__":
         help=
         "Path to a JSON file for additional information and options to use by the visualization script/software.",
         default='./settings/default_vizconfig.json')
+
+    parser.add_argument(
+        '-o',
+        '--output_config',
+        help=
+        "file containing the output settings to save the labels created by the user. See the README for more details.",
+        default='./settings/output_settings_default.json')
     parser.add_argument(
         '-c',
         '--check_manual_labels',
@@ -92,15 +100,21 @@ if __name__ == "__main__":
 
     # Compile args passed in from the command line by the user
     args = parser.parse_args()
+    settings_mode = args.parameter_mode.upper()
+    if settings_mode == 'G' or 'GUI' in settings_mode:
+        pass
+    elif settings_mode == 'S' or 'SETTINGS' in settings_mode:
+        pass
+    else:
+        raise Exception("Invalid 'settings_mode' attribute value"
+                        "Please refer to --help for valid options")
+
 
     # Call get_data() to get the data to visualize. This calls the correct instrument filereader module to ingest the data
     # The filereader will create a formatted dict for the ingested data -> data_layer_dict
     output_file_info, views, angles, data_layer_dict, shape, ancillary_config, \
         scene_attrs, review_csv_filepath, review_data, notes = get_data(
-            parent_dir=args.dir,
-            instrument_name=args.instrument_name,
-            search_string=args.scene_identifier,
-            output_settings_filepath=args.output_settings_file,
+            output_settings_filepath=args.output_config,
             reader_config_filepath=args.reader_config,
             label_mode=args.label_mode,
             load_prior_manual_labels=args.check_manual_labels)
