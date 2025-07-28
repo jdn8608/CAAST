@@ -42,10 +42,23 @@ def get_from_GUI():
 
     # Import Qt widgets lazily so users running in command mode do not need the
     # Qt backend at import time.
-    from qtpy.QtWidgets import (QApplication, QWidget, QMainWindow, QVBoxLayout,
-                                QHBoxLayout, QTabWidget, QPushButton, QLineEdit,
-                                QTextEdit, QFileDialog, QLabel, QComboBox,
-                                QCheckBox, QMessageBox)
+    from qtpy.QtWidgets import (
+        QApplication,
+        QWidget,
+        QMainWindow,
+        QVBoxLayout,
+        QHBoxLayout,
+        QTabWidget,
+        QPushButton,
+        QLineEdit,
+        QFileDialog,
+        QLabel,
+        QComboBox,
+        QCheckBox,
+        QMessageBox,
+        QFormLayout,
+        QScrollArea,
+    )
 
     from util.get_data import create_instrument_dict
 
@@ -62,6 +75,11 @@ def get_from_GUI():
 
             self.tabs = QTabWidget()
             main_layout.addWidget(self.tabs)
+
+            self.reader_widgets = {}
+            self.reader_types = {}
+            self.output_widgets = {}
+            self.output_types = {}
 
             # --- Tab 1 : file selection and flags ---
             tab1 = QWidget()
@@ -101,26 +119,40 @@ def get_from_GUI():
             t2 = QVBoxLayout()
             tab2.setLayout(t2)
 
-            self.reader_text = QTextEdit()
-            t2.addWidget(self.reader_text)
-            load_reader_btn = QPushButton("Load JSON")
+            scroll2 = QScrollArea()
+            scroll2.setWidgetResizable(True)
+            widget2 = QWidget()
+            self.reader_form = QFormLayout()
+            widget2.setLayout(self.reader_form)
+            scroll2.setWidget(widget2)
+            t2.addWidget(scroll2)
+            load_reader_btn = QPushButton("Load Config")
             load_reader_btn.clicked.connect(self.load_reader_config)
             t2.addWidget(load_reader_btn)
 
             self.tabs.addTab(tab2, "Reader Config")
+
+            self.load_reader_config(default=True)
 
             # --- Tab 3 : output configuration ---
             tab3 = QWidget()
             t3 = QVBoxLayout()
             tab3.setLayout(t3)
 
-            self.output_text = QTextEdit()
-            t3.addWidget(self.output_text)
-            load_output_btn = QPushButton("Load JSON")
+            scroll3 = QScrollArea()
+            scroll3.setWidgetResizable(True)
+            widget3 = QWidget()
+            self.output_form = QFormLayout()
+            widget3.setLayout(self.output_form)
+            scroll3.setWidget(widget3)
+            t3.addWidget(scroll3)
+            load_output_btn = QPushButton("Load Config")
             load_output_btn.clicked.connect(self.load_output_config)
             t3.addWidget(load_output_btn)
 
             self.tabs.addTab(tab3, "Output Config")
+
+            self.load_output_config(default=True)
 
             # Run button at bottom
             run_btn = QPushButton("Run")
@@ -133,40 +165,96 @@ def get_from_GUI():
             if files:
                 self.file_edit.setText(";".join(files))
 
-        def load_reader_config(self):
-            fp, _ = QFileDialog.getOpenFileName(self, "Open reader config",
-                                                filter="JSON (*.json)")
-            if fp:
-                with open(fp, "r") as f:
-                    self.reader_text.setPlainText(f.read())
+        def _populate_form(self, form, widgets, types, cfg, skip_keys=()):
+            while form.rowCount():
+                form.removeRow(0)
+            widgets.clear()
+            types.clear()
+            for key, val in cfg.items():
+                if key in skip_keys:
+                    continue
+                if isinstance(val, list):
+                    w = QLineEdit(", ".join(str(v) for v in val))
+                    val_type = list
+                elif isinstance(val, (int, bool)) and val in (0, 1, True, False):
+                    w = QCheckBox()
+                    w.setChecked(bool(val))
+                    val_type = bool
+                else:
+                    w = QLineEdit(str(val))
+                    val_type = type(val)
+                form.addRow(QLabel(key), w)
+                widgets[key] = w
+                types[key] = val_type
 
-        def load_output_config(self):
-            fp, _ = QFileDialog.getOpenFileName(self, "Open output config",
-                                                filter="JSON (*.json)")
-            if fp:
-                with open(fp, "r") as f:
-                    self.output_text.setPlainText(f.read())
+        def load_reader_config(self, default=False):
+            if default:
+                fp = os.path.join(os.path.dirname(__file__),
+                                  'settings', 'MAIA_proxy.json')
+            else:
+                fp, _ = QFileDialog.getOpenFileName(
+                    self, 'Open reader config', filter='JSON (*.json)')
+                if not fp:
+                    return
+            with open(fp, 'r') as f:
+                cfg = json.load(f)
+            self.reader_config_path = fp
+            self._populate_form(
+                self.reader_form, self.reader_widgets, self.reader_types, cfg,
+                skip_keys=("file_reader", "files"))
+
+        def load_output_config(self, default=False):
+            if default:
+                fp = os.path.join(os.path.dirname(__file__),
+                                  'settings', 'output_settings_default.json')
+            else:
+                fp, _ = QFileDialog.getOpenFileName(
+                    self, 'Open output config', filter='JSON (*.json)')
+                if not fp:
+                    return
+            with open(fp, 'r') as f:
+                cfg = json.load(f)
+            self.output_config_path = fp
+            self._populate_form(
+                self.output_form, self.output_widgets, self.output_types, cfg)
+
+        def _collect_form(self, widgets, types):
+            cfg = {}
+            for key, widget in widgets.items():
+                t = types[key]
+                if isinstance(widget, QCheckBox):
+                    cfg[key] = int(widget.isChecked()) if t is bool else widget.isChecked()
+                else:
+                    txt = widget.text()
+                    if t is list:
+                        cfg[key] = [p.strip() for p in txt.split(',') if p.strip()]
+                    elif t is int:
+                        try:
+                            cfg[key] = int(txt)
+                        except ValueError:
+                            cfg[key] = 0
+                    elif t is float:
+                        try:
+                            cfg[key] = float(txt)
+                        except ValueError:
+                            cfg[key] = 0.0
+                    else:
+                        cfg[key] = txt
+            return cfg
 
         def run_clicked(self):
-            try:
-                reader_cfg = json.loads(self.reader_text.toPlainText() or "{}")
-                output_cfg = json.loads(self.output_text.toPlainText() or "{}")
-            except json.JSONDecodeError as exc:
-                QMessageBox.warning(self, "Error", f"Invalid JSON: {exc}")
-                return
+            reader_cfg = self._collect_form(self.reader_widgets, self.reader_types)
+            output_cfg = self._collect_form(self.output_widgets, self.output_types)
 
-            files = [f for f in self.file_edit.text().split(";") if f]
+            files = [f for f in self.file_edit.text().split(';') if f]
             reader_cfg["files"] = files
             reader_cfg["file_reader"] = self.reader_combo.currentText()
 
-            # write temporary files
-            reader_tmp = tempfile.NamedTemporaryFile(delete=False,
-                                                     suffix="_reader.json")
+            reader_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='_reader.json')
             json.dump(reader_cfg, reader_tmp)
             reader_tmp.close()
 
-            output_tmp = tempfile.NamedTemporaryFile(delete=False,
-                                                     suffix="_output.json")
+            output_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='_output.json')
             json.dump(output_cfg, output_tmp)
             output_tmp.close()
 
