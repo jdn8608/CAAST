@@ -52,9 +52,9 @@ if __name__ == "__main__":
         'parameter_mode',
         help=
         """Tells the software in what mode to receive option selections from the user.
-                        Valid string options are 'GUI'(G) or 'SETTINGS'(S), where the letters in parenthesis can be used for shortened indicators.
+                        Valid string options are 'GUI'(G) or 'COMMAND'(C), where the letters in parenthesis can be used for shortened indicators.
                         GUI mode opens a GUI interface for the users to select options.\n
-                        SETTINGS mode opens the settings files provided under the attriburtes --reader_config --vis_config
+                        COMMAND mode retrieves setting selections from the user from the command line arguments and the config files provided under the attriburtes --reader_config --vis_config
                         --output_config list below\n""",
     )
 
@@ -103,12 +103,11 @@ if __name__ == "__main__":
     settings_mode = args.parameter_mode.upper()
     if settings_mode == 'G' or 'GUI' in settings_mode:
         pass
-    elif settings_mode == 'S' or 'SETTINGS' in settings_mode:
+    elif settings_mode == 'C' or 'COMMAND' in settings_mode:
         pass
     else:
         raise Exception("Invalid 'settings_mode' attribute value"
                         "Please refer to --help for valid options")
-
 
     # Call get_data() to get the data to visualize. This calls the correct instrument filereader module to ingest the data
     # The filereader will create a formatted dict for the ingested data -> data_layer_dict
