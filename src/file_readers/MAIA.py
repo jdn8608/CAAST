@@ -1,5 +1,6 @@
 import glob
 import os
+from pathlib import Path
 
 import h5py as h5
 import numpy as np
@@ -25,6 +26,7 @@ VIEW_ANGLES = {
     "CF": 60.0,
     "DF": 70.0,
 }
+VIEW_INDEX = {view: i for i, view in enumerate(VIEW_ORDER)}
 
 
 def find_file(parent_dir, search, view=''):
@@ -398,8 +400,16 @@ def read(files, config=None):
      - a list               : the view names extracted from the filenames
      - a list               : the corresponding viewing angles
     """
+
+    # Sort files by view camera
+    def extract_view(file_path):
+        parts = Path(file_path).stem.split("_")
+        return VIEW_INDEX.get(
+            parts[4], float('inf'))  # fallback to inf if view not found
+
+    files = sorted(files, key=extract_view)
+
     # Normalize file paths and separate by type
-    files = sorted(files)
     aerosol_files = [f for f in files if "_AER_" in f.upper()]
     mask_files = [f for f in files if "MCM_" in f.upper()]
 
