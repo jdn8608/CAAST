@@ -250,13 +250,26 @@ def get_from_GUI():
             reader_cfg["files"] = files
             reader_cfg["file_reader"] = self.reader_combo.currentText()
 
-            reader_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='_reader.json')
-            json.dump(reader_cfg, reader_tmp)
-            reader_tmp.close()
+            with tempfile.NamedTemporaryFile(
+                    mode='w+',
+                    delete=False,
+                    encoding='utf-8',
+                    suffix="_reader.json") as reader_tmp:
+                json.dump(reader_cfg, reader_tmp, indent=4)
+                reader_tmp.flush()
+                reader_tmp.seek(0)
 
-            output_tmp = tempfile.NamedTemporaryFile(delete=False, suffix='_output.json')
-            json.dump(output_cfg, output_tmp)
-            output_tmp.close()
+            with tempfile.NamedTemporaryFile(
+                    mode='w+',
+                    delete=False,
+                    encoding='utf-8',
+                    suffix="_output.json") as output_tmp:
+                json.dump(output_cfg, output_tmp, indent=4)
+                output_tmp.flush()
+                output_tmp.seek(0)
+
+            print(reader_tmp.name)
+            print(output_tmp.name)
 
             self.result = {
                 "label_mode": self.label_cb.isChecked(),
