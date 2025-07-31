@@ -353,24 +353,23 @@ def get_aerosol_data_from_file(file_path, shape):
     # Expand to multiview dim and pad height width
     expanded = np.repeat(formatted[..., np.newaxis], shape[0], axis=-1)
 
-    return pad(expanded, shape).transpose(3, 0, 1, 2), names
+    return pad(expanded, shape, T_x=-4, T_y=-8).transpose(3, 0, 1, 2), names
 
 
-def pad(arr, shape_to_pad):
+def pad(arr, shape_to_pad, T_y=0, T_x=0):
     """Add padding on the first two dims (height, width) to match ``shape_to_pad``."""
 
     V, H, W = shape_to_pad
     # Calculate padding needed for each dimension
-    pad_height = H - arr.shape[0]  # 16
-    pad_width = W - arr.shape[1]  # 8
+    pad_height = H - arr.shape[0]
+    pad_width = W - arr.shape[1]
 
     # Compute symmetric padding (before, after)
-    pad_top = pad_height // 2  # 8
-    pad_bottom = pad_height - pad_top  # 8
+    pad_top = pad_height // 2 + T_y
+    pad_bottom = pad_height - pad_top
 
-    pad_left = pad_width // 2  # 4
-    pad_right = pad_width - pad_left  # 4
-
+    pad_left = pad_width // 2 + T_x
+    pad_right = pad_width - pad_left
     # Apply padding
     padded_arr = np.pad(arr,
                         pad_width=((pad_top, pad_bottom),
@@ -596,6 +595,8 @@ def read(files, config=None):
         'fill_val_3': fill_val_3_list,
     }
 
-    output_template = mask_files[0].replace(views[0], '<view>') if mask_files else ''
+    output_template = mask_files[0].replace(views[0],
+                                            '<view>') if mask_files else ''
 
-    return data_layer_dict, output_template, image_shape, ancillary_config, (views, angles)
+    return data_layer_dict, output_template, image_shape, ancillary_config, (
+        views, angles)
