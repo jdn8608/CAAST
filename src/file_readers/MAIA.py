@@ -422,8 +422,11 @@ def read(files, config=None):
     # Sort files by view camera
     def extract_view(file_path):
         parts = Path(file_path).stem.split("_")
-        return VIEW_INDEX.get(
-            parts[4], float('inf'))  # fallback to inf if view not found
+        for i, part in enumerate(parts):
+            if part in VIEW_INDEX:
+                return VIEW_INDEX.get(
+                    part, float('inf'))  # fallback to inf if view not found
+        return float('inf')
 
     files = sorted(files, key=extract_view)
 
