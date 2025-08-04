@@ -375,27 +375,36 @@ def get_aerosol_data_from_file(file_path, shape):
     return pad(expanded, shape, T_x=-4, T_y=-8).transpose(3, 0, 1, 2), names
 
 
-def pad(arr, shape_to_pad, T_y=0, T_x=0):
-    """Add padding on the first two dims (height, width) to match ``shape_to_pad``."""
 
+def pad(arr, shape_to_pad, T_y=0, T_x=0):
+    """Add padding on the first two dims (height, width) to match ``shape_to_pad``.
+    Automatically adapts to arrays with 3 or more dimensions.
+    """
     V, H, W = shape_to_pad
-    # Calculate padding needed for each dimension
+
+    # Calculate padding needed for each dim
     pad_height = H - arr.shape[0]
     pad_width = W - arr.shape[1]
 
-    # Compute symmetric padding (before, after)
+    # Compute symmetric padding (before, after) w/ translational var
     pad_top = pad_height // 2 + T_y
     pad_bottom = pad_height - pad_top
-
     pad_left = pad_width // 2 + T_x
     pad_right = pad_width - pad_left
-    # Apply padding
-    padded_arr = np.pad(arr,
-                        pad_width=((pad_top, pad_bottom),
-                                   (pad_left, pad_right), (0, 0), (0, 0)),
-                        mode='constant',
-                        constant_values=-1)
-    return padded_arr
+
+    if arr.ndim < 3:
+        raise ValueError("Input array must be at least 3D.")
+
+    # Create pad spec: pad first two dims, leave others unchanged
+    pad_spec = [(0, 0)] * arr.ndim
+    pad_spec[0] = (pad_top, pad_bottom)
+    pad_spec[1] = (pad_left, pad_right)
+
+    # Apply and return padding
+    return np.pad(arr,
+                  pad_width=tuple(pad_spec),
+                  mode='constant',
+                  constant_values=-1)
 
 
 def read(files, config=None):
