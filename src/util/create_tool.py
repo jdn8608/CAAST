@@ -171,7 +171,13 @@ def add_layers(
                         LayerType.AEROSOL,
                         LayerType.OBSERVABLE,
                 ):
-                    current_layer.contrast_limits = (0, float(np.nanmax(data)))
+                    if float(np.nanmax(data)) < 0:
+                        current_layer.contrast_limits = (-1, -0.9)
+
+                    else:
+                        current_layer.contrast_limits = (0,
+                                                         float(
+                                                             np.nanmax(data)))
                 elif layer_type is LayerType.DTT:
                     DTT_found = True
                     current_layer.contrast_limits = (-101, 101)
