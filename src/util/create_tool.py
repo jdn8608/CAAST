@@ -239,7 +239,7 @@ def add_layers(
             " of the loaded layers, turn verbose on. \n "
             "Loading zeros into the Editing Layer for now.",
             category=UserWarning)
-        edit_data = np.zeros(data.shape, dtype=int)
+        editing_data = np.zeros(data.shape, dtype=int)
 
     # Add editing_data as an editing layer to the viewer
     if label_mode and load_labels_name:
