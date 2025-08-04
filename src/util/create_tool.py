@@ -231,6 +231,7 @@ def add_layers(
 
     # Check to see if editing data was found... if not, store as zeros
     if label_mode and editing_data is None and load_labels_name:
+        import warnings
         # ambigous name was provided (not found)
         warnings.warn(
             "load_labels settings string was not found in the naming convetions"
