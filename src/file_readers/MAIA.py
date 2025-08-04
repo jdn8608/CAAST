@@ -1,4 +1,5 @@
 import glob
+import gc
 import os
 from pathlib import Path
 
@@ -344,15 +345,29 @@ def get_aerosol_data_from_file(file_path, shape):
 
     # Load NetCDF data
     with nc.Dataset(file_path, 'r') as ds:
-        total_AOD = ds.groups['Aerosol_Optical_Depth'].variables[
+        maia_AOD = ds.groups['Aerosol_Optical_Depth'].variables['Total_AOD'][:]
+        maia_AOD.data[maia_AOD.mask] = -1  # Replace masked values with -1
+
+        misr_like = ds.groups['Diagnostic']['MISR_Like_Retrieval'].variables[
             'Total_AOD'][:]
-        data = total_AOD.data.copy()
-        data[total_AOD.mask] = -1  # Replace masked values with -1
+        misr_like[misr_like.mask] = -1
+
+        data = np.concatenate((maia_AOD.data, misr_like.data), axis=0)
+
+        data[np.isnan(data)] = -1
+
+        # force gc
+        del maia_AOD
+        del misr_like
+        gc.collect()
 
         # Reshape and label
-        O, W, H = total_AOD.shape
+        O, W, H = data.shape
         formatted = np.transpose(data, axes=(2, 1, 0))  # -> (H, W, O)
-        names = [f"Total_AOD: {wl} nm" for wl in ds.getncattr('wavelengths')]
+        names = [
+            f"{name} Total_AOD: {wl} nm" for name in ['MAIA', 'MISR like']
+            for wl in ds.getncattr('wavelengths')
+        ]
 
     # Expand to multiview dim and pad height width
     expanded = np.repeat(formatted[..., np.newaxis], shape[0], axis=-1)
