@@ -375,6 +375,39 @@ def get_aerosol_data_from_file(file_path, shape):
     return pad(expanded, shape, T_x=-4, T_y=-8).transpose(3, 0, 1, 2), names
 
 
+def get_aerosol_file_cloud_mask(file_path,
+                                shape,
+                                stored_views=['DF', 'BF', 'AN', 'BA', 'DA']):
+    import netCDF4 as nc
+
+    # Load NetCDF data
+    with nc.Dataset(file_path, 'r') as ds:
+        binary_mask = ds.groups['Diagnostic']['Cloud_Mask']['Binary_Mask'][:]
+        binary_mask[binary_mask.mask] = -1  # set nans to -1
+        binary_mask[binary_mask == 1] = 3
+        binary_mask = binary_mask.transpose(0, 2, 1)
+        V, H, W = binary_mask.shape
+
+        assert V == len(
+            stored_views
+        ), "View shape mismatch for cloud mask stored in aerosol file with stored_views attribute"
+
+        all_views = np.full((len(VIEW_ORDER), H, W),
+                            -1,
+                            dtype=binary_mask.dtype)
+
+        for i, view in enumerate(stored_views):
+            index_in_new = VIEW_ORDER.index(view)
+            all_views[index_in_new] = binary_mask[i]
+
+    print(all_views.shape)
+    return_val = pad(all_views.transpose(1, 2, 0), shape, T_x=-4,
+                     T_y=-8).transpose(-1, 0, 1)
+    return return_val
+
+
+# TODO: change get_aero() to transpose pre call to pad()
+
 
 def pad(arr, shape_to_pad, T_y=0, T_x=0):
     """Add padding on the first two dims (height, width) to match ``shape_to_pad``.
@@ -617,7 +650,13 @@ def read(files, config=None):
 
     # Add the MAIA cloud mask to the dict
     if add_cloud_mask:
-        data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
+        data_layer_dict["MCM"] = (LayerType.CLOUD_MASK, cloud_masks)
+
+    add_aero_cloud_mask = True
+    if add_aero_cloud_mask:
+        data_layer_dict["Aerosol File Cloud Mask"] = (
+            LayerType.CLOUD_MASK,
+            get_aerosol_file_cloud_mask(aerosol_files[0], image_shape))
 
     ancillary_config = {
         'number_of_activations_needed': activations_needed,
