@@ -4,6 +4,7 @@ __pycache__/
 
 /data/*
 /labels/*
+/src/settings/*
 
 # Ignore Vim swap files
 *.swp
