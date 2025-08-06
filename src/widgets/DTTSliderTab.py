@@ -78,8 +78,8 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
 
     DTT_ = np.copy(DTT)
     DTT_[cloudy_idx[0], cloudy_idx[1], cloudy_idx[2]] = 0
-    DTT_[failed_retrieval_idx] = 2
-    DTT_[no_data_idx] = 3
+    DTT_[failed_retrieval_idx] = 102
+    DTT_[no_data_idx] = 103
     #can't assign value to 'maybe_cloudy' yet since it would override 'cloudy'
     #we must check the N condition before proceeding on this
 
@@ -97,10 +97,10 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
     for i in range(num_tests):
         cloudy_idx = np.where(DTT_[:, :, i] == 0)
         cloudy_test_count[cloudy_idx] += 1
-        failed_retrieval_idx = np.where(DTT_[:, :, i] == 2)
+        failed_retrieval_idx = np.where(DTT_[:, :, i] == 102)
         failed_retrieval_count[failed_retrieval_idx] += 1
 
-        no_data_idx = np.where(DTT_[:, :, i] == 3)
+        no_data_idx = np.where(DTT_[:, :, i] == 103)
         no_data_count[no_data_idx] += 1
 
     #populate final cloud mask; default of one assumes 'maybe cloudy' at all pixels
@@ -216,12 +216,14 @@ class DTTSliderTab(QWidget):
         assert self.dtt_mask_layer is not None, "DTT MASK was not found in main_viewer.layers"
 
         # Determine display order for sliders
-        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
+        self.ordered_names = [
+            n for n in ORDERED_DTT_NAMES if n in self.layer_dict
+        ]
 
         # Populate view_values with activation thresholds if provided
         if self.activation_values is not None:
             for view_idx in range(self.activation_values.shape[1]):
-                for obs_idx, name in enumerate(ordered_names):
+                for obs_idx, name in enumerate(self.ordered_names):
                     val = float(self.activation_values[obs_idx, view_idx])
                     self.view_values.setdefault(view_idx, {})
                     self.view_values[view_idx].setdefault(name, val)
@@ -231,7 +233,7 @@ class DTTSliderTab(QWidget):
                 self.num_tests_values[view_idx] = int(self.num_tests[view_idx])
 
         # Build slider widgets
-        for name in ordered_names:
+        for name in self.ordered_names:
             layer = self.layer_dict[name]
 
             layer_layout = QHBoxLayout()
@@ -302,6 +304,13 @@ class DTTSliderTab(QWidget):
         # Connect view change event to sync slider values
         self.viewer.dims.events.current_step.connect(self._view_changed)
 
+        # Populate the DTT mask layer based on the initial thresholds
+        temp_view = self.current_view
+        for v in range(0, len(self.activation_values[0])):
+            self.current_view = v
+            self._apply_mask()
+        self.current_view = temp_view
+
     def _slider_changed(self, value):
         slider = self.sender()
         for name, s in self.sliders.items():
@@ -371,9 +380,8 @@ class DTTSliderTab(QWidget):
 
     def _apply_mask(self):
         """Compute and update the DTT cloud mask for the current view."""
-        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
         dtt_stack = []
-        for name in ordered_names:
+        for name in self.ordered_names:
             layer = self.layer_dict[name]
             dtt_stack.append(layer.data[self.current_view])
         if not dtt_stack:
@@ -382,7 +390,7 @@ class DTTSliderTab(QWidget):
 
         thresholds = np.array([
             self.view_values.get(self.current_view, {}).get(name, 0)
-            for name in ordered_names
+            for name in self.ordered_names
         ])
 
         if self.num_tests_values:
@@ -400,13 +408,12 @@ class DTTSliderTab(QWidget):
 
         cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
 
-        mask_data = self.dtt_mask_layer.data.copy()
-        mask_data[self.current_view] = cm
-        self.dtt_mask_layer.data = mask_data
+        self.dtt_mask_layer.data[self.current_view] = cm
 
         # Update mask layer in any additional viewers
         for viewer in self.viewers:
             if viewer is self.viewer:
                 continue
             if self.dtt_mask_layer.name in viewer.layers:
-                viewer.layers[self.dtt_mask_layer.name].data = mask_data
+                viewer.layers[
+                    self.dtt_mask_layer.name].data = self.dtt_mask_layer.data

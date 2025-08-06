@@ -81,8 +81,6 @@ def add_layers(
     (band_colormap, label_colormap, mask_colormap, nan_colormap,
      surf_colormap) = get_all_colormaps(config)
 
-    # Track the cloud mask data for creating a DTT editing layer later
-    cloud_mask_data = None
     DTT_found = False  # flag to signify DTT data found, and thus widget will be needed
 
     if not label_mode:
@@ -192,9 +190,6 @@ def add_layers(
                 if layer_type is LayerType.CLOUD_MASK:
                     current_colormap = mask_colormap
                     cmap_name = config.get('mask_colormap')
-                    # Check for layer_name flags to load cloud mask for the MAIA's DTT widget
-                    if layer_name == 'MCM' or layer_name == 'Cloud Mask' or layer_name == 'DTT_Mask':
-                        cloud_mask_data = data  # store for DTT editing layer
 
                 elif layer_type is LayerType.MANUAL_LABELS:
                     current_colormap = label_colormap
@@ -262,9 +257,11 @@ def add_layers(
         label_layers.append(editing_layer)
         label_list.append(editing_data)
 
-        # Create a layer for DTTWidget output initialized with the cloud mask
-        if DTT_found and cloud_mask_data is not None:
-            dtt_layer = viewer.add_labels(cloud_mask_data[...],
+        # Create a blank layer for DTTSliderTab output. The mask will be
+        # populated by the widget using the DTT layers and thresholds.
+        if DTT_found:
+            dtt_mask_data = np.zeros(shape, dtype=int)
+            dtt_layer = viewer.add_labels(dtt_mask_data[...],
                                           name='DTT Mask',
                                           opacity=1.0,
                                           colormap=label_colormap)
@@ -276,7 +273,7 @@ def add_layers(
             manager.add_layer_to_group(LayerType.MANUAL_LABELS.value,
                                        dtt_layer)
             label_layers.append(dtt_layer)
-            label_list.append(cloud_mask_data)
+            label_list.append(dtt_mask_data)
 
     return (editing_data, editing_layer), (im_data, im_layers), \
         (label_list, label_layers)
