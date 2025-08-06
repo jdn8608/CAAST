@@ -129,6 +129,7 @@ class LayerManager(QWidget):
         im_temp = self.viewer.add_labels(
             np.zeros(self.image_shape, dtype=int),
             name=f"New Labels {self.new_labels_count}")
+        im_temp.metadata['label_colormap_name'] = 'viridis'
         self.new_labels_count += 1
         self.add_layer_to_group(LayerType.MANUAL_LABELS.value, im_temp)
         return
@@ -300,6 +301,9 @@ class LayerManager(QWidget):
         new_layer.opacity = layer.opacity
         new_layer.blending = layer.blending
         new_layer.visible = layer.visible
+        new_layer.colormap = layer.colormap
+        new_layer.metadata['label_colormap_name'] = layer.metadata[
+            'label_colormap_name']
 
         group_name = self._find_group_of_layer(layer)
         if group_name is not None:
