@@ -10,6 +10,7 @@ from util.colormaps import build_label_colormap
 from superqt import QRangeSlider  # Replaces napari internal import
 
 import numpy as np
+from scipy.ndimage import binary_erosion, binary_dilation
 
 
 class ControlPanel(QFrame):
@@ -196,6 +197,25 @@ class ControlPanel(QFrame):
         self.update_labels_btn.clicked.connect(self.update_viewer_labels)
         self.control_layout.addWidget(self.update_labels_btn, 16, 0, 1, 2)
 
+        # Morphological operations for label layers
+        self.filter_size_label = QLabel("Filter Size (M x N):")
+        self.control_layout.addWidget(self.filter_size_label, 17, 0, 1, 2)
+        self.filter_size_m_spin = QSpinBox()
+        self.filter_size_m_spin.setRange(1, 100)
+        self.filter_size_m_spin.setValue(3)
+        self.filter_size_n_spin = QSpinBox()
+        self.filter_size_n_spin.setRange(1, 100)
+        self.filter_size_n_spin.setValue(3)
+        self.control_layout.addWidget(self.filter_size_m_spin, 18, 0)
+        self.control_layout.addWidget(self.filter_size_n_spin, 18, 1)
+
+        self.erode_button = QPushButton("Erode")
+        self.erode_button.clicked.connect(self.erode_labels)
+        self.dilate_button = QPushButton("Dilate")
+        self.dilate_button.clicked.connect(self.dilate_labels)
+        self.control_layout.addWidget(self.erode_button, 19, 0)
+        self.control_layout.addWidget(self.dilate_button, 19, 1)
+
         self.update_tool_visibility()
         self.main_viewer.layers.selection.events.active.connect(
             lambda e: self.update_tool_visibility())
@@ -280,6 +300,11 @@ class ControlPanel(QFrame):
         self.label_colormap_label.setVisible(is_labels)
         self.label_colormap_dropdown.setVisible(is_labels)
         self.label_colormap_preview.setVisible(is_labels)
+        self.filter_size_label.setVisible(is_labels)
+        self.filter_size_m_spin.setVisible(is_labels)
+        self.filter_size_n_spin.setVisible(is_labels)
+        self.erode_button.setVisible(is_labels)
+        self.dilate_button.setVisible(is_labels)
 
         self.opacity_slider.setVisible(is_labels or is_image)
         self.opacity_label.setVisible(is_labels or is_image)
@@ -389,6 +414,45 @@ class ControlPanel(QFrame):
         for layer in self.active_layers:
             if layer._type_string in ['labels', 'image']:
                 layer.opacity = self.opacity_slider.value() / 100
+
+    def erode_labels(self):
+        size = (self.filter_size_m_spin.value(),
+                self.filter_size_n_spin.value())
+        structure = np.ones(size, dtype=bool)
+        for layer in self.active_layers:
+            if layer._type_string == 'labels':
+                data = layer.data
+                struct = structure
+                if data.ndim > 2:
+                    struct = np.reshape(structure,
+                                        (1,) * (data.ndim - 2) + structure.shape)
+                labels = [lbl for lbl in np.unique(data) if lbl != 0]
+                new_data = data.copy()
+                for lbl in labels:
+                    mask = data == lbl
+                    eroded = binary_erosion(mask, structure=struct)
+                    new_data[mask] = 0
+                    new_data[eroded] = lbl
+                layer.data = new_data
+
+    def dilate_labels(self):
+        size = (self.filter_size_m_spin.value(),
+                self.filter_size_n_spin.value())
+        structure = np.ones(size, dtype=bool)
+        for layer in self.active_layers:
+            if layer._type_string == 'labels':
+                data = layer.data
+                struct = structure
+                if data.ndim > 2:
+                    struct = np.reshape(structure,
+                                        (1,) * (data.ndim - 2) + structure.shape)
+                labels = [lbl for lbl in np.unique(data) if lbl != 0]
+                new_data = data.copy()
+                for lbl in labels:
+                    mask = data == lbl
+                    dilated = binary_dilation(mask, structure=struct)
+                    new_data[dilated] = lbl
+                layer.data = new_data
 
     def change_colormap(self):
         cmap = self.colormap_dropdown.currentText()
