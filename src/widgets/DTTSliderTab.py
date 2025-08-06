@@ -216,12 +216,14 @@ class DTTSliderTab(QWidget):
         assert self.dtt_mask_layer is not None, "DTT MASK was not found in main_viewer.layers"
 
         # Determine display order for sliders
-        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
+        self.ordered_names = [
+            n for n in ORDERED_DTT_NAMES if n in self.layer_dict
+        ]
 
         # Populate view_values with activation thresholds if provided
         if self.activation_values is not None:
             for view_idx in range(self.activation_values.shape[1]):
-                for obs_idx, name in enumerate(ordered_names):
+                for obs_idx, name in enumerate(self.ordered_names):
                     val = float(self.activation_values[obs_idx, view_idx])
                     self.view_values.setdefault(view_idx, {})
                     self.view_values[view_idx].setdefault(name, val)
@@ -231,7 +233,7 @@ class DTTSliderTab(QWidget):
                 self.num_tests_values[view_idx] = int(self.num_tests[view_idx])
 
         # Build slider widgets
-        for name in ordered_names:
+        for name in self.ordered_names:
             layer = self.layer_dict[name]
 
             layer_layout = QHBoxLayout()
@@ -411,9 +413,8 @@ class DTTSliderTab(QWidget):
 
     def _apply_mask(self):
         """Compute and update the DTT cloud mask for the current view."""
-        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
         dtt_stack = []
-        for name in ordered_names:
+        for name in self.ordered_names:
             layer = self.layer_dict[name]
             dtt_stack.append(layer.data[self.current_view])
         if not dtt_stack:
@@ -422,7 +423,7 @@ class DTTSliderTab(QWidget):
 
         thresholds = np.array([
             self.view_values.get(self.current_view, {}).get(name, 0)
-            for name in ordered_names
+            for name in self.ordered_names
         ])
 
         if self.num_tests_values:
