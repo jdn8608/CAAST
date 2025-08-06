@@ -1,4 +1,5 @@
 import glob
+import gc
 import os
 from pathlib import Path
 
@@ -143,7 +144,11 @@ def get_dtt(hdf_file):
     dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
     dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
 
+    dtt[dtt < -124] = -1
     dtt_obs[dtt_obs < -124] = -1
+
+    dtt[np.isnan(dtt)] = -1
+    dtt_obs[np.isnan(dtt_obs)] = -1
 
     return dtt, dtt_obs
 
@@ -340,44 +345,104 @@ def get_aerosol_data_from_file(file_path, shape):
 
     # Load NetCDF data
     with nc.Dataset(file_path, 'r') as ds:
-        total_AOD = ds.groups['Aerosol_Optical_Depth'].variables[
+        maia_AOD = ds.groups['Aerosol_Optical_Depth'].variables['Total_AOD'][:]
+        maia_AOD.data[maia_AOD.mask] = -1  # Replace masked values with -1
+
+        misr_like = ds.groups['Diagnostic']['MISR_Like_Retrieval'].variables[
             'Total_AOD'][:]
-        data = total_AOD.data.copy()
-        data[total_AOD.mask] = -1  # Replace masked values with -1
+        misr_like[misr_like.mask] = -1
+
+        data = np.concatenate((maia_AOD.data, misr_like.data), axis=0)
+
+        data[np.isnan(data)] = -1
+
+        # force gc
+        del maia_AOD
+        del misr_like
+        gc.collect()
 
         # Reshape and label
-        O, W, H = total_AOD.shape
+        O, W, H = data.shape
         formatted = np.transpose(data, axes=(2, 1, 0))  # -> (H, W, O)
-        names = [f"Total_AOD: {wl} nm" for wl in ds.getncattr('wavelengths')]
+        names = [
+            f"{name} Total_AOD: {wl} nm" for name in ['MAIA', 'MISR like']
+            for wl in ds.getncattr('wavelengths')
+        ]
 
     # Expand to multiview dim and pad height width
     expanded = np.repeat(formatted[..., np.newaxis], shape[0], axis=-1)
 
-    return pad(expanded, shape).transpose(3, 0, 1, 2), names
+    return pad(expanded, shape, T_x=-4, T_y=-8).transpose(3, 0, 1, 2), names
 
 
-def pad(arr, shape_to_pad):
-    """Add padding on the first two dims (height, width) to match ``shape_to_pad``."""
+def get_aerosol_file_cloud_mask(file_path,
+                                shape,
+                                stored_views=['DF', 'BF', 'AN', 'BA', 'DA']):
+    import netCDF4 as nc
 
+    # Load NetCDF data
+    with nc.Dataset(file_path, 'r') as ds:
+
+        binary_mask = ds.groups['Diagnostic']['Cloud_Mask'][
+            'Final_Cloud_Mask'][:]
+
+        # Change int numerics to match colormap indexing
+        binary_mask[binary_mask.mask] = -1  # set nans to -1
+        binary_mask[binary_mask == 3] = -1
+        binary_mask[binary_mask < -1] = -1
+        binary_mask[binary_mask == 1] = 3
+        binary_mask = binary_mask.transpose(0, 2, 1)
+        V, H, W = binary_mask.shape
+
+        assert V == len(
+            stored_views
+        ), "View shape mismatch for cloud mask stored in aerosol file with stored_views attribute"
+
+        all_views = np.full((len(VIEW_ORDER), H, W),
+                            -1,
+                            dtype=binary_mask.dtype)
+
+        for i, view in enumerate(stored_views):
+            index_in_new = VIEW_ORDER.index(view)
+            all_views[index_in_new] = binary_mask[i]
+
+    return_val = pad(all_views.transpose(1, 2, 0), shape, T_x=-4,
+                     T_y=-8).transpose(-1, 0, 1)
+    return return_val
+
+
+# TODO: change get_aero() to transpose pre call to pad()
+
+
+def pad(arr, shape_to_pad, T_y=0, T_x=0):
+    """Add padding on the first two dims (height, width) to match ``shape_to_pad``.
+    Automatically adapts to arrays with 3 or more dimensions.
+    """
     V, H, W = shape_to_pad
-    # Calculate padding needed for each dimension
-    pad_height = H - arr.shape[0]  # 16
-    pad_width = W - arr.shape[1]  # 8
 
-    # Compute symmetric padding (before, after)
-    pad_top = pad_height // 2  # 8
-    pad_bottom = pad_height - pad_top  # 8
+    # Calculate padding needed for each dim
+    pad_height = H - arr.shape[0]
+    pad_width = W - arr.shape[1]
 
-    pad_left = pad_width // 2  # 4
-    pad_right = pad_width - pad_left  # 4
+    # Compute symmetric padding (before, after) w/ translational var
+    pad_top = pad_height // 2 + T_y
+    pad_bottom = pad_height - pad_top
+    pad_left = pad_width // 2 + T_x
+    pad_right = pad_width - pad_left
 
-    # Apply padding
-    padded_arr = np.pad(arr,
-                        pad_width=((pad_top, pad_bottom),
-                                   (pad_left, pad_right), (0, 0), (0, 0)),
-                        mode='constant',
-                        constant_values=-1)
-    return padded_arr
+    if arr.ndim < 3:
+        raise ValueError("Input array must be at least 3D.")
+
+    # Create pad spec: pad first two dims, leave others unchanged
+    pad_spec = [(0, 0)] * arr.ndim
+    pad_spec[0] = (pad_top, pad_bottom)
+    pad_spec[1] = (pad_left, pad_right)
+
+    # Apply and return padding
+    return np.pad(arr,
+                  pad_width=tuple(pad_spec),
+                  mode='constant',
+                  constant_values=-1)
 
 
 def read(files, config=None):
@@ -404,8 +469,11 @@ def read(files, config=None):
     # Sort files by view camera
     def extract_view(file_path):
         parts = Path(file_path).stem.split("_")
-        return VIEW_INDEX.get(
-            parts[4], float('inf'))  # fallback to inf if view not found
+        for i, part in enumerate(parts):
+            if part in VIEW_INDEX:
+                return VIEW_INDEX.get(
+                    part, float('inf'))  # fallback to inf if view not found
+        return float('inf')
 
     files = sorted(files, key=extract_view)
 
@@ -587,7 +655,13 @@ def read(files, config=None):
 
     # Add the MAIA cloud mask to the dict
     if add_cloud_mask:
-        data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
+        data_layer_dict["MCM"] = (LayerType.CLOUD_MASK, cloud_masks)
+
+    add_aero_cloud_mask = True
+    if add_aero_cloud_mask:
+        data_layer_dict["Aerosol File Cloud Mask"] = (
+            LayerType.CLOUD_MASK,
+            get_aerosol_file_cloud_mask(aerosol_files[0], image_shape))
 
     ancillary_config = {
         'number_of_activations_needed': activations_needed,
@@ -596,6 +670,8 @@ def read(files, config=None):
         'fill_val_3': fill_val_3_list,
     }
 
-    output_template = mask_files[0].replace(views[0], '<view>') if mask_files else ''
+    output_template = mask_files[0].replace(views[0],
+                                            '<view>') if mask_files else ''
 
-    return data_layer_dict, output_template, image_shape, ancillary_config, (views, angles)
+    return data_layer_dict, output_template, image_shape, ancillary_config, (
+        views, angles)

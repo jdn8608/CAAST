@@ -171,7 +171,13 @@ def add_layers(
                         LayerType.AEROSOL,
                         LayerType.OBSERVABLE,
                 ):
-                    current_layer.contrast_limits = (0, float(np.nanmax(data)))
+                    if float(np.nanmax(data)) < 0:
+                        current_layer.contrast_limits = (-1, -0.9)
+
+                    else:
+                        current_layer.contrast_limits = (0,
+                                                         float(
+                                                             np.nanmax(data)))
                 elif layer_type is LayerType.DTT:
                     DTT_found = True
                     current_layer.contrast_limits = (-101, 101)
@@ -186,7 +192,10 @@ def add_layers(
                 if layer_type is LayerType.CLOUD_MASK:
                     current_colormap = mask_colormap
                     cmap_name = config.get('mask_colormap')
-                    cloud_mask_data = data  # store for DTT editing layer
+                    # Check for layer_name flags to load cloud mask for the MAIA's DTT widget
+                    if layer_name == 'MCM' or layer_name == 'Cloud Mask' or layer_name == 'DTT_Mask':
+                        cloud_mask_data = data  # store for DTT editing layer
+
                 elif layer_type is LayerType.MANUAL_LABELS:
                     current_colormap = label_colormap
                     cmap_name = config.get('label_colormap')
@@ -225,6 +234,7 @@ def add_layers(
 
     # Check to see if editing data was found... if not, store as zeros
     if label_mode and editing_data is None and load_labels_name:
+        import warnings
         # ambigous name was provided (not found)
         warnings.warn(
             "load_labels settings string was not found in the naming convetions"
@@ -233,7 +243,7 @@ def add_layers(
             " of the loaded layers, turn verbose on. \n "
             "Loading zeros into the Editing Layer for now.",
             category=UserWarning)
-        edit_data = np.zeros(data.shape, dtype=int)
+        editing_data = np.zeros(data.shape, dtype=int)
 
     # Add editing_data as an editing layer to the viewer
     if label_mode and load_labels_name:

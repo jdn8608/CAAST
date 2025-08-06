@@ -313,6 +313,17 @@ class ControlPanel(QFrame):
     def update_contrast_slider(self, layer):
         data_min, data_max = float(np.nanmin(layer.data)), float(
             np.nanmax(layer.data))
+
+        # Final check to ensure no NaNs make it into contrast
+        if np.isnan(data_min):
+            data_min = -1
+        if np.isnan(data_max):
+            data_min = -1
+
+        # Slightly perturb max value if min == max
+        if data_max == data_min:
+            data_max += np.power(0.1, 1 + np.floor(np.log10(np.abs(data_max))))
+
         contrast_min, contrast_max = layer.contrast_limits
         self._contrast_data_min = data_min
         self._contrast_data_max = data_max
