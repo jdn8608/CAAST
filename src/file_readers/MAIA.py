@@ -144,10 +144,8 @@ def get_dtt(hdf_file):
     dtt = np.array(hdf_file["cloud_mask_output"]["DTT"])
     dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
 
-    dtt[dtt < -124] = -1
     dtt_obs[dtt_obs < -124] = -1
 
-    dtt[np.isnan(dtt)] = -1
     dtt_obs[np.isnan(dtt_obs)] = -1
 
     return dtt, dtt_obs
@@ -564,6 +562,13 @@ def read(files, config=None):
         activations_needed[i] = number_of_activations_need
         fill_val_2_list[i] = fill_val_2
         fill_val_3_list[i] = fill_val_3
+
+        # TODO
+        # Temp override the files' fill vals.
+        # Instead, use -1 to compliy with MAIA data filtering above
+        #fill_val_2_list[i] = -102
+        #fill_val_3_list[i] = -102
+
         if activation_values_arr is None:
             activation_values_arr = np.zeros(
                 (len(activation_values), len(views)))
