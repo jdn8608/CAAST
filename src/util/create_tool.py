@@ -192,7 +192,10 @@ def add_layers(
                 if layer_type is LayerType.CLOUD_MASK:
                     current_colormap = mask_colormap
                     cmap_name = config.get('mask_colormap')
-                    cloud_mask_data = data  # store for DTT editing layer
+                    # Check for layer_name flags to load cloud mask for the MAIA's DTT widget
+                    if layer_name == 'MCM' or layer_name == 'Cloud Mask' or layer_name == 'DTT_Mask':
+                        cloud_mask_data = data  # store for DTT editing layer
+
                 elif layer_type is LayerType.MANUAL_LABELS:
                     current_colormap = label_colormap
                     cmap_name = config.get('label_colormap')
