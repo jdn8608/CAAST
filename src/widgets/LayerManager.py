@@ -6,6 +6,9 @@ This replaces the default dockLayerList form napari
 """
 
 import numpy as np
+import re
+
+import napari
 
 from PyQt5.QtWidgets import (
     QVBoxLayout,
@@ -126,6 +129,7 @@ class LayerManager(QWidget):
         im_temp = self.viewer.add_labels(
             np.zeros(self.image_shape, dtype=int),
             name=f"New Labels {self.new_labels_count}")
+        im_temp.metadata['label_colormap_name'] = 'viridis'
         self.new_labels_count += 1
         self.add_layer_to_group(LayerType.MANUAL_LABELS.value, im_temp)
         return
@@ -218,6 +222,17 @@ class LayerManager(QWidget):
             rename_action.triggered.connect(lambda: self.rename_layer(item))
             menu.addAction(rename_action)
 
+            # Allow duplicating labels layers
+            layer_obj = next(
+                (l for l in self.viewer.layers if l.name == layer_name), None
+            )
+            if isinstance(layer_obj, napari.layers.Labels):
+                duplicate_action = QAction("Duplicate", self)
+                duplicate_action.triggered.connect(
+                    lambda checked=False, ln=layer_name: self.duplicate_labels_layer(ln)
+                )
+                menu.addAction(duplicate_action)
+
             if self.display_callback is not None:
                 new_viewer_action = QAction("Show in New Viewer", self)
                 new_viewer_action.triggered.connect(
@@ -243,6 +258,62 @@ class LayerManager(QWidget):
             item.flags()
             & ~Qt.ItemIsEditable)  # Revert to non-editable after editing
         self.tree_widget.setEditTriggers(previous_triggers)
+
+    def _base_layer_name(self, name):
+        """Return the base name without any copy suffix."""
+        match = re.match(r"^(.*) - Copy \(\d+\)$", name)
+        return match.group(1) if match else name
+
+    def _next_copy_index(self, base_name):
+        """Determine the next available copy index for a base name."""
+        pattern = re.compile(rf"^{re.escape(base_name)} - Copy \((\d+)\)$")
+        max_idx = 0
+        for layer in self.viewer.layers:
+            m = pattern.match(layer.name)
+            if m:
+                idx = int(m.group(1))
+                max_idx = max(max_idx, idx)
+        return max_idx + 1
+
+    def _find_group_of_layer(self, layer):
+        """Return the group name that contains the given layer."""
+        for group_name, group in self.groups.items():
+            for l, _ in group["layers"]:
+                if l == layer:
+                    return group_name
+        return None
+
+    def duplicate_labels_layer(self, layer_name):
+        """Create a copy of a labels layer and add it to the same group."""
+        layer = next((l for l in self.viewer.layers if l.name == layer_name), None)
+        if layer is None or not isinstance(layer, napari.layers.Labels):
+            return
+
+        base_name = self._base_layer_name(layer.name)
+        copy_index = self._next_copy_index(base_name)
+        new_name = f"{base_name} - Copy ({copy_index})"
+
+        new_layer = self.viewer.add_labels(layer.data.copy(), name=new_name)
+        try:
+            new_layer.color = layer.color
+        except Exception:
+            pass
+        new_layer.opacity = layer.opacity
+        new_layer.blending = layer.blending
+        new_layer.visible = layer.visible
+        new_layer.colormap = layer.colormap
+        new_layer.metadata['label_colormap_name'] = layer.metadata[
+            'label_colormap_name']
+
+        group_name = self._find_group_of_layer(layer)
+        if group_name is not None:
+            self.add_layer_to_group(group_name, new_layer)
+            for l, item in self.groups[group_name]["layers"]:
+                if l == new_layer:
+                    item.setCheckState(0, Qt.Checked if new_layer.visible else Qt.Unchecked)
+                    break
+
+        return new_layer
 
     def dragMoveEvent(self, event):
         """Override dragMoveEvent to suppress built-in Qt animations."""
