@@ -78,8 +78,8 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
 
     DTT_ = np.copy(DTT)
     DTT_[cloudy_idx[0], cloudy_idx[1], cloudy_idx[2]] = 0
-    DTT_[failed_retrieval_idx] = 2
-    DTT_[no_data_idx] = 3
+    DTT_[failed_retrieval_idx] = 102
+    DTT_[no_data_idx] = 103
     #can't assign value to 'maybe_cloudy' yet since it would override 'cloudy'
     #we must check the N condition before proceeding on this
 
@@ -97,10 +97,10 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
     for i in range(num_tests):
         cloudy_idx = np.where(DTT_[:, :, i] == 0)
         cloudy_test_count[cloudy_idx] += 1
-        failed_retrieval_idx = np.where(DTT_[:, :, i] == 2)
+        failed_retrieval_idx = np.where(DTT_[:, :, i] == 102)
         failed_retrieval_count[failed_retrieval_idx] += 1
 
-        no_data_idx = np.where(DTT_[:, :, i] == 3)
+        no_data_idx = np.where(DTT_[:, :, i] == 103)
         no_data_count[no_data_idx] += 1
 
     #populate final cloud mask; default of one assumes 'maybe cloudy' at all pixels
