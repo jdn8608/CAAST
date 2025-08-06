@@ -441,13 +441,12 @@ class DTTSliderTab(QWidget):
 
         cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
 
-        mask_data = self.dtt_mask_layer.data.copy()
-        mask_data[self.current_view] = cm
-        self.dtt_mask_layer.data = mask_data
+        self.dtt_mask_layer.data[self.current_view] = cm
 
         # Update mask layer in any additional viewers
         for viewer in self.viewers:
             if viewer is self.viewer:
                 continue
             if self.dtt_mask_layer.name in viewer.layers:
-                viewer.layers[self.dtt_mask_layer.name].data = mask_data
+                viewer.layers[
+                    self.dtt_mask_layer.name].data = self.dtt_mask_layer.data
