@@ -1,6 +1,7 @@
 import napari
 from qtpy.QtWidgets import (QFrame, QGridLayout, QSlider, QSpinBox, QLineEdit,
-                            QPushButton, QLabel, QComboBox, QSizePolicy)
+                            QPushButton, QLabel, QComboBox, QSizePolicy,
+                            QScrollArea, QWidget, QVBoxLayout)
 from qtpy.QtCore import Qt, QPoint
 
 from qtpy.QtGui import QColor, QImage, QPixmap, QIcon
@@ -30,11 +31,16 @@ class ControlPanel(QFrame):
         self._contrast_data_max = 1.0
         self._slider_steps = 1000
 
-        # Create the grid layout
+        # Create the grid layout inside a scrollable area
         self.setFixedWidth(300)
         self.setFixedHeight(400)
-        self.control_layout = QGridLayout()
-        self.setLayout(self.control_layout)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.container = QWidget()
+        self.control_layout = QGridLayout(self.container)
+        self.scroll_area.setWidget(self.container)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.addWidget(self.scroll_area)
 
         # Add text indicator on what mode is active
         self.mode_label = QLabel("Current Mode: pan_zoom")
@@ -426,13 +432,15 @@ class ControlPanel(QFrame):
                 if data.ndim > 2:
                     struct = np.reshape(structure,
                                         (1,) * (data.ndim - 2) + structure.shape)
-                labels = [lbl for lbl in np.unique(data) if lbl != 0]
+                labels = [lbl for lbl in np.unique(data) if lbl not in (0, -1)]
                 new_data = data.copy()
+                nonlabel_mask = data == -1
                 for lbl in labels:
                     mask = data == lbl
                     eroded = binary_erosion(mask, structure=struct)
                     new_data[mask] = 0
                     new_data[eroded] = lbl
+                new_data[nonlabel_mask] = -1
                 layer.data = new_data
 
     def dilate_labels(self):
@@ -446,12 +454,15 @@ class ControlPanel(QFrame):
                 if data.ndim > 2:
                     struct = np.reshape(structure,
                                         (1,) * (data.ndim - 2) + structure.shape)
-                labels = [lbl for lbl in np.unique(data) if lbl != 0]
+                labels = [lbl for lbl in np.unique(data) if lbl not in (0, -1)]
                 new_data = data.copy()
+                nonlabel_mask = data == -1
                 for lbl in labels:
                     mask = data == lbl
                     dilated = binary_dilation(mask, structure=struct)
+                    dilated &= ~nonlabel_mask
                     new_data[dilated] = lbl
+                new_data[nonlabel_mask] = -1
                 layer.data = new_data
 
     def change_colormap(self):
