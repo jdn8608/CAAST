@@ -302,6 +302,9 @@ class DTTSliderTab(QWidget):
         # Connect view change event to sync slider values
         self.viewer.dims.events.current_step.connect(self._view_changed)
 
+        # Populate the DTT mask layer based on the initial thresholds
+        self._compute_initial_mask()
+
     def _slider_changed(self, value):
         slider = self.sender()
         for name, s in self.sliders.items():
@@ -368,6 +371,43 @@ class DTTSliderTab(QWidget):
         self._save_current_values()
         self.current_view = self.viewer.dims.current_step[0]
         self._load_view_values()
+
+    def _compute_initial_mask(self):
+        """Compute the initial DTT cloud mask for all views."""
+        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
+        if not ordered_names or self.dtt_mask_layer is None:
+            return
+        num_views = self.layer_dict[ordered_names[0]].data.shape[0]
+        mask_data = np.zeros_like(self.dtt_mask_layer.data)
+        for view_idx in range(num_views):
+            dtt_stack = [self.layer_dict[name].data[view_idx]
+                         for name in ordered_names]
+            dtt_array = np.stack(dtt_stack, axis=-1)
+            thresholds = np.array([
+                self.view_values.get(view_idx, {}).get(name, 0)
+                for name in ordered_names
+            ])
+            if self.num_tests_values:
+                n_tests = int(
+                    self.num_tests_values.get(
+                        view_idx,
+                        self.num_tests[view_idx]
+                        if self.num_tests is not None else thresholds.size))
+            else:
+                n_tests = (int(self.num_tests[view_idx])
+                           if self.num_tests is not None else thresholds.size)
+            fv2 = float(
+                self.fill_val_2[view_idx]) if self.fill_val_2 is not None else -126
+            fv3 = float(
+                self.fill_val_3[view_idx]) if self.fill_val_3 is not None else -127
+            cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
+            mask_data[view_idx] = cm
+        self.dtt_mask_layer.data = mask_data
+        for viewer in self.viewers:
+            if viewer is self.viewer:
+                continue
+            if self.dtt_mask_layer.name in viewer.layers:
+                viewer.layers[self.dtt_mask_layer.name].data = mask_data
 
     def _apply_mask(self):
         """Compute and update the DTT cloud mask for the current view."""
