@@ -16,11 +16,12 @@ from scipy.ndimage import binary_erosion, binary_dilation
 
 class ControlPanel(QFrame):
 
-    def __init__(self, main_viewer, viewers):
+    def __init__(self, main_viewer, viewers, enable_morphology=True):
         super().__init__()
 
         self.main_viewer = main_viewer
         self.viewers = viewers
+        self.enable_morphology = enable_morphology
 
         # Keep track of the layers the panel should operate on. By default this
         # is just the currently selected layer in the main viewer, but can be
@@ -36,6 +37,8 @@ class ControlPanel(QFrame):
         self.setFixedHeight(400)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.container = QWidget()
         self.control_layout = QGridLayout(self.container)
         self.scroll_area.setWidget(self.container)
@@ -231,6 +234,11 @@ class ControlPanel(QFrame):
         self.active_layers = layers if layers is not None else []
         self.update_tool_visibility(layers)
 
+    def set_morphology_enabled(self, enabled: bool):
+        """Show or hide morphology tools based on ``enabled``."""
+        self.enable_morphology = enabled
+        self.update_tool_visibility()
+
     def update_viewer_labels(self):
         active_layer = self.main_viewer.layers.selection.active
         if not active_layer or active_layer._type_string != 'labels':
@@ -306,11 +314,12 @@ class ControlPanel(QFrame):
         self.label_colormap_label.setVisible(is_labels)
         self.label_colormap_dropdown.setVisible(is_labels)
         self.label_colormap_preview.setVisible(is_labels)
-        self.filter_size_label.setVisible(is_labels)
-        self.filter_size_m_spin.setVisible(is_labels)
-        self.filter_size_n_spin.setVisible(is_labels)
-        self.erode_button.setVisible(is_labels)
-        self.dilate_button.setVisible(is_labels)
+        morph_visible = is_labels and self.enable_morphology
+        self.filter_size_label.setVisible(morph_visible)
+        self.filter_size_m_spin.setVisible(morph_visible)
+        self.filter_size_n_spin.setVisible(morph_visible)
+        self.erode_button.setVisible(morph_visible)
+        self.dilate_button.setVisible(morph_visible)
 
         self.opacity_slider.setVisible(is_labels or is_image)
         self.opacity_label.setVisible(is_labels or is_image)
@@ -422,6 +431,8 @@ class ControlPanel(QFrame):
                 layer.opacity = self.opacity_slider.value() / 100
 
     def erode_labels(self):
+        if not self.enable_morphology:
+            return
         size = (self.filter_size_m_spin.value(),
                 self.filter_size_n_spin.value())
         structure = np.ones(size, dtype=bool)
@@ -444,6 +455,8 @@ class ControlPanel(QFrame):
                 layer.data = new_data
 
     def dilate_labels(self):
+        if not self.enable_morphology:
+            return
         size = (self.filter_size_m_spin.value(),
                 self.filter_size_n_spin.value())
         structure = np.ones(size, dtype=bool)
