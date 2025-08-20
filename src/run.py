@@ -12,6 +12,14 @@ import argparse
 import json
 import os
 import tempfile
+import warnings
+import logging
+
+# Suppress warnings and reduce logging verbosity
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+logging.getLogger().setLevel(logging.ERROR)
 
 # Import util scripts
 from util.get_data import get_data
@@ -268,8 +276,6 @@ def get_from_GUI():
                 output_tmp.flush()
                 output_tmp.seek(0)
 
-            print(reader_tmp.name)
-            print(output_tmp.name)
 
             self.result = {
                 "label_mode": self.label_cb.isChecked(),
