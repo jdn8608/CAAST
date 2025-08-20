@@ -33,14 +33,16 @@ class ControlPanel(QFrame):
         self._slider_steps = 1000
 
         # Create the grid layout inside a scrollable area
-        self.setFixedWidth(300)
-        self.setFixedHeight(400)
+        self.setMinimumWidth(300)
+        self.setMinimumHeight(400)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.container = QWidget()
         self.control_layout = QGridLayout(self.container)
+        self.control_layout.setColumnStretch(0, 1)
+        self.control_layout.setColumnStretch(1, 1)
         self.scroll_area.setWidget(self.container)
         outer_layout = QVBoxLayout(self)
         outer_layout.addWidget(self.scroll_area)
