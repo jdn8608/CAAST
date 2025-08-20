@@ -14,6 +14,7 @@ from qtpy.QtWidgets import (
 from qtpy.QtCore import Qt
 
 import numpy as np
+from napari.layers import Labels
 
 
 # Author(s) Guangyu Zhao and Michie De Vera
@@ -205,15 +206,21 @@ class DTTSliderTab(QWidget):
 
         # Gather layer references
         self.layer_dict = {}
+        self.labels_dict = {}
         self.dtt_mask_layer = None
         for layer in self.viewer.layers:
-            if layer.name.startswith("DTT"):
-                if "mask" in layer.name.lower():
+            if layer.name.startswith("DTT") and "mask" not in layer.name.lower():
+                self.layer_dict[layer.name] = layer
+            if isinstance(layer, Labels):
+                self.labels_dict[layer.name] = layer
+                if self.dtt_mask_layer is None and "mask" in layer.name.lower():
                     self.dtt_mask_layer = layer
-                else:
-                    self.layer_dict[layer.name] = layer
 
-        assert self.dtt_mask_layer is not None, "DTT MASK was not found in main_viewer.layers"
+        if self.dtt_mask_layer is None and self.labels_dict:
+            # Default to the first labels layer if no mask layer was found
+            self.dtt_mask_layer = next(iter(self.labels_dict.values()))
+
+        assert self.dtt_mask_layer is not None, "No labels layer found to use as mask"
 
         # Determine display order for sliders
         self.ordered_names = [
@@ -264,8 +271,22 @@ class DTTSliderTab(QWidget):
             self.view_values.setdefault(self.current_view,
                                         {})[name] = start_val
 
-        # Layout for radio buttons and button on the right
+        # Layout for mask layer selection, radio buttons, and button on the right
         button_layout = QVBoxLayout()
+
+        mask_label = QLabel("Mask Layer")
+        mask_label.setAlignment(Qt.AlignCenter)
+        self.mask_layer_dropdown = QComboBox()
+        for name in self.labels_dict:
+            self.mask_layer_dropdown.addItem(name)
+        self.mask_layer_dropdown.currentTextChanged.connect(
+            self._mask_layer_changed)
+        if self.dtt_mask_layer is not None:
+            self.mask_layer_dropdown.setCurrentText(self.dtt_mask_layer.name)
+            self.dtt_mask_layer.editable = True
+        button_layout.addWidget(mask_label)
+        button_layout.addWidget(self.mask_layer_dropdown)
+
         self.radio_group = QButtonGroup(self)
         self.save_current_radio = QRadioButton("Save current view's config")
         self.save_all_radio = QRadioButton("Save all views' config")
@@ -323,6 +344,16 @@ class DTTSliderTab(QWidget):
 
     def _num_tests_changed(self, index):
         self.num_tests_values[self.current_view] = index + 1
+
+    def _mask_layer_changed(self, name):
+        new_layer = self.labels_dict.get(name)
+        if new_layer is None:
+            return
+        if self.dtt_mask_layer is not None:
+            self.dtt_mask_layer.editable = False
+        self.dtt_mask_layer = new_layer
+        self.dtt_mask_layer.editable = True
+        self._apply_mask()
 
     def _text_changed(self):
         text = self.sender()
