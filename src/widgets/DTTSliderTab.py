@@ -208,11 +208,15 @@ class DTTSliderTab(QWidget):
         self.layer_dict = {}
         self.labels_dict = {}
         self.dtt_mask_layer = None
+        self._connected_label_layers = set()
         for layer in self.viewer.layers:
             if layer.name.startswith("DTT") and "mask" not in layer.name.lower():
                 self.layer_dict[layer.name] = layer
             if isinstance(layer, Labels):
                 self.labels_dict[layer.name] = layer
+                if layer not in self._connected_label_layers:
+                    layer.events.name.connect(self._refresh_mask_layer_dropdown)
+                    self._connected_label_layers.add(layer)
                 if self.dtt_mask_layer is None and layer.name == "DTT Mask":
                     self.dtt_mask_layer = layer
 
@@ -325,6 +329,12 @@ class DTTSliderTab(QWidget):
         # Connect view change event to sync slider values
         self.viewer.dims.events.current_step.connect(self._view_changed)
 
+        # Keep mask layer dropdown in sync with viewer layers
+        self.viewer.layers.events.inserted.connect(
+            self._refresh_mask_layer_dropdown)
+        self.viewer.layers.events.removed.connect(
+            self._refresh_mask_layer_dropdown)
+
         # Populate the DTT mask layer based on the initial thresholds
         temp_view = self.current_view
         for v in range(0, len(self.activation_values[0])):
@@ -354,6 +364,53 @@ class DTTSliderTab(QWidget):
         self.dtt_mask_layer = new_layer
         self.dtt_mask_layer.editable = True
         self._apply_mask()
+
+    def _refresh_mask_layer_dropdown(self, event=None):
+        """Update mask layer dropdown when label layers change or rename."""
+        current_layer = self.dtt_mask_layer
+        current_text = self.mask_layer_dropdown.currentText()
+
+        # Remove listeners for layers that were deleted
+        for layer in list(self._connected_label_layers):
+            if layer not in self.viewer.layers:
+                try:
+                    layer.events.name.disconnect(
+                        self._refresh_mask_layer_dropdown)
+                except Exception:
+                    pass
+                self._connected_label_layers.discard(layer)
+
+        # Rebuild label dictionary and connect to name events for new layers
+        self.labels_dict = {
+            layer.name: layer for layer in self.viewer.layers
+            if isinstance(layer, Labels)
+        }
+        for layer in self.labels_dict.values():
+            if layer not in self._connected_label_layers:
+                layer.events.name.connect(self._refresh_mask_layer_dropdown)
+                self._connected_label_layers.add(layer)
+
+        self.mask_layer_dropdown.blockSignals(True)
+        self.mask_layer_dropdown.clear()
+        for name in self.labels_dict:
+            self.mask_layer_dropdown.addItem(name)
+
+        new_name = None
+        if current_layer in self.labels_dict.values():
+            new_name = current_layer.name
+        elif current_text in self.labels_dict:
+            new_name = current_text
+        elif self.labels_dict:
+            new_name = next(iter(self.labels_dict))
+
+        if new_name is not None:
+            self.mask_layer_dropdown.setCurrentText(new_name)
+        self.mask_layer_dropdown.blockSignals(False)
+
+        if (new_name is not None and (
+                current_layer is None or new_name != current_layer.name)):
+            # Update active mask layer to new selection
+            self._mask_layer_changed(new_name)
 
     def _text_changed(self):
         text = self.sender()
