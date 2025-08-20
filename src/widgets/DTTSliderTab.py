@@ -325,6 +325,12 @@ class DTTSliderTab(QWidget):
         # Connect view change event to sync slider values
         self.viewer.dims.events.current_step.connect(self._view_changed)
 
+        # Keep mask layer dropdown in sync with viewer layers
+        self.viewer.layers.events.inserted.connect(
+            self._refresh_mask_layer_dropdown)
+        self.viewer.layers.events.removed.connect(
+            self._refresh_mask_layer_dropdown)
+
         # Populate the DTT mask layer based on the initial thresholds
         temp_view = self.current_view
         for v in range(0, len(self.activation_values[0])):
@@ -354,6 +360,31 @@ class DTTSliderTab(QWidget):
         self.dtt_mask_layer = new_layer
         self.dtt_mask_layer.editable = True
         self._apply_mask()
+
+    def _refresh_mask_layer_dropdown(self, event=None):
+        """Update mask layer dropdown when label layers change."""
+        current = self.mask_layer_dropdown.currentText()
+        self.labels_dict = {
+            layer.name: layer for layer in self.viewer.layers
+            if isinstance(layer, Labels)
+        }
+        self.mask_layer_dropdown.blockSignals(True)
+        self.mask_layer_dropdown.clear()
+        for name in self.labels_dict:
+            self.mask_layer_dropdown.addItem(name)
+        new_name = None
+        if current in self.labels_dict:
+            new_name = current
+        elif self.labels_dict:
+            new_name = next(iter(self.labels_dict))
+        if new_name is not None:
+            self.mask_layer_dropdown.setCurrentText(new_name)
+        self.mask_layer_dropdown.blockSignals(False)
+        if new_name is not None and (
+                self.dtt_mask_layer is None
+                or new_name != self.dtt_mask_layer.name):
+            # Update active mask layer to new selection
+            self._mask_layer_changed(new_name)
 
     def _text_changed(self):
         text = self.sender()

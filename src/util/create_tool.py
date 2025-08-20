@@ -610,6 +610,10 @@ class AdaptiveSplitViewer(QMainWindow):
         self.bottom_tabs.addTab(self.viewer_manager_tab, "Manage Viewers")
         self.layer_manager.layer_renamed.connect(
             lambda *_: self.viewer_manager_tab.update_layer_dropdown())
+        self.main_viewer.layers.events.inserted.connect(
+            lambda e: self.viewer_manager_tab.update_layer_dropdown())
+        self.main_viewer.layers.events.removed.connect(
+            lambda e: self.viewer_manager_tab.update_layer_dropdown())
 
         # Create and add the Notes Tab to the bottom tab area
         self.bottom_tabs.addTab(
