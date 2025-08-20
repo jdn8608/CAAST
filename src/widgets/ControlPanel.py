@@ -1,6 +1,7 @@
 import napari
 from qtpy.QtWidgets import (QFrame, QGridLayout, QSlider, QSpinBox, QLineEdit,
-                            QPushButton, QLabel, QComboBox, QSizePolicy)
+                            QPushButton, QLabel, QComboBox, QSizePolicy,
+                            QScrollArea, QWidget, QVBoxLayout)
 from qtpy.QtCore import Qt, QPoint
 
 from qtpy.QtGui import QColor, QImage, QPixmap, QIcon
@@ -10,15 +11,17 @@ from util.colormaps import build_label_colormap
 from superqt import QRangeSlider  # Replaces napari internal import
 
 import numpy as np
+from scipy.ndimage import binary_erosion, binary_dilation
 
 
 class ControlPanel(QFrame):
 
-    def __init__(self, main_viewer, viewers):
+    def __init__(self, main_viewer, viewers, enable_morphology=True):
         super().__init__()
 
         self.main_viewer = main_viewer
         self.viewers = viewers
+        self.enable_morphology = enable_morphology
 
         # Keep track of the layers the panel should operate on. By default this
         # is just the currently selected layer in the main viewer, but can be
@@ -29,11 +32,20 @@ class ControlPanel(QFrame):
         self._contrast_data_max = 1.0
         self._slider_steps = 1000
 
-        # Create the grid layout
-        self.setFixedWidth(300)
-        self.setFixedHeight(400)
-        self.control_layout = QGridLayout()
-        self.setLayout(self.control_layout)
+        # Create the grid layout inside a scrollable area
+        self.setMinimumWidth(300)
+        self.setMinimumHeight(400)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.container = QWidget()
+        self.control_layout = QGridLayout(self.container)
+        self.control_layout.setColumnStretch(0, 1)
+        self.control_layout.setColumnStretch(1, 1)
+        self.scroll_area.setWidget(self.container)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.addWidget(self.scroll_area)
 
         # Add text indicator on what mode is active
         self.mode_label = QLabel("Current Mode: pan_zoom")
@@ -196,6 +208,25 @@ class ControlPanel(QFrame):
         self.update_labels_btn.clicked.connect(self.update_viewer_labels)
         self.control_layout.addWidget(self.update_labels_btn, 16, 0, 1, 2)
 
+        # Morphological operations for label layers
+        self.filter_size_label = QLabel("Filter Size (M x N):")
+        self.control_layout.addWidget(self.filter_size_label, 17, 0, 1, 2)
+        self.filter_size_m_spin = QSpinBox()
+        self.filter_size_m_spin.setRange(1, 100)
+        self.filter_size_m_spin.setValue(3)
+        self.filter_size_n_spin = QSpinBox()
+        self.filter_size_n_spin.setRange(1, 100)
+        self.filter_size_n_spin.setValue(3)
+        self.control_layout.addWidget(self.filter_size_m_spin, 18, 0)
+        self.control_layout.addWidget(self.filter_size_n_spin, 18, 1)
+
+        self.erode_button = QPushButton("Erode")
+        self.erode_button.clicked.connect(self.erode_labels)
+        self.dilate_button = QPushButton("Dilate")
+        self.dilate_button.clicked.connect(self.dilate_labels)
+        self.control_layout.addWidget(self.erode_button, 19, 0)
+        self.control_layout.addWidget(self.dilate_button, 19, 1)
+
         self.update_tool_visibility()
         self.main_viewer.layers.selection.events.active.connect(
             lambda e: self.update_tool_visibility())
@@ -204,6 +235,11 @@ class ControlPanel(QFrame):
         """Set the layers that should be modified by the control panel."""
         self.active_layers = layers if layers is not None else []
         self.update_tool_visibility(layers)
+
+    def set_morphology_enabled(self, enabled: bool):
+        """Show or hide morphology tools based on ``enabled``."""
+        self.enable_morphology = enabled
+        self.update_tool_visibility()
 
     def update_viewer_labels(self):
         active_layer = self.main_viewer.layers.selection.active
@@ -280,6 +316,12 @@ class ControlPanel(QFrame):
         self.label_colormap_label.setVisible(is_labels)
         self.label_colormap_dropdown.setVisible(is_labels)
         self.label_colormap_preview.setVisible(is_labels)
+        morph_visible = is_labels and self.enable_morphology
+        self.filter_size_label.setVisible(morph_visible)
+        self.filter_size_m_spin.setVisible(morph_visible)
+        self.filter_size_n_spin.setVisible(morph_visible)
+        self.erode_button.setVisible(morph_visible)
+        self.dilate_button.setVisible(morph_visible)
 
         self.opacity_slider.setVisible(is_labels or is_image)
         self.opacity_label.setVisible(is_labels or is_image)
@@ -389,6 +431,54 @@ class ControlPanel(QFrame):
         for layer in self.active_layers:
             if layer._type_string in ['labels', 'image']:
                 layer.opacity = self.opacity_slider.value() / 100
+
+    def erode_labels(self):
+        if not self.enable_morphology:
+            return
+        size = (self.filter_size_m_spin.value(),
+                self.filter_size_n_spin.value())
+        structure = np.ones(size, dtype=bool)
+        for layer in self.active_layers:
+            if layer._type_string == 'labels':
+                data = layer.data
+                struct = structure
+                if data.ndim > 2:
+                    struct = np.reshape(structure,
+                                        (1,) * (data.ndim - 2) + structure.shape)
+                labels = [lbl for lbl in np.unique(data) if lbl not in (0, -1)]
+                new_data = data.copy()
+                nonlabel_mask = data == -1
+                for lbl in labels:
+                    mask = data == lbl
+                    eroded = binary_erosion(mask, structure=struct)
+                    new_data[mask] = 0
+                    new_data[eroded] = lbl
+                new_data[nonlabel_mask] = -1
+                layer.data = new_data
+
+    def dilate_labels(self):
+        if not self.enable_morphology:
+            return
+        size = (self.filter_size_m_spin.value(),
+                self.filter_size_n_spin.value())
+        structure = np.ones(size, dtype=bool)
+        for layer in self.active_layers:
+            if layer._type_string == 'labels':
+                data = layer.data
+                struct = structure
+                if data.ndim > 2:
+                    struct = np.reshape(structure,
+                                        (1,) * (data.ndim - 2) + structure.shape)
+                labels = [lbl for lbl in np.unique(data) if lbl not in (0, -1)]
+                new_data = data.copy()
+                nonlabel_mask = data == -1
+                for lbl in labels:
+                    mask = data == lbl
+                    dilated = binary_dilation(mask, structure=struct)
+                    dilated &= ~nonlabel_mask
+                    new_data[dilated] = lbl
+                new_data[nonlabel_mask] = -1
+                layer.data = new_data
 
     def change_colormap(self):
         cmap = self.colormap_dropdown.currentText()

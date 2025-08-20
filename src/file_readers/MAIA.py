@@ -381,8 +381,9 @@ def get_aerosol_file_cloud_mask(file_path,
     # Load NetCDF data
     with nc.Dataset(file_path, 'r') as ds:
 
-        binary_mask = ds.groups['Diagnostic']['Cloud_Mask'][
-            'Final_Cloud_Mask'][:]
+        #binary_mask = ds.groups['Diagnostic']['Cloud_Mask'][
+        #    'Final_Cloud_Mask'][:]
+        binary_mask = ds.groups['Diagnostic']['Cloud_Mask']['Binary_Mask'][:]
 
         # Change int numerics to match colormap indexing
         binary_mask[binary_mask.mask] = -1  # set nans to -1
