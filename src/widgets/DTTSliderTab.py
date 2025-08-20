@@ -213,7 +213,7 @@ class DTTSliderTab(QWidget):
                 self.layer_dict[layer.name] = layer
             if isinstance(layer, Labels):
                 self.labels_dict[layer.name] = layer
-                if self.dtt_mask_layer is None and "mask" in layer.name.lower():
+                if self.dtt_mask_layer is None and layer.name == "DTT Mask":
                     self.dtt_mask_layer = layer
 
         if self.dtt_mask_layer is None and self.labels_dict:
