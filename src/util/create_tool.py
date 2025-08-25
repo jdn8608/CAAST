@@ -32,6 +32,7 @@ from widgets.ThresholdPanel import ThresholdWidget
 from widgets.LogicGatesPanel import LogicGatesWidget
 from widgets.DTTSliderTab import DTTSliderTab
 from widgets.LabelLegendWidget import LabelLegendWidget
+from widgets.MachineLearningWidget import MachineLearningWidget
 
 
 def add_layers(
@@ -679,6 +680,11 @@ class AdaptiveSplitViewer(QMainWindow):
                     fill_val_3=(self.ancillary_config or {}).get('fill_val_3'),
                     viewers=self.viewers,
                 ), "Adjust DTT Activation Values")
+
+            # Add machine learning labeling tab
+            self.bottom_tabs.addTab(
+                MachineLearningWidget(self.main_viewer, self.layer_manager),
+                "ML Labeling")
         # Otherwise, load the Review Mode tab
         else:
             if isinstance(config["grade_slider_min"], int) and \
