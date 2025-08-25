@@ -12,8 +12,12 @@ from qtpy.QtWidgets import (
     QPushButton,
     QLabel,
     QLineEdit,
+    QDialog,
+    QDialogButtonBox,
 )
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+
+from util.LayerType import LayerType
 
 
 class MachineLearningWidget(QWidget):
@@ -23,37 +27,20 @@ class MachineLearningWidget(QWidget):
         super().__init__()
         self.viewer = viewer
         self.layer_manager = layer_manager
+
         self.model = None
+        self.labels_layer_name = ""
         self.input_layer_names = []
         self.fill_value = -2
 
         self._build_ui()
 
-        # Update layer lists when viewer layers change
-        self.viewer.layers.events.inserted.connect(self.update_layers)
-        self.viewer.layers.events.removed.connect(self.update_layers)
-        self.update_layers()
-
+    # ------------------------------------------------------------------ UI ----
     def _build_ui(self):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        # Labels layer selector
-        labels_layout = QHBoxLayout()
-        labels_layout.addWidget(QLabel("Labels layer"))
-        self.labels_dropdown = QComboBox()
-        labels_layout.addWidget(self.labels_dropdown)
-        layout.addLayout(labels_layout)
-
-        # Input layers list (multi-select)
-        inputs_layout = QHBoxLayout()
-        inputs_layout.addWidget(QLabel("Input layers"))
-        self.input_list = QListWidget()
-        self.input_list.setSelectionMode(QListWidget.MultiSelection)
-        inputs_layout.addWidget(self.input_list)
-        layout.addLayout(inputs_layout)
-
-        # Model type selection
+        # Model selection remains visible on the tab
         model_layout = QHBoxLayout()
         model_layout.addWidget(QLabel("Model"))
         self.model_dropdown = QComboBox()
@@ -61,12 +48,16 @@ class MachineLearningWidget(QWidget):
         model_layout.addWidget(self.model_dropdown)
         layout.addLayout(model_layout)
 
-        # Fill value selection
-        fill_layout = QHBoxLayout()
-        fill_layout.addWidget(QLabel("Fill value"))
-        self.fill_edit = QLineEdit("-2")
-        fill_layout.addWidget(self.fill_edit)
-        layout.addLayout(fill_layout)
+        # Output layer name
+        out_layout = QHBoxLayout()
+        out_layout.addWidget(QLabel("Output layer name"))
+        self.output_name_edit = QLineEdit("ML Labels")
+        out_layout.addWidget(self.output_name_edit)
+        layout.addLayout(out_layout)
+
+        # Button to open training-parameter dialog
+        self.params_button = QPushButton("Set Model Training Parameters")
+        layout.addWidget(self.params_button)
 
         # Train and apply buttons
         button_layout = QHBoxLayout()
@@ -82,61 +73,97 @@ class MachineLearningWidget(QWidget):
         layout.addWidget(self.status_label)
 
         # Connect signals
+        self.params_button.clicked.connect(self.open_params_dialog)
         self.train_button.clicked.connect(self.train_model)
         self.apply_button.clicked.connect(self.apply_model)
 
-    def update_layers(self, event=None):
-        """Populate layer selectors with current viewer layers."""
-        # Update labels dropdown
-        current_label = self.labels_dropdown.currentText()
-        self.labels_dropdown.clear()
-        labels_layers = [
+    # --------------------------------------------------------------- helpers ----
+    def _collect_features(self, layer_names):
+        """Return stacked feature array for given image layers."""
+        features = [self.viewer.layers[name].data.ravel() for name in layer_names]
+        return np.stack(features, axis=1)
+
+    def open_params_dialog(self):
+        """Open dialog to set labels, inputs, and fill value."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Model Training Parameters")
+        layout = QVBoxLayout(dialog)
+
+        # Labels layer selector
+        labels_layout = QHBoxLayout()
+        labels_layout.addWidget(QLabel("Labels layer"))
+        labels_dropdown = QComboBox()
+        labels_layout.addWidget(labels_dropdown)
+        layout.addLayout(labels_layout)
+
+        # Input layers list
+        inputs_layout = QHBoxLayout()
+        inputs_layout.addWidget(QLabel("Input layers"))
+        input_list = QListWidget()
+        input_list.setSelectionMode(QListWidget.MultiSelection)
+        inputs_layout.addWidget(input_list)
+        layout.addLayout(inputs_layout)
+
+        # Fill value selection
+        fill_layout = QHBoxLayout()
+        fill_layout.addWidget(QLabel("Fill value"))
+        fill_edit = QLineEdit(str(self.fill_value))
+        fill_layout.addWidget(fill_edit)
+        layout.addLayout(fill_layout)
+
+        # Populate layer widgets with current viewer state
+        label_layers = [
             layer.name for layer in self.viewer.layers
             if isinstance(layer, napari.layers.Labels)
         ]
-        self.labels_dropdown.addItems(labels_layers)
-        if current_label in labels_layers:
-            self.labels_dropdown.setCurrentText(current_label)
+        labels_dropdown.addItems(label_layers)
+        if self.labels_layer_name in label_layers:
+            labels_dropdown.setCurrentText(self.labels_layer_name)
 
-        # Update input layer list
-        selected = {item.text() for item in self.input_list.selectedItems()}
-        self.input_list.clear()
         image_layers = [
             layer.name for layer in self.viewer.layers
             if isinstance(layer, napari.layers.Image)
         ]
         for name in image_layers:
             item = QListWidgetItem(name)
-            self.input_list.addItem(item)
-            if name in selected:
+            input_list.addItem(item)
+            if name in self.input_layer_names:
                 item.setSelected(True)
 
-    def _collect_features(self, layer_names):
-        """Return stacked feature array for given image layers."""
-        features = [self.viewer.layers[name].data.ravel() for name in layer_names]
-        return np.stack(features, axis=1)
+        # OK/Cancel buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(button_box)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
 
+        if dialog.exec_():
+            labels_name = labels_dropdown.currentText()
+            input_names = [item.text() for item in input_list.selectedItems()]
+            try:
+                fill_val = int(fill_edit.text())
+            except ValueError:
+                self.status_label.setText("Invalid fill value.")
+                return
+
+            if not labels_name or not input_names:
+                self.status_label.setText("Select labels and input layers.")
+                return
+
+            self.labels_layer_name = labels_name
+            self.input_layer_names = input_names
+            self.fill_value = fill_val
+            self.status_label.setText("Training parameters set.")
+
+    # --------------------------------------------------------------- actions ----
     def train_model(self):
         """Train the selected model using labeled pixels."""
-        labels_name = self.labels_dropdown.currentText()
-        if not labels_name:
-            self.status_label.setText("Select a labels layer.")
+        if not self.labels_layer_name or not self.input_layer_names:
+            self.status_label.setText("Set training parameters first.")
             return
 
-        input_names = [item.text() for item in self.input_list.selectedItems()]
-        if not input_names:
-            self.status_label.setText("Select at least one input layer.")
-            return
-
-        try:
-            self.fill_value = int(self.fill_edit.text())
-        except ValueError:
-            self.status_label.setText("Invalid fill value.")
-            return
-
-        labels_layer = self.viewer.layers[labels_name]
+        labels_layer = self.viewer.layers[self.labels_layer_name]
         labels_data = labels_layer.data.ravel()
-        X = self._collect_features(input_names)
+        X = self._collect_features(self.input_layer_names)
         mask = labels_data != self.fill_value
         if not np.any(mask):
             self.status_label.setText("No labeled pixels found.")
@@ -156,23 +183,31 @@ class MachineLearningWidget(QWidget):
         self.status_label.setText(
             f"Trained {model_type} | accuracy {train_acc:.3f}")
         self.model = model
-        self.input_layer_names = input_names
         self.apply_button.setEnabled(True)
 
     def apply_model(self):
-        """Apply the trained model to fill unlabeled pixels."""
+        """Apply the trained model to fill unlabeled pixels in a new layer."""
         if self.model is None:
             self.status_label.setText("Train a model first.")
             return
 
-        labels_name = self.labels_dropdown.currentText()
-        if not labels_name:
-            self.status_label.setText("Select a labels layer.")
+        if not self.labels_layer_name:
+            self.status_label.setText("Set training parameters first.")
             return
 
-        labels_layer = self.viewer.layers[labels_name]
+        output_name = self.output_name_edit.text().strip()
+        if not output_name:
+            self.status_label.setText("Provide output layer name.")
+            return
+
+        existing_names = [layer.name for layer in self.viewer.layers]
+        if output_name in existing_names:
+            self.status_label.setText("Layer name already in use.")
+            return
+
+        labels_layer = self.viewer.layers[self.labels_layer_name]
         labels_data = labels_layer.data
-        flat_labels = labels_data.ravel()
+        flat_labels = labels_data.ravel().copy()
         X = self._collect_features(self.input_layer_names)
         mask = flat_labels == self.fill_value
         if not np.any(mask):
@@ -180,5 +215,12 @@ class MachineLearningWidget(QWidget):
             return
 
         flat_labels[mask] = self.model.predict(X[mask])
-        labels_layer.data = flat_labels.reshape(labels_data.shape)
-        self.status_label.setText("Applied model predictions.")
+        new_data = flat_labels.reshape(labels_data.shape)
+        new_layer = self.viewer.add_labels(new_data, name=output_name)
+        if self.layer_manager is not None:
+            self.layer_manager.add_layer_to_group(
+                LayerType.MANUAL_LABELS.value, new_layer)
+
+        self.status_label.setText(
+            f"Created layer '{output_name}' with predictions.")
+
