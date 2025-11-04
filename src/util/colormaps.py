@@ -60,6 +60,11 @@ def build_label_colormap(name, labels):
     from matplotlib import cm
     from napari.utils.colormaps import label_colormap as np_label_colormap
 
+    # TODO: find actual fix for clicking New Labels Layer, that ineveritally calls this function
+    # with an incorrect colormap name
+    if name == 'label_colormap':
+        name = 'viridis'
+
     labels = sorted(set(int(l) for l in labels))
     if labels:
         label_range = list(range(min(labels), max(labels) + 1))

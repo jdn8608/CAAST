@@ -26,15 +26,10 @@ def create_instrument_dict():
     return reader_dict
 
 
-def get_instrument_layer_data(parent_dir,
-                              instrument_name,
-                              search_string,
-                              config=None):
+def get_instrument_layer_data(config):
     """Calls the corresponding module to ingest instrument imager data
 
      Args:
-        parent_dir: the directory for where the input file is located
-        instrument_name: the name of the instrument to select the corresponding file reader
         config: the config dict for ingesting instrument data. Provides settings like what views
             to load, what kind of data to load, etc. Config dict is passed if there are additional
             details need for an instrument besides the standardized pass-in vars.
@@ -49,13 +44,14 @@ def get_instrument_layer_data(parent_dir,
     # get the instrument dict (dict of sub-module function calls)
     reader_dict = create_instrument_dict()
 
-    # Select and call the file reader based on the str name
+    # Override instrument name from config if provided
+    if config and "file_reader" in config:
+        instrument_name = config["file_reader"]
+
     file_reader = reader_dict.get(instrument_name, None)
     if file_reader:
-        return file_reader(parent_dir,
-                           search=search_string,
-                           views=config["view"],
-                           config=config)
+        if config and "files" in config:
+            return file_reader(files=config["files"], config=config)
 
     else:
         # Raise an exception if no file reader is found for the given name
@@ -108,9 +104,6 @@ def get_review_mode_output_settings(json_filepath):
 
 
 def get_data(
-    parent_dir,
-    instrument_name,
-    search_string,
     output_settings_filepath,
     reader_config_filepath,
     label_mode=False,
@@ -147,13 +140,19 @@ def get_data(
             config = json.load(file)
 
     # Get instrument NumPy Layer data (and input file location)
-    reader_out = get_instrument_layer_data(
-        parent_dir, instrument_name, search_string, config)
-    if len(reader_out) == 4:
-        data_layer_dict, input_filepath, shape, ancillary_config = reader_out
-    else:
-        data_layer_dict, input_filepath, shape = reader_out
+    reader_out = get_instrument_layer_data(config)
+
+    # Parse outputs from the file reader
+    if len(reader_out) == 5:
+        data_layer_dict, input_filepath, shape, ancillary_config, (
+            views, angles) = reader_out
+    elif len(reader_out) == 4:
+        data_layer_dict, input_filepath, shape, (views, angles) = reader_out
         ancillary_config = None
+    else:
+        raise Exception(
+            f'''File reader:"{instrument_name}" provided unresolvable 
+            output paramters of length {len(reader_out)}''')
 
     # Get the filepath and dataset name to save out pixel labels
     output_filepath_convention, dataset_name = get_general_output_settings(
@@ -171,7 +170,7 @@ def get_data(
         manual_labels, scene_attrs, review_grade, review_status, notes = read_labels(
             output_filepath=output_filepath_convention,
             dataset_name=dataset_name,
-            views=config["view"],
+            views=views,
             review_filepath=review_csv_filepath,
             scene_attrs=config["scene_labels"])
 
@@ -186,5 +185,5 @@ def get_data(
         review_status = None
         notes = None
 
-    return (output_filepath_convention, dataset_name), config["view"], config["angle"], data_layer_dict, \
+    return (output_filepath_convention, dataset_name), views, angles, data_layer_dict, \
         shape, ancillary_config, scene_attrs, review_csv_filepath, (review_grade, review_status), notes

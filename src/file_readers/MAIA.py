@@ -1,5 +1,7 @@
 import glob
+import gc
 import os
+from pathlib import Path
 
 import h5py as h5
 import numpy as np
@@ -11,6 +13,21 @@ X_DIM = 360
 Y_DIM = 480
 # will need to fix once we have the other channels for MAIA
 MAX_CHANNELS = 6
+
+# TOOD: Delete this and connected logic for MAIA file format later
+VIEW_ORDER = ["DA", "CA", "BA", "AA", "AN", "AF", "BF", "CF", "DF"]
+VIEW_ANGLES = {
+    "DA": -70.0,
+    "CA": -60.0,
+    "BA": -45.6,
+    "AA": -26.1,
+    "AN": 0.0,
+    "AF": 26.1,
+    "BF": 45.6,
+    "CF": 60.0,
+    "DF": 70.0,
+}
+VIEW_INDEX = {view: i for i, view in enumerate(VIEW_ORDER)}
 
 
 def find_file(parent_dir, search, view=''):
@@ -89,7 +106,7 @@ def get_bands(hdf_file, band_names, num_of_channels):
     band_data = np.zeros((Y_DIM, X_DIM, num_of_channels))
 
     for i, name in enumerate(band_names):
-        band_data[:, :, i] = np.array(hdf_file['Reflectance'][name])
+        band_data[..., i] = np.array(hdf_file['Reflectance'][name])
     band_data[band_data < 0] = 0
 
     return band_data
@@ -128,6 +145,8 @@ def get_dtt(hdf_file):
     dtt_obs = np.array(hdf_file["cloud_mask_output"]["observable_data"])
 
     dtt_obs[dtt_obs < -124] = -1
+
+    dtt_obs[np.isnan(dtt_obs)] = -1
 
     return dtt, dtt_obs
 
@@ -318,71 +337,119 @@ def create_true_color(hdf_file):
     return RGB
 
 
-def get_aerosol_data(parent_dir, location, date, shape):
-    """
-    Find, get, and return Total AODs from the MAIA aerosol proxy data
-    """
+def get_aerosol_data_from_file(file_path, shape):
+    """Read Total AODs from a MAIA aerosol file"""
     import netCDF4 as nc
-
-    # Build path and find file
-    search_dir = os.path.join(parent_dir, 'MAIA_aerosol', f'*{location}')
-    file_path = find_file(search_dir, search=f'*{date}*.nc')
 
     # Load NetCDF data
     with nc.Dataset(file_path, 'r') as ds:
-        total_AOD = ds.groups['Aerosol_Optical_Depth'].variables[
+        maia_AOD = ds.groups['Aerosol_Optical_Depth'].variables['Total_AOD'][:]
+        maia_AOD.data[maia_AOD.mask] = -1  # Replace masked values with -1
+
+        misr_like = ds.groups['Diagnostic']['MISR_Like_Retrieval'].variables[
             'Total_AOD'][:]
-        data = total_AOD.data.copy()
-        data[total_AOD.mask] = -1  # Replace masked values with -1
+        misr_like[misr_like.mask] = -1
+
+        data = np.concatenate((maia_AOD.data, misr_like.data), axis=0)
+
+        data[np.isnan(data)] = -1
+
+        # force gc
+        del maia_AOD
+        del misr_like
+        gc.collect()
 
         # Reshape and label
-        O, W, H = total_AOD.shape
+        O, W, H = data.shape
         formatted = np.transpose(data, axes=(2, 1, 0))  # -> (H, W, O)
-        names = [f"Total_AOD: {wl} nm" for wl in ds.getncattr('wavelengths')]
+        names = [
+            f"{name} Total_AOD: {wl} nm" for name in ['MAIA', 'MISR like']
+            for wl in ds.getncattr('wavelengths')
+        ]
 
     # Expand to multiview dim and pad height width
-    expanded = np.repeat(formatted[..., np.newaxis], shape[-1], axis=-1)
-    padded = pad(expanded, shape)
+    expanded = np.repeat(formatted[..., np.newaxis], shape[0], axis=-1)
 
-    return padded, names
+    return pad(expanded, shape, T_x=-4, T_y=-8).transpose(3, 0, 1, 2), names
 
 
-def pad(arr, shape_to_pad):
+def get_aerosol_file_cloud_mask(file_path,
+                                shape,
+                                stored_views=['DF', 'BF', 'AN', 'BA', 'DA']):
+    import netCDF4 as nc
+
+    # Load NetCDF data
+    with nc.Dataset(file_path, 'r') as ds:
+
+        #binary_mask = ds.groups['Diagnostic']['Cloud_Mask'][
+        #    'Final_Cloud_Mask'][:]
+        binary_mask = ds.groups['Diagnostic']['Cloud_Mask']['Binary_Mask'][:]
+
+        # Change int numerics to match colormap indexing
+        binary_mask[binary_mask.mask] = -1  # set nans to -1
+        binary_mask[binary_mask == 3] = -1
+        binary_mask[binary_mask < -1] = -1
+        binary_mask[binary_mask == 1] = 3
+        binary_mask = binary_mask.transpose(0, 2, 1)
+        V, H, W = binary_mask.shape
+
+        assert V == len(
+            stored_views
+        ), "View shape mismatch for cloud mask stored in aerosol file with stored_views attribute"
+
+        all_views = np.full((len(VIEW_ORDER), H, W),
+                            -1,
+                            dtype=binary_mask.dtype)
+
+        for i, view in enumerate(stored_views):
+            index_in_new = VIEW_ORDER.index(view)
+            all_views[index_in_new] = binary_mask[i]
+
+    return_val = pad(all_views.transpose(1, 2, 0), shape, T_x=-4,
+                     T_y=-8).transpose(-1, 0, 1)
+    return return_val
+
+
+# TODO: change get_aero() to transpose pre call to pad()
+
+
+def pad(arr, shape_to_pad, T_y=0, T_x=0):
+    """Add padding on the first two dims (height, width) to match ``shape_to_pad``.
+    Automatically adapts to arrays with 3 or more dimensions.
     """
-    Add padding on the first two dims (height, width) to match the provided shape_to_pad
-    """
-    # Target shape: (480, 360, 8, 9)
-    H, W, O, V = shape_to_pad
-    # Calculate padding needed for each dimension
-    pad_height = H - arr.shape[0]  # 16
-    pad_width = W - arr.shape[1]  # 8
+    V, H, W = shape_to_pad
 
-    # Compute symmetric padding (before, after)
-    pad_top = pad_height // 2  # 8
-    pad_bottom = pad_height - pad_top  # 8
+    # Calculate padding needed for each dim
+    pad_height = H - arr.shape[0]
+    pad_width = W - arr.shape[1]
 
-    pad_left = pad_width // 2  # 4
-    pad_right = pad_width - pad_left  # 4
+    # Compute symmetric padding (before, after) w/ translational var
+    pad_top = pad_height // 2 + T_y
+    pad_bottom = pad_height - pad_top
+    pad_left = pad_width // 2 + T_x
+    pad_right = pad_width - pad_left
 
-    # Apply padding
-    padded_arr = np.pad(arr,
-                        pad_width=((pad_top, pad_bottom),
-                                   (pad_left, pad_right), (0, 0), (0, 0)),
-                        mode='constant',
-                        constant_values=-1)
-    return padded_arr
+    if arr.ndim < 3:
+        raise ValueError("Input array must be at least 3D.")
+
+    # Create pad spec: pad first two dims, leave others unchanged
+    pad_spec = [(0, 0)] * arr.ndim
+    pad_spec[0] = (pad_top, pad_bottom)
+    pad_spec[1] = (pad_left, pad_right)
+
+    # Apply and return padding
+    return np.pad(arr,
+                  pad_width=tuple(pad_spec),
+                  mode='constant',
+                  constant_values=-1)
 
 
-def read(parent_dir, search, views, config=None):
-    """Finds MAIA files and reads in required data for the tool
+def read(files, config=None):
+    """Read MAIA files and return data for the tool
 
     Args:
-        parent_dir  : the root (parent) directory to search to find files within
-        search      : a comprehensive string to search for files with a pattern... '*' symbols are wildcards.
-        views       : a list of strings to represent the views for the instrument. If the instrument is not
-                    a multi-angle instrument, the list should be of lenght 1.
-        config      : a dictionary of config options that may be useful for your data ingestion for a instrument
-                    data.
+        files      : list of filepaths (absolute or relative to ``parent_dir``)
+        config     : optional configuration dictionary
 
     Returns:
         a "data" dictionary : The keys are the name of the layers to add into the tool. The values are tuple,
@@ -394,7 +461,40 @@ def read(parent_dir, search, views, config=None):
                             by replacing this sub-string when file writing.
      - a tuple              : that represents the NumPy shape for layers that will be added as image layers (not
                             labels)
+     - a list               : the view names extracted from the filenames
+     - a list               : the corresponding viewing angles
     """
+
+    # Sort files by view camera
+    def extract_view(file_path):
+        parts = Path(file_path).stem.split("_")
+        for i, part in enumerate(parts):
+            if part in VIEW_INDEX:
+                return VIEW_INDEX.get(
+                    part, float('inf'))  # fallback to inf if view not found
+        return float('inf')
+
+    files = sorted(files, key=extract_view)
+
+    # Normalize file paths and separate by type
+    aerosol_files = [f for f in files if "_AER_" in f.upper()]
+    mask_files = [f for f in files if "MCM_" in f.upper()]
+
+    # Determine views and angles from cloud mask filenames
+    views = []
+    angles = []
+    for f in mask_files:
+        base = os.path.basename(f)
+        view = None
+        for v in VIEW_ORDER:
+            if f"_{v}_" in base:
+                view = v
+                break
+        if view is None:
+            view = os.path.splitext(base)[0]
+        views.append(view)
+        angles.append(VIEW_ANGLES.get(view, np.nan))
+
     # Get additional attributes from config file
     bands_to_get = config["bands"]
     add_cloud_mask = config["add_cloud_mask"]
@@ -412,44 +512,40 @@ def read(parent_dir, search, views, config=None):
         num_of_channels = len(bands_to_get)
         band_names = format_band_names(bands_to_get)
 
-    # Intialize NumPy arrays
-    band_data = np.zeros((Y_DIM, X_DIM, num_of_channels, len(views)))
+    # Grab shape of V, H, W
+    image_shape = (len(views), Y_DIM, X_DIM)
+
+    # Initialize NumPy arrays for data attributes
+    band_data = np.zeros((len(views), Y_DIM, X_DIM, num_of_channels))
     if add_true_color:
-        rgb = np.zeros((Y_DIM, X_DIM, 3, len(views)))
+        rgb = np.zeros((len(views), Y_DIM, X_DIM, 3))
     if add_cloud_mask:
-        cloud_masks = np.zeros((Y_DIM, X_DIM, len(views)))
+        cloud_masks = np.zeros((len(views), Y_DIM, X_DIM))
     if add_nan_mask:
-        nan_masks = np.zeros((Y_DIM, X_DIM, len(views)))
+        nan_masks = np.zeros((len(views), Y_DIM, X_DIM))
     if add_dtt:
         obs_names = ["WI", "NDVI", "NDSI", "visRef", "nirRef", "SVI", "Cirrus"]
         num_of_observables = len(obs_names)
 
-        dtt = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
-        dtt_obs = np.zeros((Y_DIM, X_DIM, num_of_observables, len(views)))
+        dtt = np.zeros((len(views), Y_DIM, X_DIM, num_of_observables))
+        dtt_obs = np.zeros((len(views), Y_DIM, X_DIM, num_of_observables))
     if add_sid:
-        sid = np.zeros((Y_DIM, X_DIM, len(views)))
+        sid = np.zeros((len(views), Y_DIM, X_DIM))
     if add_geom:
         view_geometry_names = [
             'solar_azimuth_angle', 'solar_zenith_angle',
             'viewing_azimuth_angle', 'viewing_zenith_angle'
         ]
         view_geometry = np.zeros(
-            (Y_DIM, X_DIM, len(view_geometry_names), len(views)))
+            (len(views), Y_DIM, X_DIM, len(view_geometry_names)))
 
-    # Intialize arrays for ancillary configuration values per view
     activations_needed = np.zeros(len(views))
     activation_values_arr = None
     fill_val_2_list = np.zeros(len(views))
     fill_val_3_list = np.zeros(len(views))
 
-    # Loop through all views
-    for i, view in enumerate(views):
-        # Find the file
-        filepath = find_file(os.path.join(parent_dir, 'mcm_output'),
-                             search,
-                             view=view)
-
-        # Open file
+    # Loop through cloud mask files
+    for i, (view, filepath) in enumerate(zip(views, mask_files)):
         hdf_file = h5.File(filepath, 'r')
 
         # Get MCM ancillary configuration
@@ -467,9 +563,16 @@ def read(parent_dir, search, views, config=None):
         activations_needed[i] = number_of_activations_need
         fill_val_2_list[i] = fill_val_2
         fill_val_3_list[i] = fill_val_3
+
+        # TODO
+        # Temp override the files' fill vals.
+        # Instead, use -1 to compliy with MAIA data filtering above
+        #fill_val_2_list[i] = -102
+        #fill_val_3_list[i] = -102
+
         if activation_values_arr is None:
-            activation_values_arr = np.zeros((len(activation_values),
-                                             len(views)))
+            activation_values_arr = np.zeros(
+                (len(activation_values), len(views)))
         activation_values_arr[:, i] = activation_values
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
@@ -477,33 +580,30 @@ def read(parent_dir, search, views, config=None):
             band_names = np.array(list(hdf_file['Reflectance'].keys()))
 
         # Get the band data
-        band_data[..., i] = get_bands(hdf_file, band_names, num_of_channels)
+        band_data[i] = get_bands(hdf_file, band_names, num_of_channels)
 
         # Create a true color composite from bands 4 5 6
         if add_true_color:
-            rgb[..., i] = create_true_color(hdf_file)
+            rgb[i] = create_true_color(hdf_file)
 
         # Create a mask indicating where NaNs are found
         if add_nan_mask:
-            nan_masks[..., i], band_data[...,
-                                         i] = create_nan_mask(band_data[...,
-                                                                        i])
+            nan_masks[i], band_data[i] = create_nan_mask(band_data[i])
         # Get DTT and Observables from the MAIA file
         if add_dtt:
-            dtt[..., i], dtt_obs[..., i] = get_dtt(hdf_file)
+            dtt[i], dtt_obs[i] = get_dtt(hdf_file)
 
         # Get the Surface IDS from the MAIA file
         if add_sid:
-            sid[..., i] = get_sids(hdf_file)
+            sid[i] = get_sids(hdf_file)
 
         # Get the Sun-View Geometery from the MAIA file
         if add_geom:
-            view_geometry[..., i] = get_view_geometry(hdf_file,
-                                                      view_geometry_names)
+            view_geometry[i] = get_view_geometry(hdf_file, view_geometry_names)
 
         # Get the cloud mask
         if add_cloud_mask:
-            cloud_masks[..., i] = get_cloud_mask(hdf_file)
+            cloud_masks[i] = get_cloud_mask(hdf_file)
 
         # Close the hdf file to force garbage collection and limit memory needs
         # Also prevents h5py File load errors
@@ -513,10 +613,10 @@ def read(parent_dir, search, views, config=None):
     data_layer_dict = {}
     # Add the band data to the dict, one band at a time
     for i, name in enumerate(band_names):
-        data_layer_dict[str(name)] = (LayerType.GRAY_BAND, band_data[...,
-                                                                     i, :])
-    # Get the band_data shape and cast as a list if a dim needs to be edited
-    shape = list(band_data.shape)
+        data_layer_dict[str(name)] = (
+            LayerType.GRAY_BAND,
+            band_data[..., i],
+        )
 
     # Add True Color Composite
     if add_true_color:
@@ -524,34 +624,33 @@ def read(parent_dir, search, views, config=None):
 
     # Add DTT and OBSERVABLES to the dict
     if add_dtt:
-        shape[2] += 2 * len(obs_names)
         for i, name in enumerate(obs_names):
-            data_layer_dict[str(name)] = (LayerType.OBSERVABLE, dtt_obs[...,
-                                                                        i, :])
-            data_layer_dict['DTT ' + str(name)] = (LayerType.DTT, dtt[...,
-                                                                      i, :])
+            data_layer_dict[str(name)] = (
+                LayerType.OBSERVABLE,
+                dtt_obs[..., i],
+            )
+            data_layer_dict["DTT " + str(name)] = (
+                LayerType.DTT,
+                dtt[..., i],
+            )
 
-    get_aerosol_product = True
-    if get_aerosol_product:
-        parts = filepath.split('_')
-        location, date = parts[3], parts[6]
-        del parts
-        date = date.split('T')[0]
-        aerosol_data, aerosol_var_names = get_aerosol_data(
-            parent_dir, location, date, shape)
-
-        shape[2] += len(aerosol_var_names)
+    if aerosol_files:
+        aerosol_data, aerosol_var_names = get_aerosol_data_from_file(
+            aerosol_files[0], image_shape)
 
         for w, name in enumerate(aerosol_var_names):
-            data_layer_dict[str(name)] = (LayerType.AEROSOL,
-                                          aerosol_data[..., w, :])
+            data_layer_dict[str(name)] = (
+                LayerType.AEROSOL,
+                aerosol_data[..., w],
+            )
 
     # Add Sun-View Geometry to the dict
     if add_geom:
-        shape[2] += len(view_geometry_names)
         for a, attr in enumerate(view_geometry_names):
-            data_layer_dict[attr] = (LayerType.VIEW_GEO, view_geometry[...,
-                                                                       a, :])
+            data_layer_dict[attr] = (
+                LayerType.VIEW_GEO,
+                view_geometry[..., a],
+            )
 
     # Add the nan mask to the dict
     if add_nan_mask:
@@ -562,10 +661,13 @@ def read(parent_dir, search, views, config=None):
 
     # Add the MAIA cloud mask to the dict
     if add_cloud_mask:
-        data_layer_dict["Cloud Mask"] = (LayerType.CLOUD_MASK, cloud_masks)
+        data_layer_dict["MCM"] = (LayerType.CLOUD_MASK, cloud_masks)
 
-    # Reset shape to an immutable tuple
-    shape = tuple(shape)
+    add_aero_cloud_mask = True
+    if add_aero_cloud_mask:
+        data_layer_dict["Aerosol File Cloud Mask"] = (
+            LayerType.CLOUD_MASK,
+            get_aerosol_file_cloud_mask(aerosol_files[0], image_shape))
 
     ancillary_config = {
         'number_of_activations_needed': activations_needed,
@@ -574,4 +676,8 @@ def read(parent_dir, search, views, config=None):
         'fill_val_3': fill_val_3_list,
     }
 
-    return data_layer_dict, filepath.replace(view, '<view>'), shape, ancillary_config
+    output_template = mask_files[0].replace(views[0],
+                                            '<view>') if mask_files else ''
+
+    return data_layer_dict, output_template, image_shape, ancillary_config, (
+        views, angles)

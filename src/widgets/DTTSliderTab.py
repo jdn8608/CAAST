@@ -14,6 +14,7 @@ from qtpy.QtWidgets import (
 from qtpy.QtCore import Qt
 
 import numpy as np
+from napari.layers import Labels
 
 
 # Author(s) Guangyu Zhao and Michie De Vera
@@ -78,8 +79,8 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
 
     DTT_ = np.copy(DTT)
     DTT_[cloudy_idx[0], cloudy_idx[1], cloudy_idx[2]] = 0
-    DTT_[failed_retrieval_idx] = 2
-    DTT_[no_data_idx] = 3
+    DTT_[failed_retrieval_idx] = 102
+    DTT_[no_data_idx] = 103
     #can't assign value to 'maybe_cloudy' yet since it would override 'cloudy'
     #we must check the N condition before proceeding on this
 
@@ -97,10 +98,10 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
     for i in range(num_tests):
         cloudy_idx = np.where(DTT_[:, :, i] == 0)
         cloudy_test_count[cloudy_idx] += 1
-        failed_retrieval_idx = np.where(DTT_[:, :, i] == 2)
+        failed_retrieval_idx = np.where(DTT_[:, :, i] == 102)
         failed_retrieval_count[failed_retrieval_idx] += 1
 
-        no_data_idx = np.where(DTT_[:, :, i] == 3)
+        no_data_idx = np.where(DTT_[:, :, i] == 103)
         no_data_count[no_data_idx] += 1
 
     #populate final cloud mask; default of one assumes 'maybe cloudy' at all pixels
@@ -205,23 +206,35 @@ class DTTSliderTab(QWidget):
 
         # Gather layer references
         self.layer_dict = {}
+        self.labels_dict = {}
         self.dtt_mask_layer = None
+        self._connected_label_layers = set()
         for layer in self.viewer.layers:
-            if layer.name.startswith("DTT"):
-                if "mask" in layer.name.lower():
+            if layer.name.startswith("DTT") and "mask" not in layer.name.lower():
+                self.layer_dict[layer.name] = layer
+            if isinstance(layer, Labels):
+                self.labels_dict[layer.name] = layer
+                if layer not in self._connected_label_layers:
+                    layer.events.name.connect(self._refresh_mask_layer_dropdown)
+                    self._connected_label_layers.add(layer)
+                if self.dtt_mask_layer is None and layer.name == "DTT Mask":
                     self.dtt_mask_layer = layer
-                else:
-                    self.layer_dict[layer.name] = layer
 
-        assert self.dtt_mask_layer is not None, "DTT MASK was not found in main_viewer.layers"
+        if self.dtt_mask_layer is None and self.labels_dict:
+            # Default to the first labels layer if no mask layer was found
+            self.dtt_mask_layer = next(iter(self.labels_dict.values()))
+
+        assert self.dtt_mask_layer is not None, "No labels layer found to use as mask"
 
         # Determine display order for sliders
-        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
+        self.ordered_names = [
+            n for n in ORDERED_DTT_NAMES if n in self.layer_dict
+        ]
 
         # Populate view_values with activation thresholds if provided
         if self.activation_values is not None:
             for view_idx in range(self.activation_values.shape[1]):
-                for obs_idx, name in enumerate(ordered_names):
+                for obs_idx, name in enumerate(self.ordered_names):
                     val = float(self.activation_values[obs_idx, view_idx])
                     self.view_values.setdefault(view_idx, {})
                     self.view_values[view_idx].setdefault(name, val)
@@ -231,7 +244,7 @@ class DTTSliderTab(QWidget):
                 self.num_tests_values[view_idx] = int(self.num_tests[view_idx])
 
         # Build slider widgets
-        for name in ordered_names:
+        for name in self.ordered_names:
             layer = self.layer_dict[name]
 
             layer_layout = QHBoxLayout()
@@ -262,8 +275,22 @@ class DTTSliderTab(QWidget):
             self.view_values.setdefault(self.current_view,
                                         {})[name] = start_val
 
-        # Layout for radio buttons and button on the right
+        # Layout for mask layer selection, radio buttons, and button on the right
         button_layout = QVBoxLayout()
+
+        mask_label = QLabel("Mask Layer")
+        mask_label.setAlignment(Qt.AlignCenter)
+        self.mask_layer_dropdown = QComboBox()
+        for name in self.labels_dict:
+            self.mask_layer_dropdown.addItem(name)
+        self.mask_layer_dropdown.currentTextChanged.connect(
+            self._mask_layer_changed)
+        if self.dtt_mask_layer is not None:
+            self.mask_layer_dropdown.setCurrentText(self.dtt_mask_layer.name)
+            self.dtt_mask_layer.editable = True
+        button_layout.addWidget(mask_label)
+        button_layout.addWidget(self.mask_layer_dropdown)
+
         self.radio_group = QButtonGroup(self)
         self.save_current_radio = QRadioButton("Save current view's config")
         self.save_all_radio = QRadioButton("Save all views' config")
@@ -302,6 +329,19 @@ class DTTSliderTab(QWidget):
         # Connect view change event to sync slider values
         self.viewer.dims.events.current_step.connect(self._view_changed)
 
+        # Keep mask layer dropdown in sync with viewer layers
+        self.viewer.layers.events.inserted.connect(
+            self._refresh_mask_layer_dropdown)
+        self.viewer.layers.events.removed.connect(
+            self._refresh_mask_layer_dropdown)
+
+        # Populate the DTT mask layer based on the initial thresholds
+        temp_view = self.current_view
+        for v in range(0, len(self.activation_values[0])):
+            self.current_view = v
+            self._apply_mask()
+        self.current_view = temp_view
+
     def _slider_changed(self, value):
         slider = self.sender()
         for name, s in self.sliders.items():
@@ -314,6 +354,63 @@ class DTTSliderTab(QWidget):
 
     def _num_tests_changed(self, index):
         self.num_tests_values[self.current_view] = index + 1
+
+    def _mask_layer_changed(self, name):
+        new_layer = self.labels_dict.get(name)
+        if new_layer is None:
+            return
+        if self.dtt_mask_layer is not None:
+            self.dtt_mask_layer.editable = False
+        self.dtt_mask_layer = new_layer
+        self.dtt_mask_layer.editable = True
+        self._apply_mask()
+
+    def _refresh_mask_layer_dropdown(self, event=None):
+        """Update mask layer dropdown when label layers change or rename."""
+        current_layer = self.dtt_mask_layer
+        current_text = self.mask_layer_dropdown.currentText()
+
+        # Remove listeners for layers that were deleted
+        for layer in list(self._connected_label_layers):
+            if layer not in self.viewer.layers:
+                try:
+                    layer.events.name.disconnect(
+                        self._refresh_mask_layer_dropdown)
+                except Exception:
+                    pass
+                self._connected_label_layers.discard(layer)
+
+        # Rebuild label dictionary and connect to name events for new layers
+        self.labels_dict = {
+            layer.name: layer for layer in self.viewer.layers
+            if isinstance(layer, Labels)
+        }
+        for layer in self.labels_dict.values():
+            if layer not in self._connected_label_layers:
+                layer.events.name.connect(self._refresh_mask_layer_dropdown)
+                self._connected_label_layers.add(layer)
+
+        self.mask_layer_dropdown.blockSignals(True)
+        self.mask_layer_dropdown.clear()
+        for name in self.labels_dict:
+            self.mask_layer_dropdown.addItem(name)
+
+        new_name = None
+        if current_layer in self.labels_dict.values():
+            new_name = current_layer.name
+        elif current_text in self.labels_dict:
+            new_name = current_text
+        elif self.labels_dict:
+            new_name = next(iter(self.labels_dict))
+
+        if new_name is not None:
+            self.mask_layer_dropdown.setCurrentText(new_name)
+        self.mask_layer_dropdown.blockSignals(False)
+
+        if (new_name is not None and (
+                current_layer is None or new_name != current_layer.name)):
+            # Update active mask layer to new selection
+            self._mask_layer_changed(new_name)
 
     def _text_changed(self):
         text = self.sender()
@@ -371,9 +468,8 @@ class DTTSliderTab(QWidget):
 
     def _apply_mask(self):
         """Compute and update the DTT cloud mask for the current view."""
-        ordered_names = [n for n in ORDERED_DTT_NAMES if n in self.layer_dict]
         dtt_stack = []
-        for name in ordered_names:
+        for name in self.ordered_names:
             layer = self.layer_dict[name]
             dtt_stack.append(layer.data[self.current_view])
         if not dtt_stack:
@@ -382,7 +478,7 @@ class DTTSliderTab(QWidget):
 
         thresholds = np.array([
             self.view_values.get(self.current_view, {}).get(name, 0)
-            for name in ordered_names
+            for name in self.ordered_names
         ])
 
         if self.num_tests_values:
@@ -404,9 +500,13 @@ class DTTSliderTab(QWidget):
         mask_data[self.current_view] = cm
         self.dtt_mask_layer.data = mask_data
 
+        # self.dtt_mask_layer.data[self.current_view] = cm
+
         # Update mask layer in any additional viewers
         for viewer in self.viewers:
             if viewer is self.viewer:
                 continue
             if self.dtt_mask_layer.name in viewer.layers:
                 viewer.layers[self.dtt_mask_layer.name].data = mask_data
+                #viewer.layers[
+                #    self.dtt_mask_layer.name].data = self.dtt_mask_layer.data

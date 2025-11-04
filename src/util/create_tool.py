@@ -34,13 +34,15 @@ from widgets.DTTSliderTab import DTTSliderTab
 from widgets.LabelLegendWidget import LabelLegendWidget
 
 
-def add_layers(data_layer_dict,
-               manager,
-               shape,
-               viewer,
-               config,
-               load_labels_name='',
-               label_mode=True):
+def add_layers(
+    data_layer_dict,
+    manager,
+    shape,
+    viewer,
+    config,
+    load_labels_name="",
+    label_mode=True,
+):
     """Add imaage and label layers to the napari viewer, and providing connectors
     for down-stream widgets based on the LayerType attributes.
 
@@ -50,7 +52,7 @@ def add_layers(data_layer_dict,
                         [1] is a NumPy array of the data.
         manager         : a LayerManager widget to organize layers that are added
                         based on namking for LayerType.
-        shape           : shape of the image type layers to visualize
+        shape           : (HEIGHT, WIDTH, NUM_VIEWS) of the imagery to visualize
         viewer          : the napari viewer
         config          : vis config dictionary to get visualization options like
                         colormaps etc.
@@ -60,16 +62,25 @@ def add_layers(data_layer_dict,
     Returns:
         3 tuples:
             tuple[0] -> the editing data and layer
-            tuple[1] -> a NumPy array and a list of layers for image data 
+            tuple[1] -> a NumPy array and a list of layers for image data
             tuple[2] -> a list of label NumPy arrays and a list of label layers
     """
-    shape = (shape[3], shape[0], shape[1], shape[2])
+
+    # Determine how many image layers we will add
+    image_types = (
+        LayerType.GRAY_BAND,
+        LayerType.AEROSOL,
+        LayerType.VIEW_GEO,
+        LayerType.LAT_LON,
+        LayerType.DTT,
+        LayerType.OBSERVABLE,
+    )
+    num_image_layers = sum(1 for lt, _ in data_layer_dict.values()
+                           if lt in image_types)
 
     (band_colormap, label_colormap, mask_colormap, nan_colormap,
      surf_colormap) = get_all_colormaps(config)
 
-    # Track the cloud mask data for creating a DTT editing layer later
-    cloud_mask_data = None
     DTT_found = False  # flag to signify DTT data found, and thus widget will be needed
 
     if not label_mode:
@@ -83,8 +94,7 @@ def add_layers(data_layer_dict,
     # Check if the fill value is an int, if now, set-up for checking if layer to be
     # filled by a instrument layer
     try:
-        editing_data = np.zeros(
-            (shape[0], shape[1], shape[2]), dtype=int) + int(load_labels_name)
+        editing_data = np.zeros(shape, dtype=int) + int(load_labels_name)
         edit_data_override = True
     except:
         editing_data = None
@@ -97,10 +107,9 @@ def add_layers(data_layer_dict,
             edit_data_override = True
 
     # Empty list for all image type layers
-    # Initial size of the shape provided from data ingestion (spectral dim)
-    im_layers = [None] * shape[3]
+    im_layers = [None] * num_image_layers
     # Image data NumPy array
-    im_data = np.zeros(shape)
+    im_data = np.zeros(shape + (num_image_layers, ))
     im_iter = 0
 
     # Create an empty lists for the points to the label layer objects
@@ -110,7 +119,7 @@ def add_layers(data_layer_dict,
     label_list = []
 
     # Loop through all layers by their name and add them to the viewer with the correct
-    # widget formatting/connections for other widgets
+    # widget formatting/connections for other widget
     for layer_name in data_layer_dict.keys():
         layer_type, data_temp = data_layer_dict[layer_name]
 
@@ -125,16 +134,16 @@ def add_layers(data_layer_dict,
                 name=layer_name)
             manager.add_layer_to_group(layer_type.value, current_layer)
         elif layer_type is LayerType.RGB:
-            data_temp = np.transpose(data_temp, (3, 0, 1, 2))
             current_layer = viewer.add_image(data_temp,
                                              name=layer_name,
                                              opacity=1.0,
+                                             visible=False,
                                              rgb=True)
             # Add the layer to the correct group in the layer manager
             manager.add_layer_to_group(layer_type.value, current_layer)
 
         else:
-            data = np.transpose(data_temp, (2, 0, 1))
+            data = data_temp
 
             if layer_type in (
                     LayerType.GRAY_BAND,
@@ -145,7 +154,7 @@ def add_layers(data_layer_dict,
                     LayerType.OBSERVABLE,
             ):
                 current_layer = viewer.add_image(
-                    data[...],
+                    data,
                     name=layer_name,
                     colormap=band_colormap,
                     opacity=1.0,
@@ -160,7 +169,13 @@ def add_layers(data_layer_dict,
                         LayerType.AEROSOL,
                         LayerType.OBSERVABLE,
                 ):
-                    current_layer.contrast_limits = (0, float(np.nanmax(data)))
+                    if float(np.nanmax(data)) < 0:
+                        current_layer.contrast_limits = (-1, -0.9)
+
+                    else:
+                        current_layer.contrast_limits = (0,
+                                                         float(
+                                                             np.nanmax(data)))
                 elif layer_type is LayerType.DTT:
                     DTT_found = True
                     current_layer.contrast_limits = (-101, 101)
@@ -175,7 +190,7 @@ def add_layers(data_layer_dict,
                 if layer_type is LayerType.CLOUD_MASK:
                     current_colormap = mask_colormap
                     cmap_name = config.get('mask_colormap')
-                    cloud_mask_data = data  # store for DTT editing layer
+
                 elif layer_type is LayerType.MANUAL_LABELS:
                     current_colormap = label_colormap
                     cmap_name = config.get('label_colormap')
@@ -214,6 +229,7 @@ def add_layers(data_layer_dict,
 
     # Check to see if editing data was found... if not, store as zeros
     if label_mode and editing_data is None and load_labels_name:
+        import warnings
         # ambigous name was provided (not found)
         warnings.warn(
             "load_labels settings string was not found in the naming convetions"
@@ -222,7 +238,7 @@ def add_layers(data_layer_dict,
             " of the loaded layers, turn verbose on. \n "
             "Loading zeros into the Editing Layer for now.",
             category=UserWarning)
-        edit_data = np.zeros(data.shape, dtype=int)
+        editing_data = np.zeros(data.shape, dtype=int)
 
     # Add editing_data as an editing layer to the viewer
     if label_mode and load_labels_name:
@@ -241,9 +257,11 @@ def add_layers(data_layer_dict,
         label_layers.append(editing_layer)
         label_list.append(editing_data)
 
-        # Create a layer for DTTWidget output initialized with the cloud mask
-        if DTT_found and cloud_mask_data is not None:
-            dtt_layer = viewer.add_labels(cloud_mask_data[...],
+        # Create a blank layer for DTTSliderTab output. The mask will be
+        # populated by the widget using the DTT layers and thresholds.
+        if DTT_found:
+            dtt_mask_data = np.zeros(shape, dtype=int)
+            dtt_layer = viewer.add_labels(dtt_mask_data[...],
                                           name='DTT Mask',
                                           opacity=1.0,
                                           colormap=label_colormap)
@@ -255,7 +273,7 @@ def add_layers(data_layer_dict,
             manager.add_layer_to_group(LayerType.MANUAL_LABELS.value,
                                        dtt_layer)
             label_layers.append(dtt_layer)
-            label_list.append(cloud_mask_data)
+            label_list.append(dtt_mask_data)
 
     return (editing_data, editing_layer), (im_data, im_layers), \
         (label_list, label_layers)
@@ -474,8 +492,7 @@ class AdaptiveSplitViewer(QMainWindow):
         super().__init__()
 
         # Set image shape param for dimensionality references
-        self.image_shape = (shape[-1], shape[0], shape[1])
-        print(self.image_shape)
+        self.image_shape = shape
         self.is_multiview_instrument = self.image_shape[0] > 1
         self.views = views
         self.angles = angles
@@ -524,7 +541,7 @@ class AdaptiveSplitViewer(QMainWindow):
         # Assign reference to layer_manager and add to main viewer
         self.layer_manager = LayerManager(
             napari_viewer=self.main_viewer,
-            shape=(shape[-1], shape[0], shape[1]),
+            shape=self.image_shape,
             init_groups=[layer.value for layer in LayerType],
             viewers=self.viewers,
             display_callback=self.display_layer_in_viewer
@@ -552,7 +569,7 @@ class AdaptiveSplitViewer(QMainWindow):
         (im_np, im_layers), \
         (label_list, label_layers) = add_layers(data_layer_dict,
                                                self.layer_manager,
-                                               shape, # need to swap to self.image_shape once fixed
+                                               self.image_shape,
                                                self.main_viewer,
                                                config,
                                                load_labels_name=load_labels_name if label_mode else '',
@@ -593,6 +610,10 @@ class AdaptiveSplitViewer(QMainWindow):
         self.bottom_tabs.addTab(self.viewer_manager_tab, "Manage Viewers")
         self.layer_manager.layer_renamed.connect(
             lambda *_: self.viewer_manager_tab.update_layer_dropdown())
+        self.main_viewer.layers.events.inserted.connect(
+            lambda e: self.viewer_manager_tab.update_layer_dropdown())
+        self.main_viewer.layers.events.removed.connect(
+            lambda e: self.viewer_manager_tab.update_layer_dropdown())
 
         # Create and add the Notes Tab to the bottom tab area
         self.bottom_tabs.addTab(
@@ -1095,7 +1116,7 @@ def create_tool(label_mode,
         data_layer_dict     : a dictionary where the keys are the names of the layer, and the
                             values are tuples of the LayerType Enum and the corresponding NumPy 
                             data. This is the imagery and labels provided for visualization.
-        shape               : the shape of the band imagery in data_layer_dict
+        shape               : (HEIGHT, WIDTH, NUM_VIEWS) of the imagery
         output_file_info    : a tuple where [0] is the output filepath convention, and [2]
                             is the dataset name
         views               : a list of the names of the views for the instrument data loaded
