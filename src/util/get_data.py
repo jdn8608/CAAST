@@ -20,6 +20,7 @@ def create_instrument_dict():
     """
     reader_dict = {
         'MAIA': file_readers.MAIA.read,
+        'AirMSPI2': file_readers.AirMSPI2.read,
         'MISR': file_readers.MISR.get_multiangle,
         'ML64': file_readers.ML_64x64.read
     }
