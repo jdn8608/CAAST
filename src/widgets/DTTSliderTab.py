@@ -137,10 +137,10 @@ class DTTSliderTab(QWidget):
     ----------
     viewer : napari.Viewer
         Viewer instance used to track current view.
-    initial_values : dict[int, dict[str, int]], optional
-        Mapping of view index to slider values by layer name.
+    initial_values : dict[str, int] or None, optional
+        Mapping of slider values by layer name applied to all views.
     activation_values : np.ndarray, optional
-        Activation thresholds for each observable per view.
+        Activation thresholds for each observable shared across all views.
     num_tests : np.ndarray or None, optional
         Minimum number of tests required to activate per view.
     fill_val_2 : np.ndarray or None, optional
@@ -169,11 +169,8 @@ class DTTSliderTab(QWidget):
         self.text_boxes = {}
         # Slider operates in tenths to mimic float precision
         self.slider_range = (-1010, 1010)
-        # Storage for slider values per view
-        self.view_values = {
-            k: dict(v)
-            for k, v in (initial_values or {}).items()
-        }
+        # Shared slider values across all views
+        self.global_values = dict(initial_values or {})
         # Storage for per-view number of tests
         self.num_tests_values = {}
         self.current_view = (self.viewer.dims.current_step[0]
@@ -231,13 +228,11 @@ class DTTSliderTab(QWidget):
             n for n in ORDERED_DTT_NAMES if n in self.layer_dict
         ]
 
-        # Populate view_values with activation thresholds if provided
+        # Populate global_values with activation thresholds if provided
         if self.activation_values is not None:
-            for view_idx in range(self.activation_values.shape[1]):
-                for obs_idx, name in enumerate(self.ordered_names):
-                    val = float(self.activation_values[obs_idx, view_idx])
-                    self.view_values.setdefault(view_idx, {})
-                    self.view_values[view_idx].setdefault(name, val)
+            for obs_idx, name in enumerate(self.ordered_names):
+                val = float(self.activation_values[obs_idx])
+                self.global_values.setdefault(name, val)
 
         if self.num_tests is not None:
             for view_idx in range(len(self.num_tests)):
@@ -252,8 +247,7 @@ class DTTSliderTab(QWidget):
 
             slider = QSlider(Qt.Vertical)
             slider.setRange(*self.slider_range)
-            start_val = float(
-                self.view_values.get(self.current_view, {}).get(name, 0.0))
+            start_val = float(self.global_values.get(name, 0.0))
             slider.setValue(int(round(start_val * 10)))
             slider.valueChanged.connect(self._slider_changed)
 
@@ -272,8 +266,7 @@ class DTTSliderTab(QWidget):
             sliders_layout.addLayout(layer_layout)
             self.sliders[name] = slider
             self.text_boxes[name] = text
-            self.view_values.setdefault(self.current_view,
-                                        {})[name] = start_val
+            self.global_values.setdefault(name, start_val)
 
         # Layout for mask layer selection, radio buttons, and button on the right
         button_layout = QVBoxLayout()
@@ -336,11 +329,7 @@ class DTTSliderTab(QWidget):
             self._refresh_mask_layer_dropdown)
 
         # Populate the DTT mask layer based on the initial thresholds
-        temp_view = self.current_view
-        for v in range(0, len(self.activation_values[0])):
-            self.current_view = v
-            self._apply_mask()
-        self.current_view = temp_view
+        self._apply_mask()
 
     def _slider_changed(self, value):
         slider = self.sender()
@@ -348,7 +337,7 @@ class DTTSliderTab(QWidget):
             if s is slider:
                 fval = value / 10.0
                 self.text_boxes[name].setText(f"{fval:.1f}")
-                self.view_values.setdefault(self.current_view, {})[name] = fval
+                self.global_values[name] = fval
                 break
         self._apply_mask()
 
@@ -423,28 +412,24 @@ class DTTSliderTab(QWidget):
                 value = max(self.slider_range[0] / 10,
                             min(self.slider_range[1] / 10, value))
                 self.sliders[name].setValue(int(round(value * 10)))
-                self.view_values.setdefault(self.current_view,
-                                            {})[name] = value
+                self.global_values[name] = value
                 break
         # self._apply_mask will be triggered via slider change
 
     def print_values(self):
         """Print current slider values for debugging."""
-        values = self.view_values.get(self.current_view, {})
-        print("Current DTT slider values:", values)
+        print("Current DTT slider values:", self.global_values)
 
     def _save_current_values(self):
-        self.view_values.setdefault(self.current_view, {})
         for name, slider in self.sliders.items():
-            self.view_values[self.current_view][name] = slider.value() / 10.0
+            self.global_values[name] = slider.value() / 10.0
         if hasattr(self, 'num_tests_dropdown'):
             self.num_tests_values[self.current_view] = (
                 self.num_tests_dropdown.currentIndex() + 1)
 
     def _load_view_values(self):
-        values = self.view_values.get(self.current_view, {})
         for name, slider in self.sliders.items():
-            val = float(values.get(name, 0.0))
+            val = float(self.global_values.get(name, 0.0))
             slider.blockSignals(True)
             self.text_boxes[name].blockSignals(True)
             slider.setValue(int(round(val * 10)))
@@ -462,45 +447,46 @@ class DTTSliderTab(QWidget):
             self.num_tests_dropdown.setCurrentIndex(max(1, int(val)) - 1)
 
     def _view_changed(self, event):
-        self._save_current_values()
         self.current_view = self.viewer.dims.current_step[0]
         self._load_view_values()
 
     def _apply_mask(self):
         """Compute and update the DTT cloud mask for the current view."""
-        dtt_stack = []
-        for name in self.ordered_names:
-            layer = self.layer_dict[name]
-            dtt_stack.append(layer.data[self.current_view])
-        if not dtt_stack:
+        if not self.ordered_names:
             return
-        dtt_array = np.stack(dtt_stack, axis=-1)
 
         thresholds = np.array([
-            self.view_values.get(self.current_view, {}).get(name, 0)
-            for name in self.ordered_names
+            self.global_values.get(name, 0) for name in self.ordered_names
         ])
 
-        if self.num_tests_values:
-            n_tests = int(
-                self.num_tests_values.get(
-                    self.current_view, self.num_tests[self.current_view]
-                    if self.num_tests is not None else thresholds.size))
-        else:
-            n_tests = int(self.num_tests[self.current_view]
-                          ) if self.num_tests is not None else thresholds.size
-        fv2 = float(self.fill_val_2[
-            self.current_view]) if self.fill_val_2 is not None else -126
-        fv3 = float(self.fill_val_3[
-            self.current_view]) if self.fill_val_3 is not None else -127
-
-        cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
+        sample_layer = self.layer_dict[self.ordered_names[0]]
+        num_views = sample_layer.data.shape[0]
 
         mask_data = self.dtt_mask_layer.data.copy()
-        mask_data[self.current_view] = cm
-        self.dtt_mask_layer.data = mask_data
+        for view_idx in range(num_views):
+            dtt_stack = [
+                self.layer_dict[name].data[view_idx]
+                for name in self.ordered_names
+            ]
+            dtt_array = np.stack(dtt_stack, axis=-1)
 
-        # self.dtt_mask_layer.data[self.current_view] = cm
+            if self.num_tests_values:
+                n_tests = int(
+                    self.num_tests_values.get(
+                        view_idx, self.num_tests[view_idx]
+                        if self.num_tests is not None else thresholds.size))
+            else:
+                n_tests = int(self.num_tests[view_idx]
+                              ) if self.num_tests is not None else thresholds.size
+            fv2 = float(self.fill_val_2[
+                view_idx]) if self.fill_val_2 is not None else -126
+            fv3 = float(self.fill_val_3[
+                view_idx]) if self.fill_val_3 is not None else -127
+
+            cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
+            mask_data[view_idx] = cm
+
+        self.dtt_mask_layer.data = mask_data
 
         # Update mask layer in any additional viewers
         for viewer in self.viewers:
@@ -508,5 +494,3 @@ class DTTSliderTab(QWidget):
                 continue
             if self.dtt_mask_layer.name in viewer.layers:
                 viewer.layers[self.dtt_mask_layer.name].data = mask_data
-                #viewer.layers[
-                #    self.dtt_mask_layer.name].data = self.dtt_mask_layer.data

@@ -571,9 +571,7 @@ def read(files, config=None):
         #fill_val_3_list[i] = -102
 
         if activation_values_arr is None:
-            activation_values_arr = np.zeros(
-                (len(activation_values), len(views)))
-        activation_values_arr[:, i] = activation_values
+            activation_values_arr = activation_values
 
         # If bands_to_get is 'ALL', on first file pass, grab the band names
         if band_names is None:
