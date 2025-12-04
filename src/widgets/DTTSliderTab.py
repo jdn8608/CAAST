@@ -142,7 +142,7 @@ class DTTSliderTab(QWidget):
     activation_values : np.ndarray, optional
         Activation thresholds for each observable shared across all views.
     num_tests : np.ndarray or None, optional
-        Minimum number of tests required to activate per view.
+        Minimum number of tests required to activate (shared across views).
     fill_val_2 : np.ndarray or None, optional
         Fill value 2 for each view.
     fill_val_3 : np.ndarray or None, optional
@@ -171,8 +171,8 @@ class DTTSliderTab(QWidget):
         self.slider_range = (-1010, 1010)
         # Shared slider values across all views
         self.global_values = dict(initial_values or {})
-        # Storage for per-view number of tests
-        self.num_tests_values = {}
+        # Shared number of tests across all views
+        self.global_num_tests = None
         self.current_view = (self.viewer.dims.current_step[0]
                              if self.viewer.dims.ndim > 0 else 0)
 
@@ -191,14 +191,12 @@ class DTTSliderTab(QWidget):
             self._num_tests_changed)
         tests_layout.addWidget(tests_label)
         tests_layout.addWidget(self.num_tests_dropdown)
-        init_tests = None
-        if self.num_tests is not None and len(
-                self.num_tests) > self.current_view:
-            init_tests = int(self.num_tests[self.current_view])
-        init_tests = self.num_tests_values.get(self.current_view, init_tests)
-        if init_tests is None:
-            init_tests = 1
-        self.num_tests_dropdown.setCurrentIndex(max(1, int(init_tests)) - 1)
+        if self.num_tests is not None and len(self.num_tests) > 0:
+            self.global_num_tests = int(self.num_tests[0])
+        if self.global_num_tests is None:
+            self.global_num_tests = 1
+        self.num_tests_dropdown.setCurrentIndex(
+            max(1, int(self.global_num_tests)) - 1)
         self.num_tests_dropdown.setFixedWidth(100)
 
         # Gather layer references
@@ -233,10 +231,6 @@ class DTTSliderTab(QWidget):
             for obs_idx, name in enumerate(self.ordered_names):
                 val = float(self.activation_values[obs_idx])
                 self.global_values.setdefault(name, val)
-
-        if self.num_tests is not None:
-            for view_idx in range(len(self.num_tests)):
-                self.num_tests_values[view_idx] = int(self.num_tests[view_idx])
 
         # Build slider widgets
         for name in self.ordered_names:
@@ -342,7 +336,8 @@ class DTTSliderTab(QWidget):
         self._apply_mask()
 
     def _num_tests_changed(self, index):
-        self.num_tests_values[self.current_view] = index + 1
+        self.global_num_tests = index + 1
+        self._apply_mask()
 
     def _mask_layer_changed(self, name):
         new_layer = self.labels_dict.get(name)
@@ -424,8 +419,7 @@ class DTTSliderTab(QWidget):
         for name, slider in self.sliders.items():
             self.global_values[name] = slider.value() / 10.0
         if hasattr(self, 'num_tests_dropdown'):
-            self.num_tests_values[self.current_view] = (
-                self.num_tests_dropdown.currentIndex() + 1)
+            self.global_num_tests = self.num_tests_dropdown.currentIndex() + 1
 
     def _load_view_values(self):
         for name, slider in self.sliders.items():
@@ -437,18 +431,13 @@ class DTTSliderTab(QWidget):
             slider.blockSignals(False)
             self.text_boxes[name].blockSignals(False)
         if hasattr(self, 'num_tests_dropdown'):
-            default = None
-            if self.num_tests is not None and len(
-                    self.num_tests) > self.current_view:
-                default = int(self.num_tests[self.current_view])
-            val = self.num_tests_values.get(self.current_view, default)
-            if val is None:
-                val = 1
-            self.num_tests_dropdown.setCurrentIndex(max(1, int(val)) - 1)
+            self.num_tests_dropdown.setCurrentIndex(
+                max(1, int(self.global_num_tests)) - 1)
 
     def _view_changed(self, event):
         self.current_view = self.viewer.dims.current_step[0]
         self._load_view_values()
+        self._apply_mask()
 
     def _apply_mask(self):
         """Compute and update the DTT cloud mask for the current view."""
@@ -461,31 +450,30 @@ class DTTSliderTab(QWidget):
 
         sample_layer = self.layer_dict[self.ordered_names[0]]
         num_views = sample_layer.data.shape[0]
+        view_idx = min(max(int(self.current_view), 0), num_views - 1)
+
+        dtt_stack = [
+            self.layer_dict[name].data[view_idx]
+            for name in self.ordered_names
+        ]
+        dtt_array = np.stack(dtt_stack, axis=-1)
+
+        if self.global_num_tests is not None:
+            n_tests = int(self.global_num_tests)
+        elif self.num_tests is not None:
+            n_tests = int(self.num_tests[0])
+        else:
+            n_tests = thresholds.size
+
+        fv2 = float(self.fill_val_2[
+            view_idx]) if self.fill_val_2 is not None else -126
+        fv3 = float(self.fill_val_3[
+            view_idx]) if self.fill_val_3 is not None else -127
+
+        cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
 
         mask_data = self.dtt_mask_layer.data.copy()
-        for view_idx in range(num_views):
-            dtt_stack = [
-                self.layer_dict[name].data[view_idx]
-                for name in self.ordered_names
-            ]
-            dtt_array = np.stack(dtt_stack, axis=-1)
-
-            if self.num_tests_values:
-                n_tests = int(
-                    self.num_tests_values.get(
-                        view_idx, self.num_tests[view_idx]
-                        if self.num_tests is not None else thresholds.size))
-            else:
-                n_tests = int(self.num_tests[view_idx]
-                              ) if self.num_tests is not None else thresholds.size
-            fv2 = float(self.fill_val_2[
-                view_idx]) if self.fill_val_2 is not None else -126
-            fv3 = float(self.fill_val_3[
-                view_idx]) if self.fill_val_3 is not None else -127
-
-            cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
-            mask_data[view_idx] = cm
-
+        mask_data[view_idx] = cm
         self.dtt_mask_layer.data = mask_data
 
         # Update mask layer in any additional viewers

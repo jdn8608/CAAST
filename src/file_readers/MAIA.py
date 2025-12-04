@@ -539,7 +539,7 @@ def read(files, config=None):
         view_geometry = np.zeros(
             (len(views), Y_DIM, X_DIM, len(view_geometry_names)))
 
-    activations_needed = np.zeros(len(views))
+    activations_needed = None
     activation_values_arr = None
     fill_val_2_list = np.zeros(len(views))
     fill_val_3_list = np.zeros(len(views))
@@ -560,7 +560,8 @@ def read(files, config=None):
         fill_val_3 = hdf_file['Ancillary']['configuration_file']['fill_val_3'][
             ()]
 
-        activations_needed[i] = number_of_activations_need
+        if activations_needed is None:
+            activations_needed = number_of_activations_need
         fill_val_2_list[i] = fill_val_2
         fill_val_3_list[i] = fill_val_3
 
