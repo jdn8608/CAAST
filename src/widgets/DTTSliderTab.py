@@ -277,9 +277,9 @@ class DTTSliderTab(QWidget):
         button_layout.addWidget(mask_label)
         button_layout.addWidget(self.mask_layer_dropdown)
 
-        btn = QPushButton("Generate Config File\nSave Cloud Mask")
+        btn = QPushButton("Save MCM\nActivation Values")
         btn.setFixedWidth(200)
-        btn.setFixedHeight(100)
+        btn.setFixedHeight(80)
         # Intentionally left unconnected for now
         button_layout.addWidget(btn)
 
