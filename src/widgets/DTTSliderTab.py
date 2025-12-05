@@ -277,15 +277,6 @@ class DTTSliderTab(QWidget):
         button_layout.addWidget(mask_label)
         button_layout.addWidget(self.mask_layer_dropdown)
 
-        self.radio_group = QButtonGroup(self)
-        self.save_current_radio = QRadioButton("Save current view's config")
-        self.save_all_radio = QRadioButton("Save all views' config")
-        self.radio_group.addButton(self.save_current_radio)
-        self.radio_group.addButton(self.save_all_radio)
-        self.save_current_radio.setChecked(True)
-        button_layout.addWidget(self.save_current_radio)
-        button_layout.addWidget(self.save_all_radio)
-
         btn = QPushButton("Generate Config File\nSave Cloud Mask")
         btn.setFixedWidth(200)
         btn.setFixedHeight(100)
