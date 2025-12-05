@@ -171,8 +171,6 @@ class DTTSliderTab(QWidget):
         self.slider_range = (-1010, 1010)
         # Shared slider values across all views
         self.global_values = dict(initial_values or {})
-        # Shared number of tests across all views
-        self.global_num_tests = None
         self.current_view = (self.viewer.dims.current_step[0]
                              if self.viewer.dims.ndim > 0 else 0)
 
@@ -191,12 +189,11 @@ class DTTSliderTab(QWidget):
             self._num_tests_changed)
         tests_layout.addWidget(tests_label)
         tests_layout.addWidget(self.num_tests_dropdown)
-        if self.num_tests is not None and len(self.num_tests) > 0:
-            self.global_num_tests = int(self.num_tests[0])
-        if self.global_num_tests is None:
-            self.global_num_tests = 1
+
+        if self.num_tests is None:
+            self.num_tests = 1
         self.num_tests_dropdown.setCurrentIndex(
-            max(1, int(self.global_num_tests)) - 1)
+            max(1, int(self.num_tests)) - 1)
         self.num_tests_dropdown.setFixedWidth(100)
 
         # Gather layer references
@@ -205,12 +202,14 @@ class DTTSliderTab(QWidget):
         self.dtt_mask_layer = None
         self._connected_label_layers = set()
         for layer in self.viewer.layers:
-            if layer.name.startswith("DTT") and "mask" not in layer.name.lower():
+            if layer.name.startswith(
+                    "DTT") and "mask" not in layer.name.lower():
                 self.layer_dict[layer.name] = layer
             if isinstance(layer, Labels):
                 self.labels_dict[layer.name] = layer
                 if layer not in self._connected_label_layers:
-                    layer.events.name.connect(self._refresh_mask_layer_dropdown)
+                    layer.events.name.connect(
+                        self._refresh_mask_layer_dropdown)
                     self._connected_label_layers.add(layer)
                 if self.dtt_mask_layer is None and layer.name == "DTT Mask":
                     self.dtt_mask_layer = layer
@@ -336,7 +335,7 @@ class DTTSliderTab(QWidget):
         self._apply_mask()
 
     def _num_tests_changed(self, index):
-        self.global_num_tests = index + 1
+        self.num_tests = index + 1
         self._apply_mask()
 
     def _mask_layer_changed(self, name):
@@ -366,8 +365,8 @@ class DTTSliderTab(QWidget):
 
         # Rebuild label dictionary and connect to name events for new layers
         self.labels_dict = {
-            layer.name: layer for layer in self.viewer.layers
-            if isinstance(layer, Labels)
+            layer.name: layer
+            for layer in self.viewer.layers if isinstance(layer, Labels)
         }
         for layer in self.labels_dict.values():
             if layer not in self._connected_label_layers:
@@ -391,8 +390,8 @@ class DTTSliderTab(QWidget):
             self.mask_layer_dropdown.setCurrentText(new_name)
         self.mask_layer_dropdown.blockSignals(False)
 
-        if (new_name is not None and (
-                current_layer is None or new_name != current_layer.name)):
+        if (new_name is not None
+                and (current_layer is None or new_name != current_layer.name)):
             # Update active mask layer to new selection
             self._mask_layer_changed(new_name)
 
@@ -419,7 +418,7 @@ class DTTSliderTab(QWidget):
         for name, slider in self.sliders.items():
             self.global_values[name] = slider.value() / 10.0
         if hasattr(self, 'num_tests_dropdown'):
-            self.global_num_tests = self.num_tests_dropdown.currentIndex() + 1
+            self.num_tests = self.num_tests_dropdown.currentIndex() + 1
 
     def _load_view_values(self):
         for name, slider in self.sliders.items():
@@ -432,7 +431,7 @@ class DTTSliderTab(QWidget):
             self.text_boxes[name].blockSignals(False)
         if hasattr(self, 'num_tests_dropdown'):
             self.num_tests_dropdown.setCurrentIndex(
-                max(1, int(self.global_num_tests)) - 1)
+                max(1, int(self.num_tests)) - 1)
 
     def _view_changed(self, event):
         self.current_view = self.viewer.dims.current_step[0]
@@ -444,33 +443,28 @@ class DTTSliderTab(QWidget):
         if not self.ordered_names:
             return
 
-        thresholds = np.array([
-            self.global_values.get(name, 0) for name in self.ordered_names
-        ])
+        thresholds = np.array(
+            [self.global_values.get(name, 0) for name in self.ordered_names])
 
         sample_layer = self.layer_dict[self.ordered_names[0]]
         num_views = sample_layer.data.shape[0]
         view_idx = min(max(int(self.current_view), 0), num_views - 1)
 
         dtt_stack = [
-            self.layer_dict[name].data[view_idx]
-            for name in self.ordered_names
+            self.layer_dict[name].data[view_idx] for name in self.ordered_names
         ]
         dtt_array = np.stack(dtt_stack, axis=-1)
 
-        if self.global_num_tests is not None:
-            n_tests = int(self.global_num_tests)
-        elif self.num_tests is not None:
-            n_tests = int(self.num_tests[0])
-        else:
-            n_tests = thresholds.size
+        # yucky below
+        if self.num_tests is None:
+            self.num_tests = 1
 
-        fv2 = float(self.fill_val_2[
-            view_idx]) if self.fill_val_2 is not None else -126
-        fv3 = float(self.fill_val_3[
-            view_idx]) if self.fill_val_3 is not None else -127
+        fv2 = float(
+            self.fill_val_2[view_idx]) if self.fill_val_2 is not None else -126
+        fv3 = float(
+            self.fill_val_3[view_idx]) if self.fill_val_3 is not None else -127
 
-        cm = get_cm_confidence(dtt_array, thresholds, n_tests, fv2, fv3)
+        cm = get_cm_confidence(dtt_array, thresholds, self.num_tests, fv2, fv3)
 
         mask_data = self.dtt_mask_layer.data.copy()
         mask_data[view_idx] = cm
