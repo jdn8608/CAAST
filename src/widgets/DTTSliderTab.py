@@ -165,6 +165,7 @@ class DTTSliderTab(QWidget):
         self.num_tests = num_tests
         self.fill_val_2 = fill_val_2
         self.fill_val_3 = fill_val_3
+        print("FILL VAL\n", fill_val_2, '\n', fill_val_3, '\n----\n')
         self.sliders = {}
         self.text_boxes = {}
         # Slider operates in tenths to mimic float precision
@@ -450,10 +451,8 @@ class DTTSliderTab(QWidget):
         if self.num_tests is None:
             self.num_tests = 1
 
-        fv2 = float(
-            self.fill_val_2[view_idx]) if self.fill_val_2 is not None else -126
-        fv3 = float(
-            self.fill_val_3[view_idx]) if self.fill_val_3 is not None else -127
+        fv2 = float(self.fill_val_2) if self.fill_val_2 is not None else -126.
+        fv3 = float(self.fill_val_3) if self.fill_val_3 is not None else -127.
 
         cm = get_cm_confidence(dtt_array, thresholds, self.num_tests, fv2, fv3)
 

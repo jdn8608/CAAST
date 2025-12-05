@@ -541,8 +541,8 @@ def read(files, config=None):
 
     activations_needed = None
     activation_values_arr = None
-    fill_val_2_list = np.zeros(len(views))
-    fill_val_3_list = np.zeros(len(views))
+    fill_val_2 = None
+    fill_val_3 = None
 
     # Loop through cloud mask files
     for i, (view, filepath) in enumerate(zip(views, mask_files)):
@@ -562,8 +562,8 @@ def read(files, config=None):
 
         if activations_needed is None:
             activations_needed = number_of_activations_need
-        fill_val_2_list[i] = fill_val_2
-        fill_val_3_list[i] = fill_val_3
+            fill_val_2 = fill_val_2
+            fill_val_3 = fill_val_3
 
         # TODO
         # Temp override the files' fill vals.
@@ -663,7 +663,7 @@ def read(files, config=None):
         data_layer_dict["MCM"] = (LayerType.CLOUD_MASK, cloud_masks)
 
     add_aero_cloud_mask = True
-    if add_aero_cloud_mask:
+    if add_aero_cloud_mask and len(aerosol_files):
         data_layer_dict["Aerosol File Cloud Mask"] = (
             LayerType.CLOUD_MASK,
             get_aerosol_file_cloud_mask(aerosol_files[0], image_shape))
@@ -671,12 +671,13 @@ def read(files, config=None):
     ancillary_config = {
         'number_of_activations_needed': activations_needed,
         'activation_values': activation_values_arr,
-        'fill_val_2': fill_val_2_list,
-        'fill_val_3': fill_val_3_list,
+        'fill_val_2': fill_val_2,
+        'fill_val_3': fill_val_3,
     }
 
     output_template = mask_files[0].replace(views[0],
                                             '<view>') if mask_files else ''
+    print(output_template)
 
     return data_layer_dict, output_template, image_shape, ancillary_config, (
         views, angles)
