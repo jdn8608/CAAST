@@ -77,6 +77,7 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
     failed_retrieval_idx = np.where(DTT == fill_val_2)
     no_data_idx = np.where(DTT == fill_val_3)
 
+    # JPL code diff: DTT_ vals replaced: 2-> 102; 3->103
     DTT_ = np.copy(DTT)
     DTT_[cloudy_idx[0], cloudy_idx[1], cloudy_idx[2]] = 0
     DTT_[failed_retrieval_idx] = 102
@@ -110,11 +111,14 @@ def get_cm_confidence(DTT, activation, N, fill_val_2, fill_val_3):
     cloudy_idx = np.where(cloudy_test_count >= N)
     final_cm[cloudy_idx] = 0
 
+    # JPL code diff: failed retrieval values  populate with -1; not 2 or 3
     failed_retrieval_idx = np.where(failed_retrieval_count == num_tests)
     final_cm[failed_retrieval_idx] = -1
 
     no_data_idx = np.where(no_data_count == num_tests)
     final_cm[no_data_idx] = -1
+    # replace with s_ids
+    final_cm[final_cm == 19] = 0
 
     return final_cm
 
@@ -206,6 +210,9 @@ class DTTSliderTab(QWidget):
             if layer.name.startswith(
                     "DTT") and "mask" not in layer.name.lower():
                 self.layer_dict[layer.name] = layer
+            elif layer.name.startswith("Surf"):
+                self.sid = layer
+
             if isinstance(layer, Labels):
                 self.labels_dict[layer.name] = layer
                 if layer not in self._connected_label_layers:
@@ -220,6 +227,7 @@ class DTTSliderTab(QWidget):
             self.dtt_mask_layer = next(iter(self.labels_dict.values()))
 
         assert self.dtt_mask_layer is not None, "No labels layer found to use as mask"
+        assert self.sid is not None, "No Surface IDs found. Required for snow mask labels."
 
         # Determine display order for sliders
         self.ordered_names = [
@@ -455,6 +463,7 @@ class DTTSliderTab(QWidget):
         fv3 = float(self.fill_val_3) if self.fill_val_3 is not None else -127.
 
         cm = get_cm_confidence(dtt_array, thresholds, self.num_tests, fv2, fv3)
+        cm[self.sid.data[view_idx] == 19] = 0
 
         mask_data = self.dtt_mask_layer.data.copy()
         mask_data[view_idx] = cm
