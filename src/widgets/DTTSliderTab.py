@@ -133,6 +133,14 @@ ORDERED_DTT_NAMES = [
     "DTT Cirrus",
 ]
 
+SLIDER_GROUPS = [
+    ("DTT WI", ["DTT WI"]),
+    ("DTT NDVI / DTT NDSI", ["DTT NDVI", "DTT NDSI"]),
+    ("DTT visRef / DTT nirRef", ["DTT visRef", "DTT nirRef"]),
+    ("DTT SVI", ["DTT SVI"]),
+    ("DTT Cirrus", ["DTT Cirrus"]),
+]
+
 
 class DTTSliderTab(QWidget):
     """Tab widget with vertical sliders for each DTT layer.
@@ -172,6 +180,9 @@ class DTTSliderTab(QWidget):
         print("FILL VAL\n", fill_val_2, '\n', fill_val_3, '\n----\n')
         self.sliders = {}
         self.text_boxes = {}
+        self.slider_groups = []
+        self.slider_to_group = {}
+        self.text_to_group = {}
         # Slider operates in tenths to mimic float precision
         self.slider_range = (-1010, 1010)
         # Shared slider values across all views
@@ -234,6 +245,17 @@ class DTTSliderTab(QWidget):
             n for n in ORDERED_DTT_NAMES if n in self.layer_dict
         ]
 
+        # Group ordered names into shared sliders
+        for label, names in SLIDER_GROUPS:
+            group_names = [name for name in names if name in self.ordered_names]
+            if not group_names:
+                continue
+            self.slider_groups.append({
+                "key": label,
+                "label": label if len(group_names) > 1 else group_names[0],
+                "names": group_names,
+            })
+
         # Populate global_values with activation thresholds if provided
         if self.activation_values is not None:
             for obs_idx, name in enumerate(self.ordered_names):
@@ -241,20 +263,22 @@ class DTTSliderTab(QWidget):
                 self.global_values.setdefault(name, val)
 
         # Build slider widgets
-        for name in self.ordered_names:
-            layer = self.layer_dict[name]
+        for group in self.slider_groups:
+            group_key = group["key"]
+            group_names = group["names"]
+            layer = self.layer_dict[group_names[0]]
 
             layer_layout = QHBoxLayout()
             layer_layout.setSpacing(5)
 
             slider = QSlider(Qt.Vertical)
             slider.setRange(*self.slider_range)
-            start_val = float(self.global_values.get(name, 0.0))
+            start_val = float(self.global_values.get(group_names[0], 0.0))
             slider.setValue(int(round(start_val * 10)))
             slider.valueChanged.connect(self._slider_changed)
 
             info_layout = QVBoxLayout()
-            label = QLabel(name)
+            label = QLabel(group["label"])
             label.setAlignment(Qt.AlignCenter)
             text = QLineEdit(f"{start_val:.1f}")
             text.setFixedWidth(50)
@@ -266,9 +290,12 @@ class DTTSliderTab(QWidget):
             layer_layout.addLayout(info_layout)
 
             sliders_layout.addLayout(layer_layout)
-            self.sliders[name] = slider
-            self.text_boxes[name] = text
-            self.global_values.setdefault(name, start_val)
+            self.sliders[group_key] = slider
+            self.text_boxes[group_key] = text
+            self.slider_to_group[slider] = group
+            self.text_to_group[text] = group
+            for name in group_names:
+                self.global_values.setdefault(name, start_val)
 
         # Layout for mask layer selection, radio buttons, and button on the right
         button_layout = QVBoxLayout()
@@ -326,12 +353,13 @@ class DTTSliderTab(QWidget):
 
     def _slider_changed(self, value):
         slider = self.sender()
-        for name, s in self.sliders.items():
-            if s is slider:
-                fval = value / 10.0
-                self.text_boxes[name].setText(f"{fval:.1f}")
-                self.global_values[name] = fval
-                break
+        group = self.slider_to_group.get(slider)
+        if group is None:
+            return
+        fval = value / 10.0
+        self.text_boxes[group["key"]].setText(f"{fval:.1f}")
+        for name in group["names"]:
+            self.global_values[name] = fval
         self._apply_mask()
 
     def _num_tests_changed(self, index):
@@ -397,17 +425,18 @@ class DTTSliderTab(QWidget):
 
     def _text_changed(self):
         text = self.sender()
-        for name, t in self.text_boxes.items():
-            if t is text:
-                try:
-                    value = float(t.text())
-                except ValueError:
-                    return
-                value = max(self.slider_range[0] / 10,
-                            min(self.slider_range[1] / 10, value))
-                self.sliders[name].setValue(int(round(value * 10)))
-                self.global_values[name] = value
-                break
+        group = self.text_to_group.get(text)
+        if group is None:
+            return
+        try:
+            value = float(text.text())
+        except ValueError:
+            return
+        value = max(self.slider_range[0] / 10,
+                    min(self.slider_range[1] / 10, value))
+        self.sliders[group["key"]].setValue(int(round(value * 10)))
+        for name in group["names"]:
+            self.global_values[name] = value
         # self._apply_mask will be triggered via slider change
 
     def print_values(self):
@@ -415,20 +444,26 @@ class DTTSliderTab(QWidget):
         print("Current DTT slider values:", self.global_values)
 
     def _save_current_values(self):
-        for name, slider in self.sliders.items():
-            self.global_values[name] = slider.value() / 10.0
+        for group in self.slider_groups:
+            slider = self.sliders[group["key"]]
+            value = slider.value() / 10.0
+            for name in group["names"]:
+                self.global_values[name] = value
         if hasattr(self, 'num_tests_dropdown'):
             self.num_tests = self.num_tests_dropdown.currentIndex() + 1
 
     def _load_view_values(self):
-        for name, slider in self.sliders.items():
+        for group in self.slider_groups:
+            name = group["names"][0]
+            slider = self.sliders[group["key"]]
+            text_box = self.text_boxes[group["key"]]
             val = float(self.global_values.get(name, 0.0))
             slider.blockSignals(True)
-            self.text_boxes[name].blockSignals(True)
+            text_box.blockSignals(True)
             slider.setValue(int(round(val * 10)))
-            self.text_boxes[name].setText(f"{val:.1f}")
+            text_box.setText(f"{val:.1f}")
             slider.blockSignals(False)
-            self.text_boxes[name].blockSignals(False)
+            text_box.blockSignals(False)
         if hasattr(self, 'num_tests_dropdown'):
             self.num_tests_dropdown.setCurrentIndex(
                 max(1, int(self.num_tests)) - 1)
