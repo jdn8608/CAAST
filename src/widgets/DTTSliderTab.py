@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -168,7 +170,8 @@ class DTTSliderTab(QWidget):
                  num_tests=None,
                  fill_val_2=None,
                  fill_val_3=None,
-                 viewers=None):
+                 viewers=None,
+                 output_file_info=None):
         super().__init__()
         self.viewer = viewer
         # list of viewers to update when the mask changes
@@ -177,6 +180,7 @@ class DTTSliderTab(QWidget):
         self.num_tests = num_tests
         self.fill_val_2 = fill_val_2
         self.fill_val_3 = fill_val_3
+        self.output_file_info = output_file_info
         print("FILL VAL\n", fill_val_2, '\n', fill_val_3, '\n----\n')
         self.sliders = {}
         self.text_boxes = {}
@@ -316,7 +320,7 @@ class DTTSliderTab(QWidget):
         btn = QPushButton("Save MCM\nActivation Values")
         btn.setFixedWidth(200)
         btn.setFixedHeight(80)
-        # Intentionally left unconnected for now
+        btn.clicked.connect(self._save_activation_values)
         button_layout.addWidget(btn)
 
         separator1 = QFrame()
@@ -442,6 +446,21 @@ class DTTSliderTab(QWidget):
     def print_values(self):
         """Print current slider values for debugging."""
         print("Current DTT slider values:", self.global_values)
+
+    def _save_activation_values(self):
+        if self.output_file_info is None:
+            return
+        output_filepath = self.output_file_info[0]
+        output_name = Path(output_filepath).name
+        output_path = Path(__file__).resolve().parents[2] / "MCM_activations"
+        output_path.mkdir(parents=True, exist_ok=True)
+        target_file = output_path / Path(output_name).with_suffix(".txt")
+
+        lines = []
+        for name in self.ordered_names:
+            value = self.global_values.get(name, 0)
+            lines.append(f"{name} {value:.1f}")
+        target_file.write_text("\n".join(lines) + "\n")
 
     def _save_current_values(self):
         for group in self.slider_groups:
