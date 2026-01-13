@@ -678,6 +678,7 @@ class AdaptiveSplitViewer(QMainWindow):
                     fill_val_2=(self.ancillary_config or {}).get('fill_val_2'),
                     fill_val_3=(self.ancillary_config or {}).get('fill_val_3'),
                     viewers=self.viewers,
+                    output_file_info=output_file_info,
                 ), "Adjust DTT Activation Values")
         # Otherwise, load the Review Mode tab
         else:

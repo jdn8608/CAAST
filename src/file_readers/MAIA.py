@@ -668,6 +668,13 @@ def read(files, config=None):
             LayerType.CLOUD_MASK,
             get_aerosol_file_cloud_mask(aerosol_files[0], image_shape))
 
+    output_template = mask_files[0].replace(views[0],
+                                            '<view>') if mask_files else ''
+    print(output_template)
+
+    activation_values_arr = load_saved_activation_values(
+        output_template, activation_values_arr)
+
     ancillary_config = {
         'number_of_activations_needed': activations_needed,
         'activation_values': activation_values_arr,
@@ -675,9 +682,44 @@ def read(files, config=None):
         'fill_val_3': fill_val_3,
     }
 
-    output_template = mask_files[0].replace(views[0],
-                                            '<view>') if mask_files else ''
-    print(output_template)
-
     return data_layer_dict, output_template, image_shape, ancillary_config, (
         views, angles)
+# Ordered DTT layer names for activation thresholds.
+ORDERED_DTT_NAMES = [
+    "DTT WI",
+    "DTT NDVI",
+    "DTT NDSI",
+    "DTT visRef",
+    "DTT nirRef",
+    "DTT SVI",
+    "DTT Cirrus",
+]
+
+
+def load_saved_activation_values(output_template, fallback_values):
+    if not output_template:
+        return fallback_values
+    output_path = Path(__file__).resolve().parents[2] / "MCM_activations"
+    target_file = output_path / Path(output_template).with_suffix(".txt").name
+    if not target_file.is_file():
+        return fallback_values
+
+    file_values = {}
+    for line in target_file.read_text().splitlines():
+        if not line.strip():
+            continue
+        name, value = line.rsplit(" ", 1)
+        try:
+            file_values[name] = float(value)
+        except ValueError:
+            continue
+
+    if fallback_values is None:
+        fallback_values = np.zeros(len(ORDERED_DTT_NAMES))
+
+    merged_values = np.array(fallback_values, dtype=float)
+    for idx, name in enumerate(ORDERED_DTT_NAMES):
+        if name in file_values:
+            merged_values[idx] = file_values[name]
+
+    return merged_values
