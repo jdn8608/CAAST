@@ -5,6 +5,8 @@ __pycache__/
 /data/*
 /labels/*
 /src/settings/*
+/MCM_activations/
+/MCM_activation_v1/
 
 # Ignore Vim swap files
 *.swp

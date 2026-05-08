@@ -260,6 +260,7 @@ def add_layers(
         # Create a blank layer for DTTSliderTab output. The mask will be
         # populated by the widget using the DTT layers and thresholds.
         if DTT_found:
+            print(DTT_found)
             dtt_mask_data = np.zeros(shape, dtype=int)
             dtt_layer = viewer.add_labels(dtt_mask_data[...],
                                           name='DTT Mask',
@@ -276,7 +277,7 @@ def add_layers(
             label_list.append(dtt_mask_data)
 
     return (editing_data, editing_layer), (im_data, im_layers), \
-        (label_list, label_layers)
+        (label_list, label_layers), DTT_found
 
 
 def get_notes_tab(output_filepath, prior_notes=None):
@@ -485,9 +486,22 @@ def get_review_mode_tab(output_filepath,
 
 class AdaptiveSplitViewer(QMainWindow):
 
-    def __init__(self, data_layer_dict, config, views, angles, shape,
-                 ancillary_config, label_mode, load_labels_name, scene_attrs,
-                 output_file_info, csv_filepath, review_data, notes):
+    def __init__(
+        self,
+        data_layer_dict,
+        config,
+        views,
+        angles,
+        shape,
+        ancillary_config,
+        label_mode,
+        load_labels_name,
+        scene_attrs,
+        output_file_info,
+        csv_filepath,
+        review_data,
+        notes,
+    ):
         # call super init for a QMainWindow
         super().__init__()
 
@@ -567,13 +581,15 @@ class AdaptiveSplitViewer(QMainWindow):
         # Add the imagery and labels from data_layer_dict to the main viewer
         (edit_np, edit_layer), \
         (im_np, im_layers), \
-        (label_list, label_layers) = add_layers(data_layer_dict,
-                                               self.layer_manager,
-                                               self.image_shape,
-                                               self.main_viewer,
-                                               config,
-                                               load_labels_name=load_labels_name if label_mode else '',
-                                               label_mode=label_mode)
+        (label_list, label_layers), \
+        DTT_found = add_layers(
+            data_layer_dict,
+            self.layer_manager,
+            self.image_shape,
+            self.main_viewer,
+            config,
+            load_labels_name=load_labels_name if label_mode else '',
+            label_mode=label_mode)
 
         # connect mutliview metadata to POV nav/time step
         if self.is_multiview_instrument:
@@ -668,17 +684,20 @@ class AdaptiveSplitViewer(QMainWindow):
                                     "Thresholding + Logic Gates")
 
             # Add DTT sliders tab
-            self.bottom_tabs.addTab(
-                DTTSliderTab(
-                    self.main_viewer,
-                    activation_values=(self.ancillary_config
-                                       or {}).get('activation_values'),
-                    num_tests=(self.ancillary_config
-                               or {}).get('number_of_activations_needed'),
-                    fill_val_2=(self.ancillary_config or {}).get('fill_val_2'),
-                    fill_val_3=(self.ancillary_config or {}).get('fill_val_3'),
-                    viewers=self.viewers,
-                ), "Adjust DTT Activation Values")
+            if DTT_found:
+                self.bottom_tabs.addTab(
+                    DTTSliderTab(
+                        self.main_viewer,
+                        activation_values=(self.ancillary_config
+                                           or {}).get('activation_values'),
+                        num_tests=(self.ancillary_config
+                                   or {}).get('number_of_activations_needed'),
+                        fill_val_2=(self.ancillary_config
+                                    or {}).get('fill_val_2'),
+                        fill_val_3=(self.ancillary_config
+                                    or {}).get('fill_val_3'),
+                        viewers=self.viewers,
+                    ), "Adjust DTT Activation Values")
         # Otherwise, load the Review Mode tab
         else:
             if isinstance(config["grade_slider_min"], int) and \
